@@ -1,0 +1,109 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: turnoya-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: turnoya
+      POSTGRES_PASSWORD: turnoya
+      POSTGRES_DB: turnoya
+    ports:
+      - "5432:5432"
+    volumes:
+      - turnoya_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U turnoya -d turnoya"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    container_name: turnoya-app
+    restart: unless-stopped
+    profiles: ["prod"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://turnoya:turnoya@db:5432/turnoya?schema=public
+      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion-32-chars}
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-mock}
+      # OpenWA (WHATSAPP_PROVIDER=openwa): el gateway corre en el mismo compose como servicio "openwa"
+      OPENWA_URL: ${OPENWA_URL_INTERNAL:-http://openwa:2785}
+      OPENWA_API_KEY: ${OPENWA_API_KEY:-turnoya-openwa-master-key-cambiar}
+      OPENWA_SESSION: ${OPENWA_SESSION:-turnoya}
+      OPENWA_WEBHOOK_SECRET: ${OPENWA_WEBHOOK_SECRET:-turnoya-webhook-secret-cambiar}
+      OPENWA_WEBHOOK_BASE_URL: ${OPENWA_WEBHOOK_BASE_URL_INTERNAL:-http://app:3000}
+      # Meta Cloud API (WHATSAPP_PROVIDER=meta)
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-turnoya-verify}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      SEED_ON_START: ${SEED_ON_START:-true}
+    ports:
+      - "3000:3000"
+
+  # Gateway de WhatsApp open source (https://github.com/rmyndharis/OpenWA).
+  # Arranque: docker compose --profile whatsapp up -d
+  # Dashboard/API: http://localhost:2785 (X-API-Key = OPENWA_API_KEY)
+  openwa:
+    image: ghcr.io/rmyndharis/openwa:latest
+    container_name: turnoya-openwa
+    restart: unless-stopped
+    profiles: ["whatsapp", "prod"]
+    ports:
+      - "2785:2785"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      NODE_ENV: production
+      PORT: 2785
+      TZ: America/Lima
+      HOME: /tmp
+      XDG_CONFIG_HOME: /tmp/.config
+      XDG_CACHE_HOME: /tmp/.cache
+      LOG_LEVEL: info
+      # Siembra la clave admin con el mismo valor que usa TurnoYa (solo en el primer arranque)
+      API_MASTER_KEY: ${OPENWA_API_KEY:-turnoya-openwa-master-key-cambiar}
+      # Reanuda la sesión vinculada tras reiniciar el contenedor
+      AUTO_START_SESSIONS: "true"
+      DATABASE_TYPE: sqlite
+      DATABASE_SYNCHRONIZE: "true"
+      SESSION_DATA_PATH: /app/data/sessions
+      STORAGE_TYPE: local
+      STORAGE_LOCAL_PATH: /app/data/media
+      PLUGINS_DIR: /app/data/plugins
+      # Motor: whatsapp-web.js (menor riesgo de bloqueo) o baileys (menos RAM)
+      ENGINE_TYPE: ${OPENWA_ENGINE:-whatsapp-web.js}
+      PUPPETEER_HEADLESS: "true"
+      PUPPETEER_ARGS: --no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu
+      PUPPETEER_EXECUTABLE_PATH: /usr/local/bin/puppeteer-chrome
+      # Permite que el webhook apunte a TurnoYa (host o contenedor), que son hosts "internos"
+      SSRF_ALLOWED_HOSTS: host.docker.internal,app,localhost,127.0.0.1
+      WEBHOOK_TIMEOUT: 10000
+      WEBHOOK_RETRY_DELAY: 5000
+      ENABLE_SWAGGER: "true"
+      UPDATE_CHECK_ENABLED: "false"
+      # El dashboard se sirve por HTTP plano en local; sin esto la UI queda en blanco
+      CSP_UPGRADE_INSECURE_REQUESTS: "false"
+    volumes:
+      - turnoya_openwa:/app/data
+    tmpfs:
+      - /tmp
+    mem_limit: ${OPENWA_MEM_LIMIT:-2g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2785/api/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  turnoya_pgdata:
+  turnoya_openwa:

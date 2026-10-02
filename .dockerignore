@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+coverage
+.git
+.env
+.env.*
+!.env.example
+npm-debug.log*
+*.md
+.claude
+.windsurf
+.agents
+.cursor
+src/generated

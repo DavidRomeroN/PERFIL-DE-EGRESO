@@ -1,0 +1,267 @@
+// TurnoYa — Modelo de datos (PostgreSQL 16, 3FN, multi-tenant por local_id)
+// Secciones 9.1 y 9.2 del documento de perfil de egreso.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enumeraciones
+// ---------------------------------------------------------------------------
+
+enum RolUsuario {
+  SUPER_ADMIN
+  ADMIN_LOCAL
+  OPERADOR
+}
+
+/// Estados del turno (6 estados, 3 finales). La API rechaza transiciones
+/// que no estén en el diagrama de estados.
+enum EstadoTurno {
+  EMITIDO
+  AVISADO
+  LLAMADO
+  ATENDIDO
+  NO_SE_PRESENTO
+  CANCELADO
+}
+
+enum CanalTurno {
+  QR
+  TICKET
+}
+
+enum TipoNotificacion {
+  WHATSAPP
+  WEB
+}
+
+enum EstadoNotificacion {
+  PENDIENTE
+  ENVIADO
+  ENTREGADO
+  LEIDO
+  FALLIDO
+}
+
+// ---------------------------------------------------------------------------
+// Planes y locales (SaaS multi-tenant)
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id                 Int     @id @default(autoincrement())
+  codigo             String  @unique // GRATIS | EMPRENDE | PRO
+  nombre             String
+  precioMensual      Decimal @map("precio_mensual") @db.Decimal(10, 2)
+  maxTurnosMes       Int     @map("max_turnos_mes")
+  maxColas           Int     @map("max_colas")
+  maxVentanillas     Int     @map("max_ventanillas")
+  whatsappHabilitado Boolean @map("whatsapp_habilitado")
+  maxAvisosWhatsapp  Int     @map("max_avisos_whatsapp")
+  reportes           Boolean @default(false)
+  descripcion        String?
+
+  locales Local[]
+
+  @@map("plan")
+}
+
+model Local {
+  id              Int      @id @default(autoincrement())
+  slug            String   @unique
+  ruc             String?
+  razonSocial     String   @map("razon_social")
+  nombreComercial String   @map("nombre_comercial")
+  rubro           String   @default("Salud")
+  direccion       String?
+  ciudad          String   @default("Juliaca")
+  telefono        String?
+  planId          Int      @map("plan_id")
+  zonaHoraria     String   @default("America/Lima") @map("zona_horaria")
+  activo          Boolean  @default(true)
+  // Personalización de la pantalla TV (RF12)
+  colorPrimario   String   @default("#0f766e") @map("color_primario")
+  logoUrl         String?  @map("logo_url")
+  mensajeTv       String?  @map("mensaje_tv")
+  mensajeBienvenida String? @map("mensaje_bienvenida")
+  // Aviso por WhatsApp cuando falten N turnos
+  avisarFaltando  Int      @default(2) @map("avisar_faltando")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  plan        Plan         @relation(fields: [planId], references: [id])
+  usuarios    Usuario[]
+  colas       Cola[]
+  ventanillas Ventanilla[]
+  turnos      Turno[]
+  auditorias  Auditoria[]
+
+  @@map("local")
+}
+
+// ---------------------------------------------------------------------------
+// Usuarios
+// ---------------------------------------------------------------------------
+
+model Usuario {
+  id           Int        @id @default(autoincrement())
+  localId      Int?       @map("local_id")
+  email        String     @unique
+  hashPassword String     @map("hash_password")
+  nombre       String
+  rol          RolUsuario
+  activo       Boolean    @default(true)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  ultimoAcceso DateTime?  @map("ultimo_acceso")
+
+  local      Local?      @relation(fields: [localId], references: [id], onDelete: Cascade)
+  auditorias Auditoria[]
+
+  @@index([localId])
+  @@map("usuario")
+}
+
+// ---------------------------------------------------------------------------
+// Colas, ventanillas y numeración diaria
+// ---------------------------------------------------------------------------
+
+model Cola {
+  id                 Int     @id @default(autoincrement())
+  localId            Int     @map("local_id")
+  prefijo            String  @db.VarChar(3)
+  nombre             String
+  descripcion        String?
+  activa             Boolean @default(true)
+  /// Tiempo base de atención (segundos) usado cuando aún no hay histórico (RN02)
+  tiempoAtencionBase Int     @default(300) @map("tiempo_atencion_base")
+  orden              Int     @default(0)
+
+  local       Local          @relation(fields: [localId], references: [id], onDelete: Cascade)
+  ventanillas Ventanilla[]
+  turnos      Turno[]
+  contadores  ContadorCola[]
+
+  @@unique([localId, prefijo])
+  @@map("cola")
+}
+
+model Ventanilla {
+  id      Int     @id @default(autoincrement())
+  localId Int     @map("local_id")
+  nombre  String
+  colaId  Int?    @map("cola_id")
+  activa  Boolean @default(true)
+
+  local  Local   @relation(fields: [localId], references: [id], onDelete: Cascade)
+  cola   Cola?   @relation(fields: [colaId], references: [id], onDelete: SetNull)
+  turnos Turno[]
+
+  @@index([localId])
+  @@map("ventanilla")
+}
+
+/// RN01: la numeración se reinicia cada día por cola (A-001, B-001…)
+model ContadorCola {
+  colaId       Int      @map("cola_id")
+  fecha        DateTime @db.Date
+  ultimoNumero Int      @default(0) @map("ultimo_numero")
+
+  cola Cola @relation(fields: [colaId], references: [id], onDelete: Cascade)
+
+  @@id([colaId, fecha])
+  @@map("contador_cola")
+}
+
+// ---------------------------------------------------------------------------
+// Clientes y turnos
+// ---------------------------------------------------------------------------
+
+model Cliente {
+  id               Int      @id @default(autoincrement())
+  /// SHA-256 del teléfono normalizado: permite búsquedas (RN03) sin exponer el dato
+  telefonoHash     String?  @map("telefono_hash")
+  /// Teléfono cifrado (AES-256-GCM) — Ley 29733, dato personal
+  telefonoCifrado  String?  @map("telefono_cifrado")
+  nombre           String?
+  consentimientoAt DateTime @default(now()) @map("consentimiento_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  turnos Turno[]
+
+  @@index([telefonoHash])
+  @@map("cliente")
+}
+
+model Turno {
+  id           Int         @id @default(autoincrement())
+  localId      Int         @map("local_id")
+  colaId       Int         @map("cola_id")
+  numero       Int
+  codigo       String      @db.VarChar(10)
+  /// Token público para seguimiento (URL /t/:token)
+  token        String      @unique @db.VarChar(16)
+  clienteId    Int?        @map("cliente_id")
+  estado       EstadoTurno @default(EMITIDO)
+  ventanillaId Int?        @map("ventanilla_id")
+  canal        CanalTurno
+  rellamadas   Int         @default(0)
+  emitidoAt    DateTime    @default(now()) @map("emitido_at")
+  avisadoAt    DateTime?   @map("avisado_at")
+  llamadoAt    DateTime?   @map("llamado_at")
+  atendidoAt   DateTime?   @map("atendido_at")
+  finalizadoAt DateTime?   @map("finalizado_at")
+  fecha        DateTime    @db.Date
+
+  local         Local          @relation(fields: [localId], references: [id], onDelete: Cascade)
+  cola          Cola           @relation(fields: [colaId], references: [id], onDelete: Cascade)
+  cliente       Cliente?       @relation(fields: [clienteId], references: [id])
+  ventanilla    Ventanilla?    @relation(fields: [ventanillaId], references: [id])
+  notificaciones Notificacion[]
+
+  @@unique([colaId, fecha, numero])
+  @@index([colaId, estado, emitidoAt])
+  @@index([localId, fecha])
+  @@map("turno")
+}
+
+model Notificacion {
+  id             Int                @id @default(autoincrement())
+  turnoId        Int                @map("turno_id")
+  tipo           TipoNotificacion
+  /// Destino enmascarado (p. ej. +51 9** *** 123)
+  destino        String?
+  mensaje        String
+  plantilla      String?
+  proveedorMsgId String?            @map("proveedor_msg_id")
+  estado         EstadoNotificacion @default(PENDIENTE)
+  enviadoAt      DateTime?          @map("enviado_at")
+  error          String?
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  turno Turno @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+
+  @@index([turnoId])
+  @@index([createdAt])
+  @@map("notificacion")
+}
+
+model Auditoria {
+  id        Int      @id @default(autoincrement())
+  localId   Int?     @map("local_id")
+  usuarioId Int?     @map("usuario_id")
+  accion    String
+  entidad   String
+  entidadId String?  @map("entidad_id")
+  datosJson Json?    @map("datos_json")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  local   Local?   @relation(fields: [localId], references: [id], onDelete: Cascade)
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([localId, createdAt])
+  @@map("auditoria")
+}
