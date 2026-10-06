@@ -25,6 +25,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Variables públicas necesarias en build (se pueden sobreescribir en runtime para SSR)
 ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+# Solo para que `next build` no falle al importar Prisma. No se conecta a ninguna base.
+# En Render, la DATABASE_URL real se inyecta al arrancar el contenedor.
+ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public"
 RUN npx next build
 
 # 3) Runtime
