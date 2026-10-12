@@ -52,12 +52,13 @@ const EN_ESPERA: EstadoTurno[] = ["EMITIDO", "AVISADO"];
 
 /** Diagrama de estados del turno (sección 8.6). */
 const TRANSICIONES: Record<EstadoTurno, EstadoTurno[]> = {
-  EMITIDO: ["AVISADO", "LLAMADO", "CANCELADO"],
-  AVISADO: ["LLAMADO", "CANCELADO"],
+  EMITIDO: ["AVISADO", "LLAMADO", "CANCELADO", "TRANSFERIDO"],
+  AVISADO: ["LLAMADO", "CANCELADO", "TRANSFERIDO"],
   LLAMADO: ["LLAMADO", "ATENDIDO", "NO_SE_PRESENTO"],
   ATENDIDO: [],
   NO_SE_PRESENTO: [],
   CANCELADO: [],
+  TRANSFERIDO: [],
 };
 
 export function transicionValida(desde: EstadoTurno, hacia: EstadoTurno) {
@@ -73,7 +74,8 @@ export interface EmitirTurnoInput {
   nombre?: string | null;
   telefono?: string | null;
   consentimiento?: boolean;
-  canal: "QR" | "TICKET";
+  canal: "QR" | "TICKET" | "WHATSAPP" | "KIOSCO" | "CITA";
+  categoriaCodigo?: string | null;
 }
 
 export async function emitirTurno(input: EmitirTurnoInput) {
@@ -83,6 +85,9 @@ export async function emitirTurno(input: EmitirTurnoInput) {
   });
   if (!cola || !cola.activa) throw new ErrorNegocio("COLA_INACTIVA", "La cola no existe o está inactiva", 404);
   if (!cola.local.activo) throw new ErrorNegocio("LOCAL_INACTIVO", "El local está inactivo", 403);
+  const { localAbierto } = await import("@/lib/operacion");
+  const horario = await localAbierto(cola.localId, cola.local.zonaHoraria);
+  if (!horario.abierto) throw new ErrorNegocio("COLA_CERRADA", horario.mensaje ?? "El local está cerrado", 409);
 
   const fechaISO = fechaLocalISO(cola.local.zonaHoraria);
 
@@ -140,6 +145,9 @@ export async function emitirTurno(input: EmitirTurnoInput) {
   const turnoId = rows[0]?.id;
   if (!turnoId) throw new ErrorNegocio("ERROR_EMISION", "No se pudo emitir el turno", 500);
 
+  const { aplicarPrioridad } = await import("@/lib/operacion");
+  await aplicarPrioridad(turnoId, input.categoriaCodigo).catch(() => {});
+
   publicar({ tipo: "cola:actualizada", localId: cola.localId, colaId: cola.id });
   // Si la cola está casi vacía, el aviso puede corresponder de inmediato
   void revisarAvisos(cola.id).catch(() => {});
@@ -168,7 +176,15 @@ export async function obtenerTurnoPorToken(token: string) {
   let tiempoEstimadoSeg = 0;
   if (EN_ESPERA.includes(turno.estado)) {
     const delante = await prisma.turno.count({
-      where: { colaId: turno.colaId, fecha: turno.fecha, estado: { in: EN_ESPERA }, emitidoAt: { lt: turno.emitidoAt } },
+      where: {
+        colaId: turno.colaId,
+        fecha: turno.fecha,
+        estado: { in: EN_ESPERA },
+        OR: [
+          { claveOrden: { gt: turno.claveOrden } },
+          { claveOrden: turno.claveOrden, emitidoAt: { lt: turno.emitidoAt } },
+        ],
+      },
     });
     posicion = delante + 1;
     tiempoEstimadoSeg = await tiempoEstimado(turno.colaId, posicion);
@@ -222,7 +238,20 @@ export type TurnoPublico = Awaited<ReturnType<typeof obtenerTurnoPorToken>>;
 /** RN02 — usa la función SQL tiempo_estimado(cola, posicion). */
 export async function tiempoEstimado(colaId: number, posicion: number): Promise<number> {
   const rows = await prisma.$queryRaw<{ seg: number }[]>`SELECT tiempo_estimado(${colaId}::int, ${posicion}::int) AS seg`;
-  return Number(rows[0]?.seg ?? 0);
+  const base = Number(rows[0]?.seg ?? 0);
+  const cola = await prisma.cola.findUnique({ where: { id: colaId }, include: { local: { include: { plan: true } } } });
+  if (!cola || cola.local.plan.codigo !== "PRO" || posicion < 1) return base;
+  const desde = new Date(Date.now() - 30 * 86400000);
+  const recientes = await prisma.turno.findMany({
+    where: { colaId, estado: "ATENDIDO", emitidoAt: { gte: desde }, llamadoAt: { not: null } },
+    select: { emitidoAt: true, llamadoAt: true },
+    take: 200,
+  });
+  const esperas = recientes.map((t) => (t.llamadoAt!.getTime() - t.emitidoAt.getTime()) / 1000).filter((s) => s > 0 && s < 4 * 3600);
+  if (esperas.length < 20) return base;
+  esperas.sort((a, b) => a - b);
+  const mediana = esperas[Math.floor(esperas.length / 2)];
+  return Math.round(0.6 * base + 0.4 * mediana * posicion);
 }
 
 // ---------------------------------------------------------------------------
@@ -269,8 +298,11 @@ export async function llamarSiguiente(ventanillaId: number, localId: number) {
       estado: { in: EN_ESPERA },
       ...(ventanilla.colaId ? { colaId: ventanilla.colaId } : {}),
     };
-    const siguiente = await tx.turno.findFirst({ where, orderBy: [{ emitidoAt: "asc" }], include: { cola: true } });
+    const candidatos = await tx.turno.findMany({ where, include: { cola: true, categoria: true }, take: 200 });
+    const { elegirSiguiente, registrarLlamadoPrioridad } = await import("@/lib/operacion");
+    const siguiente = await elegirSiguiente(candidatos, candidatos[0]?.colaId ?? ventanilla.colaId ?? 0, fecha);
     if (!siguiente) return { cerrado: enCurso, llamado: null };
+    await registrarLlamadoPrioridad(siguiente);
 
     const llamado = await tx.turno.update({
       where: { id: siguiente.id },
@@ -341,7 +373,7 @@ export async function revisarAvisos(colaId: number) {
   const fecha = fechaADate(fechaLocalISO(cola.local.zonaHoraria));
   const espera = await prisma.turno.findMany({
     where: { colaId, fecha, estado: { in: EN_ESPERA } },
-    orderBy: { emitidoAt: "asc" },
+    orderBy: [{ claveOrden: "desc" }, { emitidoAt: "asc" }],
     include: { cliente: true },
   });
 
@@ -436,14 +468,14 @@ export async function snapshotLocal(slug: string, opciones: { incluirNombres?: b
   const fecha = fechaADate(fechaLocalISO(local.zonaHoraria));
   const turnosHoy = await prisma.turno.findMany({
     where: { localId: local.id, fecha },
-    orderBy: { emitidoAt: "asc" },
-    include: { cliente: { select: { nombre: true } }, ventanilla: { select: { id: true, nombre: true } } },
+    orderBy: [{ claveOrden: "desc" }, { emitidoAt: "asc" }],
+    include: { cliente: { select: { nombre: true } }, ventanilla: { select: { id: true, nombre: true } }, categoria: { select: { nombre: true, codigo: true } } },
   });
 
   const colas = await Promise.all(
     local.colas.map(async (c) => {
       const propios = turnosHoy.filter((t) => t.colaId === c.id);
-      const espera = propios.filter((t) => EN_ESPERA.includes(t.estado));
+      const espera = propios.filter((t) => EN_ESPERA.includes(t.estado)).sort((a, b) => b.claveOrden - a.claveOrden || a.emitidoAt.getTime() - b.emitidoAt.getTime());
       const llamados = propios.filter((t) => t.estado === "LLAMADO").sort((a, b) => (b.llamadoAt?.getTime() ?? 0) - (a.llamadoAt?.getTime() ?? 0));
       const estimadoSiguiente = espera.length ? await tiempoEstimado(c.id, 1) : 0;
       const atendidosHoy = propios.filter((t) => t.estado === "ATENDIDO");
@@ -466,6 +498,7 @@ export async function snapshotLocal(slug: string, opciones: { incluirNombres?: b
           emitidoAt: t.emitidoAt,
           posicion: i + 1,
           nombre: opciones.incluirNombres ? t.cliente?.nombre ?? null : null,
+          categoria: opciones.incluirNombres ? t.categoria?.nombre ?? null : null,
         })),
         llamados: llamados.map((t) => ({
           id: t.id,

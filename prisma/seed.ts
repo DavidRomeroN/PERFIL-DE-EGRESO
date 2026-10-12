@@ -50,11 +50,17 @@ async function main() {
   console.log("🧹 Limpiando datos previos…");
   await prisma.auditoria.deleteMany();
   await prisma.notificacion.deleteMany();
+  await prisma.valoracion.deleteMany();
+  await prisma.cita.deleteMany();
+  await prisma.estadoPrioridadCola.deleteMany();
   await prisma.turno.deleteMany();
   await prisma.contadorCola.deleteMany();
   await prisma.cliente.deleteMany();
   await prisma.ventanilla.deleteMany();
   await prisma.cola.deleteMany();
+  await prisma.horarioLocal.deleteMany();
+  await prisma.configPrioridad.deleteMany();
+  await prisma.categoriaPrioridad.deleteMany();
   await prisma.usuario.deleteMany();
   await prisma.local.deleteMany();
   await prisma.plan.deleteMany();
@@ -106,6 +112,24 @@ async function main() {
       avisarFaltando: 2,
     },
   });
+
+  console.log("⚖️  Prioridades y horario…");
+  for (const localId of [poli.id, julsa.id]) {
+    await prisma.categoriaPrioridad.createMany({
+      data: [
+        { localId, codigo: "GENERAL", nombre: "General", pesoBase: 0, orden: 0 },
+        { localId, codigo: "ADULTO_MAYOR", nombre: "Adulto mayor (60+)", pesoBase: 60, documento: "DNI", orden: 1 },
+        { localId, codigo: "GESTANTE", nombre: "Gestante", pesoBase: 60, documento: "CARNE_GESTANTE", orden: 2 },
+        { localId, codigo: "DISCAPACIDAD", nombre: "Persona con discapacidad", pesoBase: 50, documento: "CONADIS", orden: 3 },
+        { localId, codigo: "EMERGENCIA", nombre: "Emergencia", pesoBase: 100, absoluta: true, documento: "TRIAJE", visibleCliente: false, orden: 4 },
+        { localId, codigo: "CITA", nombre: "Cita reservada", pesoBase: 80, visibleCliente: false, orden: 5 },
+      ],
+    });
+    await prisma.configPrioridad.create({ data: { localId, alfaPuntosPorMin: 1.5, topeAdelantos: 3, agingActivo: true } });
+    await prisma.horarioLocal.createMany({
+      data: [1, 2, 3, 4, 5, 6].map((diaSemana) => ({ localId, diaSemana, apertura: "08:00", cierre: "20:00" })),
+    });
+  }
 
   console.log("👤 Usuarios…");
   const hashAdmin = await bcrypt.hash("admin123", 10);

@@ -96,7 +96,7 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
     if (!snap) return [];
     return ventanilla?.cola ? snap.colas.filter((c) => c.id === ventanilla.cola!.id) : snap.colas;
   }, [snap, ventanilla]);
-  const espera = useMemo(() => colasVisibles.flatMap((c) => c.espera.map((t) => ({ ...t, cola: c.nombre, prefijo: c.prefijo }))).sort((a, b) => new Date(a.emitidoAt).getTime() - new Date(b.emitidoAt).getTime()), [colasVisibles]);
+  const espera = useMemo(() => colasVisibles.flatMap((c) => c.espera.map((t) => ({ ...t, cola: c.nombre, prefijo: c.prefijo }))).sort((a, b) => a.posicion - b.posicion), [colasVisibles]);
   const actual = useMemo(() => snap?.colas.flatMap((c) => c.llamados.map((l) => ({ ...l, cola: c.nombre }))).find((l) => l.ventanillaId === ventanillaId) ?? null, [snap, ventanillaId]);
   const segundosLlamado = actual?.llamadoAt ? Math.floor((ahora - new Date(actual.llamadoAt).getTime()) / 1000) : 0;
   const excedido = segundosLlamado >= 180; // RN04
@@ -304,7 +304,7 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
                     <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold", i === 0 ? "text-white" : "bg-muted text-muted-foreground")} style={i === 0 ? { background: color } : undefined}>{i + 1}</span>
                     <span className="w-20 shrink-0 font-mono text-xl font-bold">{t.codigo}</span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{t.nombre ?? <span className="text-muted-foreground">Sin nombre</span>}</span>
+                      <span className="block truncate text-sm font-medium">{t.nombre ?? <span className="text-muted-foreground">Sin nombre</span>}{t.categoria ? <span className="ml-2 rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-900">{t.categoria}</span> : null}</span>
                       <span className="block truncate text-xs text-muted-foreground">{!ventanilla?.cola && `${t.cola} · `}{t.canal === "QR" ? "QR" : "Ticket"} · {fmtHora(t.emitidoAt)}</span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1">

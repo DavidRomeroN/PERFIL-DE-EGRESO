@@ -29,11 +29,31 @@ enum EstadoTurno {
   ATENDIDO
   NO_SE_PRESENTO
   CANCELADO
+  TRANSFERIDO
 }
 
 enum CanalTurno {
   QR
   TICKET
+  WHATSAPP
+  KIOSCO
+  CITA
+}
+
+enum DocumentoPrioridad {
+  NINGUNO
+  DNI
+  CARNE_GESTANTE
+  CONADIS
+  TRIAJE
+}
+
+enum EstadoCita {
+  RESERVADA
+  CONFIRMADA
+  CHECKIN
+  CANCELADA
+  NO_SHOW
 }
 
 enum TipoNotificacion {
@@ -91,6 +111,8 @@ model Local {
   mensajeBienvenida String? @map("mensaje_bienvenida")
   // Aviso por WhatsApp cuando falten N turnos
   avisarFaltando  Int      @default(2) @map("avisar_faltando")
+  /// RN04: segundos antes de marcar NO_SE_PRESENTO. NULL desactiva la expiración automática.
+  tiempoAusenciaSeg Int?   @default(180) @map("tiempo_ausencia_seg")
   createdAt       DateTime @default(now()) @map("created_at")
 
   plan        Plan         @relation(fields: [planId], references: [id])
@@ -99,6 +121,10 @@ model Local {
   ventanillas Ventanilla[]
   turnos      Turno[]
   auditorias  Auditoria[]
+  categorias  CategoriaPrioridad[]
+  configPrioridad ConfigPrioridad?
+  horarios    HorarioLocal[]
+  citas       Cita[]
 
   @@map("local")
 }
@@ -215,12 +241,18 @@ model Turno {
   atendidoAt   DateTime?   @map("atendido_at")
   finalizadoAt DateTime?   @map("finalizado_at")
   fecha        DateTime    @db.Date
+  categoriaId  Int?        @map("categoria_id")
+  claveOrden   Float       @default(0) @map("clave_orden")
+  prioridadVerificada Boolean? @map("prioridad_verificada")
 
   local         Local          @relation(fields: [localId], references: [id], onDelete: Cascade)
   cola          Cola           @relation(fields: [colaId], references: [id], onDelete: Cascade)
   cliente       Cliente?       @relation(fields: [clienteId], references: [id])
   ventanilla    Ventanilla?    @relation(fields: [ventanillaId], references: [id])
+  categoria     CategoriaPrioridad? @relation(fields: [categoriaId], references: [id])
   notificaciones Notificacion[]
+  valoracion    Valoracion?
+  cita          Cita?
 
   @@unique([colaId, fecha, numero])
   @@index([colaId, estado, emitidoAt])
@@ -264,4 +296,86 @@ model Auditoria {
 
   @@index([localId, createdAt])
   @@map("auditoria")
+}
+
+model CategoriaPrioridad {
+  id             Int                @id @default(autoincrement())
+  localId        Int                @map("local_id")
+  codigo         String             @db.VarChar(16)
+  nombre         String
+  pesoBase       Int                @default(0) @map("peso_base")
+  absoluta       Boolean            @default(false)
+  documento      DocumentoPrioridad @default(NINGUNO)
+  visibleCliente Boolean            @default(true) @map("visible_cliente")
+  activa         Boolean            @default(true)
+  orden          Int                @default(0)
+
+  local  Local   @relation(fields: [localId], references: [id], onDelete: Cascade)
+  turnos Turno[]
+
+  @@unique([localId, codigo])
+  @@map("categoria_prioridad")
+}
+
+model ConfigPrioridad {
+  localId          Int     @id @map("local_id")
+  alfaPuntosPorMin Decimal @default(1.5) @map("alfa_puntos_por_min") @db.Decimal(6, 3)
+  topeAdelantos    Int     @default(3) @map("tope_adelantos")
+  agingActivo      Boolean @default(true) @map("aging_activo")
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+  @@map("config_prioridad")
+}
+
+model EstadoPrioridadCola {
+  colaId                  Int      @map("cola_id")
+  fecha                   DateTime @db.Date
+  preferentesConsecutivos Int      @default(0) @map("preferentes_consecutivos")
+
+  @@id([colaId, fecha])
+  @@map("estado_prioridad_cola")
+}
+
+model HorarioLocal {
+  id        Int     @id @default(autoincrement())
+  localId   Int     @map("local_id")
+  diaSemana Int     @map("dia_semana")
+  apertura  String
+  cierre    String
+  activo    Boolean @default(true)
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+  @@unique([localId, diaSemana])
+  @@map("horario_local")
+}
+
+model Cita {
+  id         Int        @id @default(autoincrement())
+  localId    Int        @map("local_id")
+  colaId     Int        @map("cola_id")
+  inicio     DateTime
+  fin        DateTime
+  nombre     String
+  telefono   String?
+  estado     EstadoCita @default(RESERVADA)
+  token      String     @unique @db.VarChar(16)
+  turnoId    Int?       @unique @map("turno_id")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  local Local  @relation(fields: [localId], references: [id], onDelete: Cascade)
+  turno Turno? @relation(fields: [turnoId], references: [id])
+
+  @@index([localId, inicio])
+  @@map("cita")
+}
+
+model Valoracion {
+  id         Int      @id @default(autoincrement())
+  turnoId    Int      @unique @map("turno_id")
+  estrellas  Int
+  comentario String?  @db.VarChar(280)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  turno Turno @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  @@map("valoracion")
 }

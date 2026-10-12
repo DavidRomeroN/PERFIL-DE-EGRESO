@@ -40,5 +40,10 @@ export const GET = publico<{ params: Promise<{ slug: string }> }>(async (_req, c
     avisarFaltando: local.avisarFaltando,
     plan: local.plan,
     colas,
+    categorias: local.plan.codigo === "GRATIS" ? [] : await prisma.categoriaPrioridad.findMany({
+      where: { localId: local.id, activa: true, visibleCliente: true, codigo: { not: "GENERAL" } },
+      select: { codigo: true, nombre: true },
+      orderBy: { orden: "asc" },
+    }),
   });
 });

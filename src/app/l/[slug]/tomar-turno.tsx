@@ -36,7 +36,7 @@ interface LocalInfo {
   whatsappHabilitado: boolean;
 }
 
-export function TomarTurno({ local, colas: colasIniciales }: { local: LocalInfo; colas: ColaInfo[] }) {
+export function TomarTurno({ local, colas: colasIniciales, categorias = [] }: { local: LocalInfo; colas: ColaInfo[]; categorias?: { codigo: string; nombre: string }[] }) {
   const router = useRouter();
   const [colas, setColas] = useState(colasIniciales);
   const [paso, setPaso] = useState<1 | 2>(colasIniciales.length === 1 ? 2 : 1);
@@ -44,6 +44,7 @@ export function TomarTurno({ local, colas: colasIniciales }: { local: LocalInfo;
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [consentimiento, setConsentimiento] = useState(false);
+  const [categoria, setCategoria] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [duplicado, setDuplicado] = useState<{ token: string; codigo: string } | null>(null);
 
@@ -72,7 +73,7 @@ export function TomarTurno({ local, colas: colasIniciales }: { local: LocalInfo;
     try {
       const turno = await api<TurnoPublico>("/api/v1/public/turnos", {
         method: "POST",
-        json: { colaId: cola.id, nombre: nombre || null, telefono: telefono || null, consentimiento },
+        json: { colaId: cola.id, nombre: nombre || null, telefono: telefono || null, consentimiento, categoriaCodigo: categoria || null },
       });
       toast.success(`Tu turno es ${turno.codigo}`);
       router.push(`/t/${turno.token}`);
@@ -173,6 +174,16 @@ export function TomarTurno({ local, colas: colasIniciales }: { local: LocalInfo;
               <p className="mt-1 text-sm text-muted-foreground">Son opcionales. Con tu celular te avisamos por WhatsApp cuando falten {local.avisarFaltando} personas.</p>
 
               <div className="mt-5 space-y-4">
+                {categorias.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="prioridad" className="text-base">Atención preferente (opcional)</Label>
+                    <select id="prioridad" value={categoria} onChange={(e) => setCategoria(e.target.value)} className="h-12 w-full rounded-xl border bg-background px-3 text-base">
+                      <option value="">Turno general</option>
+                      {categorias.map((c) => <option key={c.codigo} value={c.codigo}>{c.nombre}</option>)}
+                    </select>
+                    <p className="text-xs text-muted-foreground">El personal puede pedir un documento. En la pantalla pública solo se ve tu número.</p>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label htmlFor="nombre" className="text-base">Nombre (opcional)</Label>
                   <Input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. María" className="h-12 text-lg" autoComplete="given-name" maxLength={60} />

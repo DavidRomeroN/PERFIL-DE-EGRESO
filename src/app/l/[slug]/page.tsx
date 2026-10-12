@@ -18,7 +18,12 @@ async function cargarLocal(slug: string) {
       return { id: c.id, prefijo: c.prefijo, nombre: c.nombre, descripcion: c.descripcion, enEspera, tiempoEstimadoSeg: await tiempoEstimado(c.id, enEspera + 1) };
     }),
   );
-  return { local, colas };
+  const categorias = local.plan.codigo === "GRATIS" ? [] : await prisma.categoriaPrioridad.findMany({
+    where: { localId: local.id, activa: true, visibleCliente: true, codigo: { not: "GENERAL" } },
+    select: { codigo: true, nombre: true },
+    orderBy: { orden: "asc" },
+  });
+  return { local, colas, categorias };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -31,7 +36,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const { slug } = await params;
   const data = await cargarLocal(slug);
   if (!data) notFound();
-  const { local, colas } = data;
+  const { local, colas, categorias } = data;
 
   return (
     <TomarTurno
@@ -47,6 +52,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         whatsappHabilitado: local.plan.whatsappHabilitado,
       }}
       colas={colas}
+      categorias={categorias}
     />
   );
 }

@@ -7,6 +7,7 @@ export const ESTADO_LABEL: Record<EstadoTurno, string> = {
   ATENDIDO: "Atendido",
   NO_SE_PRESENTO: "No se presentó",
   CANCELADO: "Cancelado",
+  TRANSFERIDO: "Transferido",
 };
 
 export const ESTADO_CLASS: Record<EstadoTurno, string> = {
@@ -16,6 +17,7 @@ export const ESTADO_CLASS: Record<EstadoTurno, string> = {
   ATENDIDO: "bg-emerald-100 text-emerald-800 border-emerald-200",
   NO_SE_PRESENTO: "bg-rose-100 text-rose-800 border-rose-200",
   CANCELADO: "bg-zinc-100 text-zinc-600 border-zinc-200",
+  TRANSFERIDO: "bg-indigo-100 text-indigo-800 border-indigo-200",
 };
 
 export const ROL_LABEL: Record<string, string> = {

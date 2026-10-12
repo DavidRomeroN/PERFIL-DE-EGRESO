@@ -7,6 +7,7 @@ const schema = z.object({
   nombre: z.string().trim().max(60).optional().nullable(),
   telefono: z.string().trim().max(20).optional().nullable(),
   consentimiento: z.boolean().optional().default(false),
+  categoriaCodigo: z.string().trim().max(40).optional().nullable(),
 });
 
 /** POST /api/v1/public/turnos — RF01 tomar turno por QR (rate limit 5/min por IP) */
@@ -19,6 +20,7 @@ export const POST = publico(async (req) => {
     telefono: body.telefono?.trim() ? body.telefono : null,
     consentimiento: body.consentimiento,
     canal: "QR",
+    categoriaCodigo: body.categoriaCodigo ?? null,
   });
   return ok(turno, { status: 201 });
 });

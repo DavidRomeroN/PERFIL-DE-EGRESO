@@ -170,7 +170,8 @@ export function MiTurno({ inicial }: { inicial: Turno }) {
 
           {finalizado && (
             <div className="mt-6 rounded-2xl bg-muted/60 p-5">
-              {turno.estado === "ATENDIDO" && <><Check className="mx-auto size-10 text-emerald-600" /><p className="mt-2 font-semibold">Gracias por tu visita</p><p className="text-sm text-muted-foreground">Atendido en {turno.ventanilla?.nombre} a las {fmtHora(turno.finalizadoAt)}.</p></>}
+              {turno.estado === "ATENDIDO" && <><Check className="mx-auto size-10 text-emerald-600" /><p className="mt-2 font-semibold">Gracias por tu visita</p><p className="text-sm text-muted-foreground">Atendido en {turno.ventanilla?.nombre} a las {fmtHora(turno.finalizadoAt)}.</p>
+                <Valoracion token={turno.token} /></>}
               {turno.estado === "CANCELADO" && <><XCircle className="mx-auto size-10 text-zinc-500" /><p className="mt-2 font-semibold">Turno cancelado</p><p className="text-sm text-muted-foreground">Puedes tomar uno nuevo cuando quieras.</p></>}
               {turno.estado === "NO_SE_PRESENTO" && <><X className="mx-auto size-10 text-rose-600" /><p className="mt-2 font-semibold">No te presentaste</p><p className="text-sm text-muted-foreground">Te llamaron en {turno.ventanilla?.nombre} y no acudiste. Toma un nuevo turno en recepción.</p></>}
               <Button asChild className="mt-4" variant="outline">
@@ -263,5 +264,30 @@ export function MiTurno({ inicial }: { inicial: Turno }) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function Valoracion({ token }: { token: string }) {
+  const [estrellas, setEstrellas] = useState(5);
+  const [enviada, setEnviada] = useState(false);
+  if (enviada) return <p className="mt-3 text-sm text-emerald-700">Gracias por tu valoración.</p>;
+  return (
+    <form className="mt-4 space-y-2" onSubmit={async (e) => {
+      e.preventDefault();
+      try {
+        await api("/api/v1/operacion", { method: "PUT", json: { accion: "valorar", token, estrellas } });
+        setEnviada(true);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo guardar");
+      }
+    }}>
+      <p className="text-sm font-medium">¿Cómo fue la atención?</p>
+      <div className="flex justify-center gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button type="button" key={n} onClick={() => setEstrellas(n)} className={cn("text-2xl", n <= estrellas ? "text-amber-500" : "text-muted-foreground")}>★</button>
+        ))}
+      </div>
+      <Button type="submit" variant="outline" className="w-full">Enviar valoración</Button>
+    </form>
   );
 }

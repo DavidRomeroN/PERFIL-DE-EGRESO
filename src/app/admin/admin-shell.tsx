@@ -16,6 +16,7 @@ import {
   QrCode,
   Settings,
   Store,
+  Timer,
   Users,
   X,
 } from "lucide-react";
@@ -47,6 +48,8 @@ const NAV = [
   { href: "/admin/notificaciones", label: "Avisos WhatsApp", icon: MessageCircle },
   { href: "/admin/pantalla", label: "Pantalla TV y QR", icon: QrCode },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
+  { href: "/admin/operacion", label: "Prioridades y citas", icon: Timer },
+  { href: "/admin/simulador", label: "Simulador", icon: BarChart3 },
 ];
 
 export function AdminShell({ session, local, locales, children }: { session: Session; local: LocalShell | null; locales: { id: number; slug: string; nombreComercial: string; activo: boolean }[]; children: React.ReactNode }) {
