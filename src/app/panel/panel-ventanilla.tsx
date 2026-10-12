@@ -38,6 +38,7 @@ import type { Session } from "@/lib/auth";
 import type { SnapshotLocal, TurnoPublico } from "@/lib/turnos";
 import { useRealtime } from "@/hooks/use-realtime";
 import { useSonido } from "@/hooks/use-sonido";
+import { PanelModulos } from "./panel-modulos";
 
 type Snap = SnapshotLocal;
 
@@ -87,6 +88,7 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
   function elegirVentanilla(id: number) {
     setVentanillaId(id);
     localStorage.setItem(`turnoya:ventanilla:${slug}`, String(id));
+    localStorage.setItem("turnoya:ventanilla-id", String(id));
   }
 
   // Ventanilla efectiva: la elegida (o la primera disponible si no hay selección)
@@ -97,9 +99,10 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
     return ventanilla?.cola ? snap.colas.filter((c) => c.id === ventanilla.cola!.id) : snap.colas;
   }, [snap, ventanilla]);
   const espera = useMemo(() => colasVisibles.flatMap((c) => c.espera.map((t) => ({ ...t, cola: c.nombre, prefijo: c.prefijo }))).sort((a, b) => a.posicion - b.posicion), [colasVisibles]);
-  const actual = useMemo(() => snap?.colas.flatMap((c) => c.llamados.map((l) => ({ ...l, cola: c.nombre }))).find((l) => l.ventanillaId === ventanillaId) ?? null, [snap, ventanillaId]);
+  const actual = useMemo(() => snap?.colas.flatMap((c) => c.llamados.map((l) => ({ ...l, cola: c.nombre, colaId: c.id }))).find((l) => l.ventanillaId === ventanillaId) ?? null, [snap, ventanillaId]);
   const segundosLlamado = actual?.llamadoAt ? Math.floor((ahora - new Date(actual.llamadoAt).getTime()) / 1000) : 0;
-  const excedido = segundosLlamado >= 180; // RN04
+  const limiteAusencia = snap?.local.tiempoAusenciaSeg ?? 180;
+  const excedido = segundosLlamado >= limiteAusencia; // RN04
 
   async function llamarSiguiente() {
     if (!ventanillaId) return toast.error("Elige una ventanilla");
@@ -227,7 +230,7 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
                   <p className="text-sm text-muted-foreground">{actual.cola} · llamado {fmtHora(actual.llamadoAt)}{actual.rellamadas > 0 && ` · ${actual.rellamadas} rellamada${actual.rellamadas > 1 ? "s" : ""}`}</p>
                   {excedido && (
                     <p className="mt-2 inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700">
-                      <AlertTriangle className="size-3.5" /> Más de 3 min sin presentarse (RN04). Puedes marcarlo como no se presentó.
+                      <AlertTriangle className="size-3.5" /> Más de {Math.round(limiteAusencia / 60)} min sin presentarse (RN04). Puedes marcarlo como no se presentó.
                     </p>
                   )}
                 </div>
@@ -281,6 +284,15 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
               </div>
             ))}
           </div>
+
+          <PanelModulos
+            localId={snap.local.id}
+            colaId={ventanilla?.cola?.id ?? null}
+            colas={snap.colas.map((c) => ({ id: c.id, nombre: c.nombre, enEspera: c.enEspera }))}
+            actual={actual ? { id: actual.id, codigo: actual.codigo, colaId: actual.colaId } : null}
+            espera={espera.map((t) => ({ id: t.id, codigo: t.codigo }))}
+            onCambio={() => void refrescar()}
+          />
         </section>
 
         {/* ---------------- Columna de cola */}
@@ -302,7 +314,7 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
                 return (
                   <li key={t.id} className={cn("flex items-center gap-3 px-5 py-3", i === 0 && "bg-accent/40")}>
                     <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold", i === 0 ? "text-white" : "bg-muted text-muted-foreground")} style={i === 0 ? { background: color } : undefined}>{i + 1}</span>
-                    <span className="w-20 shrink-0 font-mono text-xl font-bold">{t.codigo}</span>
+                    <span className="w-20 shrink-0 font-mono text-xl font-bold">{t.codigo}{t.codigoProvisional && <span className="block text-[10px] font-normal text-muted-foreground">({t.codigoProvisional})</span>}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{t.nombre ?? <span className="text-muted-foreground">Sin nombre</span>}{t.categoria ? <span className="ml-2 rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-900">{t.categoria}</span> : null}</span>
                       {t.categoria && (

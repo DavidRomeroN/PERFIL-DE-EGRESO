@@ -85,19 +85,16 @@ export async function resolverCliente(p: { telefono?: string | null; nombre?: st
   }
   const nombre = p.nombre?.trim() ? p.nombre.trim().slice(0, 60) : null;
   if (telefonoE164) {
-    const hash = hashTelefono(telefonoE164);
-    const existente = await prisma.cliente.findFirst({ where: { telefonoHash: hash }, orderBy: { id: "desc" } });
-    if (existente) {
-      if ((nombre && nombre !== existente.nombre) || !existente.telefonoCifrado) {
-        await prisma.cliente.update({
-          where: { id: existente.id },
-          data: { nombre: nombre ?? existente.nombre, telefonoCifrado: existente.telefonoCifrado ?? cifrar(telefonoE164), consentimientoAt: new Date() },
-        });
-      }
-      return existente.id;
-    }
-    const c = await prisma.cliente.create({ data: { telefonoHash: hash, telefonoCifrado: cifrar(telefonoE164), nombre } });
-    return c.id;
+    // Un celular = un cliente (índice único parcial): seguro ante emisiones/reservas simultáneas
+    const rows = await prisma.$queryRaw<{ id: number }[]>`
+      INSERT INTO cliente (telefono_hash, telefono_cifrado, nombre, consentimiento_at)
+      VALUES (${hashTelefono(telefonoE164)}, ${cifrar(telefonoE164)}, ${nombre}, now())
+      ON CONFLICT (telefono_hash) WHERE telefono_hash IS NOT NULL
+      DO UPDATE SET nombre = COALESCE(EXCLUDED.nombre, cliente.nombre),
+                    telefono_cifrado = COALESCE(cliente.telefono_cifrado, EXCLUDED.telefono_cifrado),
+                    consentimiento_at = now()
+      RETURNING id`;
+    return rows[0].id;
   }
   if (nombre) return (await prisma.cliente.create({ data: { nombre } })).id;
   return null;

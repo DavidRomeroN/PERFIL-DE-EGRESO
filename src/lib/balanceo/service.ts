@@ -221,7 +221,7 @@ export async function validarRegla(localId: number, d: DatosRegla, id?: number) 
 
 export async function crearRegla(actor: Actor, localId: number, d: DatosRegla) {
   const local = await prisma.local.findUniqueOrThrow({ where: { id: localId }, include: { plan: true } });
-  if (local.plan.codigo !== "PRO") throw new ErrorNegocio("M6_LIMITE_REGLAS", "Las reglas automáticas son del plan Pro (en Emprende hay transferencia manual)", 402);
+  if (local.plan.codigo === "EMPRENDE" || local.plan.codigo === "GRATIS") throw new ErrorNegocio("M6_LIMITE_REGLAS", "Las reglas automáticas son del plan Pro (en Emprende hay transferencia manual)", 402);
   if ((await prisma.reglaBalanceo.count({ where: { localId } })) >= 20) throw new ErrorNegocio("M6_LIMITE_REGLAS", "Máximo 20 reglas por local", 402);
   await validarRegla(localId, d);
   // RN-M6-09: toda regla nace en SIMULACION

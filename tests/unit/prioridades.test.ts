@@ -35,7 +35,7 @@ test("la emergencia (absoluta) siempre va primero", () => {
 
 test("tope de adelantos: con tope 3 y 5 preferentes + 1 general ⇒ P,P,P,G,P,P", () => {
   const espera = [t("p1", 5, GEST), t("p2", 4, GEST), t("p3", 3, GEST), t("p4", 2, GEST), t("p5", 1, GEST), t("g", 1, GEN)];
-  const sec = secuenciaLlamadas(espera, cfg).map((x) => (x.id.startsWith("p") ? "P" : "G"));
+  const sec = secuenciaLlamadas(espera, cfg).map((x) => (String(x.id).startsWith("p") ? "P" : "G"));
   assert.deepEqual(sec, ["P", "P", "P", "G", "P", "P"]);
 });
 

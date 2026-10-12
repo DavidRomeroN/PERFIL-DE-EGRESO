@@ -1,9 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Activity,
+  ArrowRightLeft,
+  Bell,
+  BrainCircuit,
+  CalendarDays,
+  Calculator,
+  Clock,
+  Cpu,
+  Layers,
+  ScrollText,
+  Tablet,
   BarChart3,
   Building2,
   Columns3,
@@ -29,6 +40,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { api } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 import type { Session } from "@/lib/auth";
+import { useRealtime } from "@/hooks/use-realtime";
 
 export interface LocalShell {
   id: number;
@@ -47,16 +59,49 @@ const NAV = [
   { href: "/admin/reportes", label: "Reportes", icon: BarChart3 },
   { href: "/admin/notificaciones", label: "Avisos WhatsApp", icon: MessageCircle },
   { href: "/admin/pantalla", label: "Pantalla TV y QR", icon: QrCode },
+  { href: "/admin/operacion", label: "Horario y ausencias", icon: Clock },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
-  { href: "/admin/operacion", label: "Prioridades y citas", icon: Timer },
-  { href: "/admin/simulador", label: "Simulador", icon: BarChart3 },
-  { href: "/admin/analitica", label: "Analítica", icon: BarChart3 },
-  { href: "/admin/auditoria", label: "Auditoría", icon: ListOrdered },
-  { href: "/admin/modulos", label: "Módulos", icon: Store },
-  { href: "/admin/bandeja", label: "Bandeja WhatsApp", icon: MessageCircle },
+  { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
+  { href: "/admin/modulos", label: "Módulos", icon: Layers },
 ];
 
-export function AdminShell({ session, local, locales, children }: { session: Session; local: LocalShell | null; locales: { id: number; slug: string; nombreComercial: string; activo: boolean }[]; children: React.ReactNode }) {
+/** Entradas de módulos: solo aparecen si el módulo está activo en el local (F3). */
+const NAV_MODULOS = [
+  { codigo: "M1", href: "/admin/modulos/prioridades", label: "Prioridades", icon: Timer },
+  { codigo: "M2", href: "/admin/modulos/prediccion", label: "Predicción", icon: BrainCircuit },
+  { codigo: "M3", href: "/admin/modulos/citas", label: "Citas", icon: CalendarDays },
+  { codigo: "M4", href: "/admin/bandeja", label: "Chatbot", icon: MessageCircle },
+  { codigo: "M5", href: "/admin/modulos/kiosco", label: "Kiosco", icon: Tablet },
+  { codigo: "M6", href: "/admin/modulos/balanceo", label: "Balanceo", icon: ArrowRightLeft },
+  { codigo: "M7", href: "/admin/analitica", label: "Analítica y alertas", icon: Activity },
+  { codigo: "M8", href: "/admin/simulador", label: "Simulador", icon: Calculator },
+];
+
+function CampanaAlertas({ slug }: { slug: string | null }) {
+  const [resumen, setResumen] = useState<{ activo: boolean; abiertas: number } | null>(null);
+  const cargar = useCallback(() => api<{ activo: boolean; abiertas: number }>("/api/v1/alertas/resumen").then(setResumen).catch(() => {}), []);
+  useEffect(() => {
+    void cargar();
+    const t = setInterval(cargar, 30_000);
+    return () => clearInterval(t);
+  }, [cargar]);
+  useRealtime(slug, (e) => {
+    if (e.tipo === "alerta:nueva") {
+      toast.warning(`Alerta: ${e.alerta.titulo}`, { action: { label: "Ver", onClick: () => (window.location.href = "/admin/analitica?tab=alertas") } });
+      void cargar();
+    }
+    if (e.tipo === "alerta:actualizada") void cargar();
+  });
+  if (!resumen?.activo) return null;
+  return (
+    <Link href="/admin/analitica?tab=alertas" className="relative inline-flex rounded-lg p-2 text-sidebar-foreground/70 hover:bg-sidebar-accent" aria-label={`${resumen.abiertas} alertas abiertas`}>
+      <Bell className="size-4.5" />
+      {resumen.abiertas > 0 && <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-rose-600 px-1 text-center text-[10px] font-bold text-white">{resumen.abiertas}</span>}
+    </Link>
+  );
+}
+
+export function AdminShell({ session, local, locales, modulos, children }: { session: Session; local: LocalShell | null; locales: { id: number; slug: string; nombreComercial: string; activo: boolean }[]; modulos: string[]; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -91,9 +136,28 @@ export function AdminShell({ session, local, locales, children }: { session: Ses
           </Link>
         );
       })}
+      {NAV_MODULOS.some((m) => modulos.includes(m.codigo)) && (
+        <p className="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Módulos activos</p>
+      )}
+      {NAV_MODULOS.filter((m) => modulos.includes(m.codigo)).map((n) => {
+        const activo = pathname.startsWith(n.href);
+        return (
+          <Link key={n.href} href={n.href} onClick={() => setAbierto(false)} className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", activo && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm")}>
+            <n.icon className={cn("size-4.5", activo && "text-sidebar-primary")} /> {n.label}
+          </Link>
+        );
+      })}
       {esSuper && (
         <>
           <p className="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Plataforma</p>
+          {[
+            { href: "/admin/planes", label: "Planes y módulos", icon: Layers },
+            { href: "/admin/jobs", label: "Jobs programados", icon: Cpu },
+          ].map((n) => (
+            <Link key={n.href} href={n.href} onClick={() => setAbierto(false)} className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", pathname.startsWith(n.href) && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm")}>
+              <n.icon className="size-4.5" /> {n.label}
+            </Link>
+          ))}
           <Link
             href="/admin/locales"
             onClick={() => setAbierto(false)}
@@ -113,6 +177,7 @@ export function AdminShell({ session, local, locales, children }: { session: Ses
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center justify-between px-5 py-5">
         <Logo light href="/admin" />
+        <CampanaAlertas slug={local?.slug ?? null} />
         <button type="button" className="lg:hidden" onClick={() => setAbierto(false)} aria-label="Cerrar menú">
           <X className="size-5" />
         </button>

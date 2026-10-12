@@ -1,17 +1,45 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: turnoya
+          POSTGRES_PASSWORD: turnoya
+          POSTGRES_DB: turnoya
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U turnoya" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://turnoya:turnoya@localhost:5432/turnoya?schema=public
+      TEST_DATABASE_URL: postgresql://turnoya:turnoya@localhost:5432/turnoya_test?schema=public
+      JWT_SECRET: ci-secreto-de-pruebas-0123456789abcdef-0123
+      DATA_ENCRYPTION_KEY: ci-clave-de-pruebas-0123456789abcdef-0123
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      WHATSAPP_PROVIDER: mock
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - run: npm ci
       - run: npx prisma generate
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      - name: Pruebas unitarias (lógica pura de M1–M8)
+        run: npm test
+      - name: BD de pruebas
+        run: npm run db:test:prepare
+      - name: Pruebas de integración (concurrencia, aislamiento, regresión)
+        run: npm run test:int
+      - name: Build
+        run: npm run build
         env:
-          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+          ALLOW_INSECURE_SECRETS: "true"

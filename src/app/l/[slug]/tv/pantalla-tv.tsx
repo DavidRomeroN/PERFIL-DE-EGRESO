@@ -21,7 +21,16 @@ interface Llamado {
   rellamada: boolean;
 }
 
-export function PantallaTv({ inicial }: { inicial: Snap }) {
+export function PantallaTv({ inicial, claveTv }: { inicial: Snap; claveTv?: string | null }) {
+  // M3: PIN de presencia rotativo (solo con el enlace firmado de la pantalla)
+  const [pin, setPin] = useState<{ pin: string; segundosRestantes: number } | null>(null);
+  useEffect(() => {
+    if (!claveTv) return;
+    const cargar = () => fetch(`/api/v1/public/locales/${inicial.local.slug}/pin-presencia?k=${encodeURIComponent(claveTv)}`).then((r) => r.json()).then((b) => setPin(b?.data ?? null)).catch(() => {});
+    void cargar();
+    const t = setInterval(cargar, 30_000);
+    return () => clearInterval(t);
+  }, [claveTv, inicial.local.slug]);
   const [snap, setSnap] = useState<Snap>(inicial);
   const [ultimo, setUltimo] = useState<Llamado | null>(() => {
     const l = inicial.ultimosLlamados[0];
@@ -233,7 +242,7 @@ export function PantallaTv({ inicial }: { inicial: Snap }) {
       {/* Cinta inferior */}
       <footer className="relative overflow-hidden border-t border-white/10 py-3" style={{ background: `color-mix(in oklch, ${color} 35%, rgb(2 6 23))` }}>
         <div className="animate-marquee whitespace-nowrap text-xl text-white/90">
-          {snap.local.mensajeTv ?? "Bienvenido. Por favor espere su llamado."} &nbsp;&nbsp;•&nbsp;&nbsp; Hoy: {snap.stats.atendidos} atendidos · {snap.stats.enEspera} en espera · espera promedio {snap.stats.esperaPromedioMin} min
+          {pin && <b>PIN para check-in de citas: {pin.pin} &nbsp;&nbsp;•&nbsp;&nbsp; </b>}{snap.local.mensajeTv ?? "Bienvenido. Por favor espere su llamado."} &nbsp;&nbsp;•&nbsp;&nbsp; Hoy: {snap.stats.atendidos} atendidos · {snap.stats.enEspera} en espera · espera promedio {snap.stats.esperaPromedioMin} min
           &nbsp;&nbsp;•&nbsp;&nbsp; Fila virtual por TurnoYa
         </div>
       </footer>

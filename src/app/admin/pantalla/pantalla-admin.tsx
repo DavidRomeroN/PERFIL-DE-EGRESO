@@ -24,7 +24,7 @@ interface LocalCfg {
   avisarFaltando: number;
 }
 
-export function PantallaAdmin({ local }: { local: LocalCfg }) {
+export function PantallaAdmin({ local, claveTv }: { local: LocalCfg; claveTv?: string }) {
   const router = useRouter();
   const [form, setForm] = useState(local);
   const [guardando, setGuardando] = useState(false);
@@ -62,7 +62,7 @@ export function PantallaAdmin({ local }: { local: LocalCfg }) {
     <div>
       <PageHeader title="Pantalla TV y código QR" description="Personaliza lo que ven tus clientes (RF12) y descarga el afiche con el QR para la sala de espera.">
         <Button asChild variant="outline">
-          <Link href={`/l/${local.slug}/tv`} target="_blank"><Monitor className="size-4" /> Abrir pantalla TV <ExternalLink className="size-3" /></Link>
+          <Link href={`/l/${local.slug}/tv${claveTv ? `?k=${claveTv}` : ""}`} target="_blank" title="Enlace firmado: muestra el PIN de presencia de las citas"><Monitor className="size-4" /> Abrir pantalla TV <ExternalLink className="size-3" /></Link>
         </Button>
       </PageHeader>
 

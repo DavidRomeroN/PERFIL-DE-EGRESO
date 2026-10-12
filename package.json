@@ -1,13 +1,13 @@
 {
   "name": "turnoya",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/unit/*.test.ts",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
     "db:up": "docker compose up -d db",
@@ -16,7 +16,11 @@
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "setup": "npm run db:up && npm run db:migrate && npm run db:seed",
-    "docker:prod": "docker compose --profile prod up -d --build"
+    "docker:prod": "docker compose --profile prod up -d --build",
+    "test:int": "tsx --test --test-concurrency=1 tests/integracion/*.test.ts",
+    "test:todo": "npm test && npm run test:int",
+    "db:test:prepare": "node scripts/bd-pruebas.mjs",
+    "db:seed:historico": "tsx prisma/seed-historico.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

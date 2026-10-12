@@ -46,6 +46,11 @@ export function MiTurno({ inicial }: { inicial: Turno }) {
     }
   }, [inicial.token]);
 
+  // M6: si el turno fue transferido, el enlace lleva al turno sucesor
+  useEffect(() => {
+    if (turno.estado === "TRANSFERIDO" && turno.redirigidoA) window.location.replace(`/t/${turno.redirigidoA.token}`);
+  }, [turno.estado, turno.redirigidoA]);
+
   const conexion = useRealtime(turno.local.slug, (e) => {
     if (e.tipo === "turno:estado" && e.turno.token === turno.token) void refrescar();
     else if (e.tipo === "turno:llamado") void refrescar();
@@ -146,7 +151,7 @@ export function MiTurno({ inicial }: { inicial: Turno }) {
                 <div className="rounded-2xl bg-muted/60 p-3">
                   <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground"><Clock className="size-3.5" /> Espera aprox.</p>
                   <p className="mt-1 text-3xl font-bold tabular">{turno.tiempoEstimadoSeg < 60 ? "<1" : Math.round(turno.tiempoEstimadoSeg / 60)}</p>
-                  {turno.prediccion && <p className="text-xs text-muted-foreground">Rango habitual {turno.prediccion.p50Min}–{turno.prediccion.p90Min} min</p>}
+                  {turno.prediccion && <p className="text-xs text-muted-foreground">{turno.prediccion.enfrio ? "Estimación inicial" : `Entre ${Math.max(1, Math.round(turno.prediccion.loSeg / 60))} y ${Math.max(1, Math.round(turno.prediccion.hiSeg / 60))} min (${Math.round(turno.prediccion.confianza * 100)} %)`}</p>}
                   <p className="text-xs text-muted-foreground">minutos</p>
                 </div>
               </div>
@@ -158,6 +163,7 @@ export function MiTurno({ inicial }: { inicial: Turno }) {
                   {turno.personasDelante === 0 ? "Eres el siguiente. Acércate a la sala." : `Posición ${turno.posicion} en la cola · puedes salir, te avisamos cuando falten ${turno.local.avisarFaltando}.`}
                 </p>
               </div>
+              {turno.prediccion && <AvisoYMejoresHoras token={turno.token} colaId={turno.cola.id} aviso={turno.avisoMinAntes} onCambio={refrescar} />}
             </>
           )}
 
@@ -290,5 +296,35 @@ function Valoracion({ token }: { token: string }) {
       </div>
       <Button type="submit" variant="outline" className="w-full">Enviar valoración</Button>
     </form>
+  );
+}
+
+
+/** M2 · "Avisarme X min antes" (opt-in) y mejores horas para venir. */
+function AvisoYMejoresHoras({ token, colaId, aviso, onCambio }: { token: string; colaId: number; aviso: number | null; onCambio: () => void }) {
+  const [horas, setHoras] = useState<{ franja: string; esperaMin: number; nivel: string }[]>([]);
+  useEffect(() => {
+    api<typeof horas>(`/api/v1/public/colas/${colaId}/mejores-horas`).then(setHoras).catch(() => {});
+  }, [colaId]);
+  return (
+    <div className="mt-5 space-y-3 text-left">
+      <div className="rounded-2xl border p-3">
+        <p className="text-sm font-medium">Avisarme cuando falten</p>
+        <div className="mt-2 flex gap-2" role="group" aria-label="Aviso por tiempo">
+          {[null, 5, 10, 15].map((m) => (
+            <button key={String(m)} type="button" aria-pressed={aviso === m} onClick={() => api(`/api/v1/public/turnos/${token}/aviso`, { method: "PATCH", json: { minAntes: m } }).then(onCambio).catch(() => {})}
+              className={`min-h-11 flex-1 rounded-xl border text-sm ${aviso === m ? "bg-foreground text-background" : ""}`}>{m ? `${m} min` : "No"}</button>
+          ))}
+        </div>
+      </div>
+      {horas.length > 0 && (
+        <div className="rounded-2xl border p-3">
+          <p className="text-sm font-medium">Mejores horas para venir hoy</p>
+          <ul className="mt-2 flex flex-wrap gap-2 text-xs">
+            {horas.slice(0, 8).map((h) => <li key={h.franja} className={`rounded-lg px-2 py-1 ${h.nivel === "baja" ? "bg-emerald-100 text-emerald-800" : h.nivel === "alta" ? "bg-rose-100 text-rose-800" : "bg-muted"}`}>{h.franja} · ~{h.esperaMin} min</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
