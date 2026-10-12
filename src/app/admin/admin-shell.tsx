@@ -50,6 +50,10 @@ const NAV = [
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
   { href: "/admin/operacion", label: "Prioridades y citas", icon: Timer },
   { href: "/admin/simulador", label: "Simulador", icon: BarChart3 },
+  { href: "/admin/analitica", label: "Analítica", icon: BarChart3 },
+  { href: "/admin/auditoria", label: "Auditoría", icon: ListOrdered },
+  { href: "/admin/modulos", label: "Módulos", icon: Store },
+  { href: "/admin/bandeja", label: "Bandeja WhatsApp", icon: MessageCircle },
 ];
 
 export function AdminShell({ session, local, locales, children }: { session: Session; local: LocalShell | null; locales: { id: number; slug: string; nombreComercial: string; activo: boolean }[]; children: React.ReactNode }) {

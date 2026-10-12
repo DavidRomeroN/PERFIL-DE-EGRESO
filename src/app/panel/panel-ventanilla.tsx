@@ -305,6 +305,12 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
                     <span className="w-20 shrink-0 font-mono text-xl font-bold">{t.codigo}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{t.nombre ?? <span className="text-muted-foreground">Sin nombre</span>}{t.categoria ? <span className="ml-2 rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-900">{t.categoria}</span> : null}</span>
+                      {t.categoria && (
+                        <span className="flex gap-1">
+                          <button type="button" className="text-[10px] underline" onClick={() => api(`/api/v1/turnos/${t.id}/prioridad${localQuery}`, { method: "PATCH", json: { accion: "VERIFICAR" } }).then(() => toast.success("Prioridad verificada")).catch((e) => toast.error(e instanceof Error ? e.message : "Error"))}>Verificar</button>
+                          <button type="button" className="text-[10px] underline" onClick={() => api(`/api/v1/turnos/${t.id}/prioridad${localQuery}`, { method: "PATCH", json: { accion: "RECHAZAR" } }).then(() => { toast.success("Pasó a turno general"); void refrescar(); }).catch((e) => toast.error(e instanceof Error ? e.message : "Error"))}>No corresponde</button>
+                        </span>
+                      )}
                       <span className="block truncate text-xs text-muted-foreground">{!ventanilla?.cola && `${t.cola} · `}{t.canal === "QR" ? "QR" : "Ticket"} · {fmtHora(t.emitidoAt)}</span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1">

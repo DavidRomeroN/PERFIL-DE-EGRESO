@@ -10,24 +10,56 @@ export function claveOrden(peso: number, emitido: Date, alfa: number, aging: boo
   return peso - (aging ? alfa * minutos : 0);
 }
 
-export async function aplicarPrioridad(turnoId: number, codigoCategoria?: string | null) {
+export type OrigenCategoria = "CLIENTE" | "PERSONAL" | "CITA";
+
+export async function resolverCategoria(localId: number, codigo: string | null | undefined, origen: OrigenCategoria) {
+  const cod = codigo?.trim() || "GENERAL";
+  const cat = await prisma.categoriaPrioridad.findFirst({ where: { localId, codigo: cod, activa: true } });
+  if (!cat && cod === "GENERAL") return null;
+  if (!cat) throw new ErrorNegocio("M1_CATEGORIA_INVALIDA", "La categoría no existe", 404);
+  if (origen === "CLIENTE" && !cat.visibleCliente) {
+    throw new ErrorNegocio("M1_CATEGORIA_NO_DISPONIBLE", "Esa categoría solo la asigna el personal", 409);
+  }
+  if (cod === "CITA" && origen !== "CITA") {
+    throw new ErrorNegocio("M1_CATEGORIA_NO_DISPONIBLE", "Categoría reservada para citas", 409);
+  }
+  return cat;
+}
+
+export async function aplicarPrioridad(turnoId: number, codigoCategoria: string | null | undefined, origen: OrigenCategoria) {
   const turno = await prisma.turno.findUnique({
     where: { id: turnoId },
     include: { local: { include: { plan: true } } },
   });
   if (!turno) return;
-  if (turno.local.plan.codigo === "GRATIS") return;
+  const { moduloActivo } = await import("@/lib/modulos");
+  if (!moduloActivo(turno.local.plan.codigo, "M1")) return;
   const config = await prisma.configPrioridad.findUnique({ where: { localId: turno.localId } });
   const alfa = Number(config?.alfaPuntosPorMin ?? 0);
   const aging = config?.agingActivo ?? false;
-  const cat = codigoCategoria
-    ? await prisma.categoriaPrioridad.findFirst({ where: { localId: turno.localId, codigo: codigoCategoria, activa: true } })
-    : await prisma.categoriaPrioridad.findFirst({ where: { localId: turno.localId, codigo: "GENERAL" } });
+  const cat = await resolverCategoria(turno.localId, codigoCategoria, origen);
   const peso = cat?.absoluta ? 1_000_000 : (cat?.pesoBase ?? 0);
   await prisma.turno.update({
     where: { id: turnoId },
-    data: { categoriaId: cat?.id ?? null, claveOrden: claveOrden(peso, turno.emitidoAt, alfa, aging) },
+    data: { categoriaId: cat?.id ?? null, claveOrden: claveOrden(peso, turno.emitidoAt, alfa, aging), prioridadVerificada: origen === "PERSONAL" ? true : null },
   });
+}
+
+export async function recalcularClaves(localId: number) {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const turnos = await prisma.turno.findMany({
+    where: { localId, estado: { in: ["EMITIDO", "AVISADO"] }, fecha: { gte: hoy } },
+    include: { categoria: true },
+  });
+  const config = await prisma.configPrioridad.findUnique({ where: { localId } });
+  const alfa = Number(config?.alfaPuntosPorMin ?? 0);
+  const aging = config?.agingActivo ?? false;
+  for (const t of turnos) {
+    const peso = t.categoria?.absoluta ? 1_000_000 : (t.categoria?.pesoBase ?? 0);
+    await prisma.turno.update({ where: { id: t.id }, data: { claveOrden: claveOrden(peso, t.emitidoAt, alfa, aging) } });
+  }
+  publicar({ tipo: "cola:actualizada", localId });
 }
 
 /** Elige el siguiente turno: mayor clave, con tope de adelantos (RN-M1-03). */
@@ -119,8 +151,48 @@ export async function transferirTurno(turnoId: number, localId: number, colaDest
     await prisma.turno.update({ where: { id: origen.id }, data: { estado: origen.estado, finalizadoAt: null } });
     throw e;
   }
+  await prisma.auditoria.create({
+    data: { localId, accion: "TRANSFERIR_TURNO", entidad: "turno", entidadId: String(origen.id), datosJson: { sucesorId: nuevo.id, colaDestinoId } },
+  });
   publicar({ tipo: "cola:actualizada", localId });
   return nuevo;
+}
+
+export async function slotsCita(slug: string, colaId: number) {
+  const local = await prisma.local.findUnique({ where: { slug }, include: { horarios: true, colas: { where: { id: colaId, activa: true } } } });
+  if (!local || local.colas.length === 0) throw new ErrorNegocio("COLA_INACTIVA", "La cola no existe", 404);
+  const horarios = local.horarios.filter((h) => h.activo);
+  const desde = new Date();
+  desde.setHours(0, 0, 0, 0);
+  const hasta = new Date(desde.getTime() + 14 * 86400000);
+  const ocupadas = await prisma.cita.groupBy({
+    by: ["inicio"],
+    where: { colaId, estado: { in: ["RESERVADA", "CONFIRMADA"] }, inicio: { gte: new Date(), lt: hasta } },
+    _count: true,
+  });
+  const cupo = new Map(ocupadas.map((o) => [o.inicio.toISOString(), o._count]));
+  const slots: { inicio: string; libres: number }[] = [];
+  for (let d = 0; d < 14; d++) {
+    const dia = new Date(desde.getTime() + d * 86400000);
+    const wd = dia.getDay();
+    const h = horarios.find((x) => x.diaSemana === wd);
+    if (!h) continue;
+    const [ah, am] = h.apertura.split(":").map(Number);
+    const [ch, cm] = h.cierre.split(":").map(Number);
+    for (let m = ah * 60 + am; m + 15 <= ch * 60 + cm; m += 15) {
+      const inicio = new Date(dia);
+      inicio.setHours(Math.floor(m / 60), m % 60, 0, 0);
+      if (inicio.getTime() < Date.now() + 30 * 60 * 1000) continue;
+      const usados = cupo.get(inicio.toISOString()) ?? 0;
+      if (usados >= 3) continue;
+      slots.push({ inicio: inicio.toISOString(), libres: 3 - usados });
+    }
+  }
+  return slots;
+}
+
+export function pinCita(token: string) {
+  return token.slice(-4).toUpperCase();
 }
 
 export async function crearCita(input: { localId: number; colaId: number; inicioISO: string; nombre: string; telefono?: string | null }) {
@@ -129,16 +201,19 @@ export async function crearCita(input: { localId: number; colaId: number; inicio
   const inicio = new Date(input.inicioISO);
   if (Number.isNaN(inicio.getTime()) || inicio.getTime() < Date.now()) throw new ErrorNegocio("VALIDACION", "La hora de la cita ya pasó", 422);
   const fin = new Date(inicio.getTime() + 15 * 60 * 1000);
-  const ocupadas = await prisma.cita.count({ where: { colaId: input.colaId, estado: { in: ["RESERVADA", "CONFIRMADA"] }, inicio } });
-  if (ocupadas >= 3) throw new ErrorNegocio("M3_SLOT_LLENO", "Ese horario ya no tiene cupo", 409);
-  return prisma.cita.create({
-    data: { localId: cola.localId, colaId: input.colaId, inicio, fin, nombre: input.nombre, telefono: input.telefono ?? null, token: generarToken(10) },
+  return prisma.$transaction(async (tx) => {
+    const ocupadas = await tx.cita.count({ where: { colaId: input.colaId, estado: { in: ["RESERVADA", "CONFIRMADA"] }, inicio } });
+    if (ocupadas >= 3) throw new ErrorNegocio("M3_SLOT_LLENO", "Ese horario ya no tiene cupo", 409);
+    return tx.cita.create({
+      data: { localId: cola.localId, colaId: input.colaId, inicio, fin, nombre: input.nombre, telefono: input.telefono ?? null, token: generarToken(10) },
+    });
   });
 }
 
-export async function checkInCita(token: string) {
+export async function checkInCita(token: string, pin?: string | null) {
   const cita = await prisma.cita.findUnique({ where: { token }, include: { local: true } });
   if (!cita || cita.estado === "CANCELADA") throw new ErrorNegocio("NO_ENCONTRADO", "La cita no existe", 404);
+  if (pin != null && pin.toUpperCase() !== pinCita(token)) throw new ErrorNegocio("VALIDACION", "El PIN no coincide", 401);
   if (cita.turnoId) throw new ErrorNegocio("VALIDACION", "Esta cita ya hizo check-in", 409);
   const ahora = Date.now();
   if (ahora < cita.inicio.getTime() - 20 * 60 * 1000 || ahora > cita.inicio.getTime() + 15 * 60 * 1000) {
@@ -146,7 +221,7 @@ export async function checkInCita(token: string) {
   }
   const { emitirTurno } = await import("@/lib/turnos");
   const turno = await emitirTurno({ colaId: cita.colaId, canal: "QR", nombre: cita.nombre, telefono: cita.telefono, consentimiento: true });
-  await aplicarPrioridad(turno.id, "CITA");
+  await aplicarPrioridad(turno.id, "CITA", "CITA");
   await prisma.cita.update({ where: { id: cita.id }, data: { estado: "CHECKIN", turnoId: turno.id } });
   return turno;
 }
@@ -157,24 +232,6 @@ export async function valorarTurno(token: string, estrellas: number, comentario?
   const previa = await prisma.valoracion.findUnique({ where: { turnoId: turno.id } });
   if (previa) throw new ErrorNegocio("VALIDACION", "Este turno ya fue valorado", 409);
   return prisma.valoracion.create({ data: { turnoId: turno.id, estrellas, comentario: comentario?.slice(0, 280) ?? null } });
-}
-
-/** Erlang C: probabilidad de esperar y servidores mínimos para un objetivo. */
-export function erlangC(llegadasPorHora: number, servicioMin: number, servidores: number) {
-  const mu = 60 / Math.max(servicioMin, 1);
-  const lambda = llegadasPorHora;
-  const a = lambda / mu;
-  if (servidores <= a) return { estable: false, probabilidadEspera: 1, esperaMin: Infinity, ocupacion: a / servidores };
-  let sum = 1;
-  let term = 1;
-  for (let k = 1; k < servidores; k++) {
-    term *= a / k;
-    sum += term;
-  }
-  const ultimo = (term * a) / servidores;
-  const pw = (ultimo * (servidores / (servidores - a))) / (sum + ultimo * (servidores / (servidores - a)));
-  const esperaHoras = pw / (servidores * mu - lambda);
-  return { estable: true, probabilidadEspera: pw, esperaMin: esperaHoras * 60, ocupacion: a / servidores };
 }
 
 export function fechaHoy(zona: string) {

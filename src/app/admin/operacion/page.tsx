@@ -27,6 +27,7 @@ export default async function Page() {
       horarios={horarios.map((h) => ({ diaSemana: h.diaSemana, apertura: h.apertura, cierre: h.cierre, activo: h.activo }))}
       colas={colas.map((c) => ({ id: c.id, nombre: c.nombre }))}
       espera={espera.map((t) => ({ id: t.id, codigo: t.codigo, cola: t.cola.nombre }))}
+      slug={local.slug}
     />
   );
 }

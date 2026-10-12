@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { conRol, ok, parseBody, publico } from "@/lib/api";
+import { conRol, ok, parseBody } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { localActualAdmin } from "@/lib/admin";
-import { checkInCita, crearCita, erlangC, expirarLlamados, transferirTurno, valorarTurno } from "@/lib/operacion";
+import { recalcularClaves, transferirTurno } from "@/lib/operacion";
 import { ErrorNegocio } from "@/lib/turnos";
 
 export const GET = conRol(["SUPER_ADMIN", "ADMIN_LOCAL"], async (_req, ctx) => {
@@ -35,6 +35,7 @@ export const POST = conRol(["SUPER_ADMIN", "ADMIN_LOCAL", "OPERADOR"], async (re
   if (ctx.session.rol === "OPERADOR") throw new ErrorNegocio("PROHIBIDO", "Solo un administrador cambia esta configuración", 403);
   if (body.accion === "prioridad") {
     await prisma.categoriaPrioridad.updateMany({ where: { localId: local.id, codigo: body.codigo }, data: { pesoBase: body.pesoBase } });
+    await recalcularClaves(local.id);
   }
   if (body.accion === "config") {
     await prisma.configPrioridad.upsert({
@@ -43,6 +44,7 @@ export const POST = conRol(["SUPER_ADMIN", "ADMIN_LOCAL", "OPERADOR"], async (re
       update: { alfaPuntosPorMin: body.alfa, topeAdelantos: body.tope },
     });
     await prisma.local.update({ where: { id: local.id }, data: { tiempoAusenciaSeg: body.ausenciaSeg } });
+    await recalcularClaves(local.id);
   }
   if (body.accion === "horario") {
     await prisma.horarioLocal.upsert({
@@ -52,27 +54,4 @@ export const POST = conRol(["SUPER_ADMIN", "ADMIN_LOCAL", "OPERADOR"], async (re
     });
   }
   return ok({ listo: true });
-});
-
-const publicoBody = z.discriminatedUnion("accion", [
-  z.object({ accion: z.literal("cita"), localId: z.number().int(), colaId: z.number().int(), inicioISO: z.string(), nombre: z.string().min(2).max(60), telefono: z.string().max(20).optional().nullable() }),
-  z.object({ accion: z.literal("checkin"), token: z.string().min(6) }),
-  z.object({ accion: z.literal("valorar"), token: z.string().min(6), estrellas: z.number().int().min(1).max(5), comentario: z.string().max(280).optional().nullable() }),
-  z.object({ accion: z.literal("simular"), llegadasPorHora: z.number().positive(), servicioMin: z.number().positive(), servidores: z.number().int().min(1).max(40) }),
-]);
-
-export const PUT = publico(async (req) => {
-  const body = await parseBody(req, publicoBody);
-  if (body.accion === "cita") return ok(await crearCita(body), { status: 201 });
-  if (body.accion === "checkin") return ok(await checkInCita(body.token));
-  if (body.accion === "valorar") return ok(await valorarTurno(body.token, body.estrellas, body.comentario));
-  return ok(erlangC(body.llegadasPorHora, body.servicioMin, body.servidores));
-});
-
-export const PATCH = publico(async (req) => {
-  const secreto = process.env.CRON_SECRET;
-  if (secreto && req.headers.get("x-cron-secret") !== secreto) {
-    return new Response("no", { status: 401 });
-  }
-  return ok({ vencidos: await expirarLlamados() });
 });

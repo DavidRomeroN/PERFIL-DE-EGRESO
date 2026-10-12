@@ -76,6 +76,7 @@ export interface EmitirTurnoInput {
   consentimiento?: boolean;
   canal: "QR" | "TICKET" | "WHATSAPP" | "KIOSCO" | "CITA";
   categoriaCodigo?: string | null;
+  origenCategoria?: "CLIENTE" | "PERSONAL" | "CITA";
 }
 
 export async function emitirTurno(input: EmitirTurnoInput) {
@@ -88,6 +89,12 @@ export async function emitirTurno(input: EmitirTurnoInput) {
   const { localAbierto } = await import("@/lib/operacion");
   const horario = await localAbierto(cola.localId, cola.local.zonaHoraria);
   if (!horario.abierto) throw new ErrorNegocio("COLA_CERRADA", horario.mensaje ?? "El local está cerrado", 409);
+  const { moduloActivo } = await import("@/lib/modulos");
+  const { resolverCategoria } = await import("@/lib/operacion");
+  const origen = input.origenCategoria ?? (input.canal === "TICKET" ? "PERSONAL" : input.canal === "CITA" ? "CITA" : "CLIENTE");
+  if (moduloActivo(cola.local.plan.codigo, "M1")) {
+    await resolverCategoria(cola.localId, input.categoriaCodigo, origen);
+  }
 
   const fechaISO = fechaLocalISO(cola.local.zonaHoraria);
 
@@ -146,7 +153,13 @@ export async function emitirTurno(input: EmitirTurnoInput) {
   if (!turnoId) throw new ErrorNegocio("ERROR_EMISION", "No se pudo emitir el turno", 500);
 
   const { aplicarPrioridad } = await import("@/lib/operacion");
-  await aplicarPrioridad(turnoId, input.categoriaCodigo).catch(() => {});
+  const origenCat = input.origenCategoria ?? (input.canal === "TICKET" ? "PERSONAL" : input.canal === "CITA" ? "CITA" : "CLIENTE");
+  try {
+    await aplicarPrioridad(turnoId, input.categoriaCodigo, origenCat);
+  } catch (e) {
+    await prisma.turno.delete({ where: { id: turnoId } }).catch(() => {});
+    throw e;
+  }
 
   publicar({ tipo: "cola:actualizada", localId: cola.localId, colaId: cola.id });
   // Si la cola está casi vacía, el aviso puede corresponder de inmediato
@@ -189,6 +202,15 @@ export async function obtenerTurnoPorToken(token: string) {
     posicion = delante + 1;
     tiempoEstimadoSeg = await tiempoEstimado(turno.colaId, posicion);
   }
+  const recientes = await prisma.turno.findMany({
+    where: { colaId: turno.colaId, estado: "ATENDIDO", llamadoAt: { not: null } },
+    select: { emitidoAt: true, llamadoAt: true },
+    orderBy: { id: "desc" },
+    take: 80,
+  });
+  const muestras = recientes.map((t) => (t.llamadoAt!.getTime() - t.emitidoAt.getTime()) / 60000).filter((m) => m > 0 && m < 240);
+  const { intervaloEspera } = await import("@/lib/prediccion/cuantiles");
+  const rango = intervaloEspera(muestras);
 
   const llamandoAhora = await prisma.turno.findMany({
     where: { colaId: turno.colaId, fecha: turno.fecha, estado: "LLAMADO" },
@@ -209,6 +231,7 @@ export async function obtenerTurnoPorToken(token: string) {
     posicion,
     personasDelante: Math.max(0, posicion - 1),
     tiempoEstimadoSeg,
+    prediccion: muestras.length >= 8 ? { p50Min: Math.round(rango.p50), p90Min: Math.round(rango.p90) } : null,
     rellamadas: turno.rellamadas,
     emitidoAt: turno.emitidoAt,
     avisadoAt: turno.avisadoAt,
@@ -298,17 +321,30 @@ export async function llamarSiguiente(ventanillaId: number, localId: number) {
       estado: { in: EN_ESPERA },
       ...(ventanilla.colaId ? { colaId: ventanilla.colaId } : {}),
     };
-    const candidatos = await tx.turno.findMany({ where, include: { cola: true, categoria: true }, take: 200 });
     const { elegirSiguiente, registrarLlamadoPrioridad } = await import("@/lib/operacion");
-    const siguiente = await elegirSiguiente(candidatos, candidatos[0]?.colaId ?? ventanilla.colaId ?? 0, fecha);
-    if (!siguiente) return { cerrado: enCurso, llamado: null };
-    await registrarLlamadoPrioridad(siguiente);
-
-    const llamado = await tx.turno.update({
-      where: { id: siguiente.id },
-      data: { estado: "LLAMADO", ventanillaId, llamadoAt: ahora, avisadoAt: siguiente.avisadoAt ?? ahora },
-      include: { cola: true, cliente: true },
-    });
+    const excluidos: number[] = [];
+    let llamado = null;
+    for (let intento = 0; intento < 5 && !llamado; intento++) {
+      const candidatos = await tx.turno.findMany({
+        where: { ...where, ...(excluidos.length ? { id: { notIn: excluidos } } : {}) },
+        include: { cola: true, categoria: true },
+        orderBy: [{ claveOrden: "desc" }, { emitidoAt: "asc" }, { id: "asc" }],
+        take: 30,
+      });
+      const colaTope = ventanilla.colaId ?? candidatos[0]?.colaId ?? 0;
+      const siguiente = await elegirSiguiente(candidatos, colaTope, fecha);
+      if (!siguiente) break;
+      const tomado = await tx.turno.updateMany({
+        where: { id: siguiente.id, estado: { in: EN_ESPERA } },
+        data: { estado: "LLAMADO", ventanillaId, llamadoAt: ahora, avisadoAt: siguiente.avisadoAt ?? ahora },
+      });
+      if (tomado.count === 0) {
+        excluidos.push(siguiente.id);
+        continue;
+      }
+      await registrarLlamadoPrioridad(siguiente);
+      llamado = await tx.turno.findUnique({ where: { id: siguiente.id }, include: { cola: true, cliente: true } });
+    }
     return { cerrado: enCurso, llamado };
   });
 

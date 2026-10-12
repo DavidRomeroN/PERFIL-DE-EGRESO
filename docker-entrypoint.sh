@@ -28,26 +28,6 @@ try {
 }
 ")
 
-# Un deploy anterior puede seguir sujeto al advisory lock (el mismo error P1002).
-# Se cierran esas sesiones y se desactiva el lock: en Render solo migra un proceso.
-echo "🧹 Cerrando sesiones de migración colgadas…"
-MIGRATE_URL="$MIGRATE_URL" node -e "
-const { Client } = require('pg');
-(async () => {
-  const c = new Client({ connectionString: process.env.MIGRATE_URL, connectionTimeoutMillis: 20000 });
-  await c.connect();
-  const r = await c.query(\`
-    SELECT pg_terminate_backend(pid) AS ok
-    FROM pg_stat_activity
-    WHERE datname = current_database()
-      AND pid <> pg_backend_pid()
-      AND usename = current_user
-  \`);
-  console.log('sesiones cerradas:', r.rowCount);
-  await c.end();
-})().catch((e) => console.error('no se pudieron cerrar sesiones:', e.message));
-" || true
-
 echo "🗄️  Aplicando migraciones…"
 ok=0
 for intento in 1 2 3 4 5; do

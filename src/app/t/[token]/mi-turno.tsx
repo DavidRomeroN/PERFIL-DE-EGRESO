@@ -146,6 +146,7 @@ export function MiTurno({ inicial }: { inicial: Turno }) {
                 <div className="rounded-2xl bg-muted/60 p-3">
                   <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground"><Clock className="size-3.5" /> Espera aprox.</p>
                   <p className="mt-1 text-3xl font-bold tabular">{turno.tiempoEstimadoSeg < 60 ? "<1" : Math.round(turno.tiempoEstimadoSeg / 60)}</p>
+                  {turno.prediccion && <p className="text-xs text-muted-foreground">Rango habitual {turno.prediccion.p50Min}–{turno.prediccion.p90Min} min</p>}
                   <p className="text-xs text-muted-foreground">minutos</p>
                 </div>
               </div>
@@ -173,7 +174,7 @@ export function MiTurno({ inicial }: { inicial: Turno }) {
               {turno.estado === "ATENDIDO" && <><Check className="mx-auto size-10 text-emerald-600" /><p className="mt-2 font-semibold">Gracias por tu visita</p><p className="text-sm text-muted-foreground">Atendido en {turno.ventanilla?.nombre} a las {fmtHora(turno.finalizadoAt)}.</p>
                 <Valoracion token={turno.token} /></>}
               {turno.estado === "CANCELADO" && <><XCircle className="mx-auto size-10 text-zinc-500" /><p className="mt-2 font-semibold">Turno cancelado</p><p className="text-sm text-muted-foreground">Puedes tomar uno nuevo cuando quieras.</p></>}
-              {turno.estado === "NO_SE_PRESENTO" && <><X className="mx-auto size-10 text-rose-600" /><p className="mt-2 font-semibold">No te presentaste</p><p className="text-sm text-muted-foreground">Te llamaron en {turno.ventanilla?.nombre} y no acudiste. Toma un nuevo turno en recepción.</p></>}
+              {turno.estado === "NO_SE_PRESENTO" && <><X className="mx-auto size-10 text-rose-600" /><p className="mt-2 font-semibold">Tu turno venció</p><p className="text-sm text-muted-foreground">Te llamaron en {turno.ventanilla?.nombre} y el tiempo de presentación terminó.</p></>}
               <Button asChild className="mt-4" variant="outline">
                 <Link href={`/l/${turno.local.slug}`}><QrCode className="size-4" /> Tomar otro turno</Link>
               </Button>
@@ -275,7 +276,7 @@ function Valoracion({ token }: { token: string }) {
     <form className="mt-4 space-y-2" onSubmit={async (e) => {
       e.preventDefault();
       try {
-        await api("/api/v1/operacion", { method: "PUT", json: { accion: "valorar", token, estrellas } });
+        await api(`/api/v1/public/turnos/${token}/valoracion`, { method: "POST", json: { estrellas } });
         setEnviada(true);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo guardar");

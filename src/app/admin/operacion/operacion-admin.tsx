@@ -16,6 +16,7 @@ export function OperacionAdmin(props: {
   horarios: { diaSemana: number; apertura: string; cierre: string; activo: boolean }[];
   colas: { id: number; nombre: string }[];
   espera: { id: number; codigo: string; cola: string }[];
+  slug: string;
 }) {
   const router = useRouter();
   const [pesos, setPesos] = useState(Object.fromEntries(props.categorias.map((c) => [c.codigo, c.pesoBase])));
@@ -76,6 +77,18 @@ export function OperacionAdmin(props: {
       </section>
 
       <section className="rounded-2xl border bg-card p-5">
+        <h2 className="font-semibold">Balanceo</h2>
+        <Button variant="outline" className="mt-2 mr-2" onClick={async () => {
+          const r = await api<{ codigo: string }>("/api/v1/kiosco/emparejar", { method: "POST" });
+          toast.success(`Código de kiosco: ${r.codigo}`);
+        }}>Código para el kiosco</Button>
+        <Button variant="outline" className="mt-2" onClick={async () => {
+          const r = await api<{ movido: boolean; ventanilla?: string }>("/api/v1/balanceo", { method: "POST" });
+          toast.success(r.movido ? `Se movió ${r.ventanilla}` : "Las colas están parejas");
+        }}>Mover una ventanilla a la cola más llena</Button>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-5">
         <h2 className="font-semibold">Transferir un turno en espera</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           <select className="h-10 rounded-lg border px-2" value={turnoId} onChange={(e) => setTurnoId(Number(e.target.value))}>
@@ -98,7 +111,7 @@ export function OperacionAdmin(props: {
           <Input placeholder="Nombre" value={cita.nombre} onChange={(e) => setCita({ ...cita, nombre: e.target.value })} />
         </div>
         <Button className="mt-3" onClick={async () => {
-          const r = await api<{ token: string }>("/api/v1/operacion", { method: "PUT", json: { accion: "cita", localId: 0, colaId: cita.colaId, inicioISO: new Date(cita.inicio).toISOString(), nombre: cita.nombre } });
+          const r = await api<{ token: string }>("/api/v1/public/citas", { method: "POST", json: { slug: props.slug, colaId: cita.colaId, inicioISO: new Date(cita.inicio).toISOString(), nombre: cita.nombre, consentimiento: true } });
           toast.success(`Cita lista. Check-in: /cita/${r.token}`);
         }}>Crear cita</Button>
       </section>

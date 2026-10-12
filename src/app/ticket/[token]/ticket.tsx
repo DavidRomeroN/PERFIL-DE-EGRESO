@@ -32,7 +32,8 @@ export function Ticket(p: Props) {
       </div>
 
       {/* Ticket térmico 80 mm */}
-      <article className="w-[300px] bg-white p-5 font-mono text-[13px] leading-snug text-black shadow-md print:shadow-none" style={{ fontFamily: "ui-monospace, 'Courier New', monospace" }}>
+      <style>{`@media print { @page { size: 80mm auto; margin: 4mm; } }`}</style>
+      <article className="w-[80mm] bg-white p-5 font-mono text-[13px] leading-snug text-black shadow-md print:shadow-none" style={{ fontFamily: "ui-monospace, 'Courier New', monospace" }}>
         <header className="text-center">
           <p className="text-lg font-bold uppercase tracking-wide">{p.local}</p>
           {p.direccion && <p className="text-[11px]">{p.direccion}</p>}

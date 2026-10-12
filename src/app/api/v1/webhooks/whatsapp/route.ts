@@ -78,6 +78,15 @@ export async function POST(req: NextRequest) {
       return new Response("Firma inválida", { status: 401 });
     }
     const ev = body as { event: string; data?: { id?: string; messageId?: string; status?: string; ack?: number; error?: string; reason?: string } };
+    if (ev.event === "message" || ev.event === "message.received") {
+      const data = (ev as { data?: { from?: string; body?: string; text?: string } }).data ?? {};
+      const from = data.from ?? "";
+      const text = data.body ?? data.text ?? "";
+      if (from && text) {
+        const { procesarMensajeEntrante } = await import("@/lib/bot/procesar");
+        void procesarMensajeEntrante(from.replace("@c.us", ""), text).catch(() => {});
+      }
+    }
     if (ev.event === "message.ack" || ev.event === "message.failed") {
       const d = ev.data ?? {};
       const msgId = d.messageId ?? d.id;
