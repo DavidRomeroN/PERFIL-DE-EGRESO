@@ -1,20 +1,11 @@
 import { z } from "zod";
-import { conRol, ok, parseBody, publico } from "@/lib/api";
-import { localActualAdmin } from "@/lib/admin";
-import { crearCodigo, validarCodigo } from "@/lib/kiosco/emparejar";
-import { ErrorNegocio } from "@/lib/turnos";
+import { error, ok, parseBody, publico, rateLimit } from "@/lib/api";
+import { emparejar } from "@/lib/kiosco/service";
 
-export const POST = conRol(["ADMIN_LOCAL", "SUPER_ADMIN"], async (_req, ctx) => {
-  const local = await localActualAdmin(ctx.session);
-  if (!local) throw new ErrorNegocio("SIN_LOCAL", "Elige un local", 409);
-  return ok({ codigo: crearCodigo(local.id) });
-});
+const schema = z.object({ codigo: z.string().trim().min(6).max(8) });
 
-const schema = z.object({ codigo: z.string().min(4) });
-
-export const PUT = publico(async (req) => {
-  const body = await parseBody(req, schema);
-  const localId = validarCodigo(body.codigo);
-  if (!localId) throw new ErrorNegocio("VALIDACION", "El código expiró o no existe", 401);
-  return ok({ localId });
+/** POST /api/v1/kiosco/emparejar — canjea el código de 6 dígitos por el token del dispositivo */
+export const POST = publico(async (req) => {
+  if (!await rateLimit(req, "kiosco-emparejar", 5)) return error("RATE_LIMIT", "Demasiados intentos. Espera un minuto.", 429);
+  return ok(await emparejar((await parseBody(req, schema)).codigo));
 });

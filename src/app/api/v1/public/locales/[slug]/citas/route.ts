@@ -1,10 +1,12 @@
-import { error, ok, paramsDe, publico, rateLimit } from "@/lib/api";
-import { slotsCita } from "@/lib/operacion";
+import { ok, paramsDe, publico } from "@/lib/api";
+import { prisma } from "@/lib/db";
+import { moduloActivo } from "@/lib/modulos";
 
-export const GET = publico<{ params: Promise<{ slug: string }> }>(async (req, ctx) => {
-  if (!rateLimit(req, "slots", 30)) return error("RATE_LIMIT", "Demasiadas solicitudes.", 429);
+/** GET /api/v1/public/locales/:slug/citas — servicios que atienden con cita (M3) */
+export const GET = publico<{ params: Promise<{ slug: string }> }>(async (_req, ctx) => {
   const { slug } = await paramsDe(ctx);
-  const colaId = Number(new URL(req.url).searchParams.get("colaId"));
-  if (!colaId) return error("VALIDACION", "Falta la cola", 422);
-  return ok(await slotsCita(slug, colaId));
+  const local = await prisma.local.findUnique({ where: { slug } });
+  if (!local || !local.activo || !(await moduloActivo(local.id, "M3"))) return ok({ disponible: false, colas: [] });
+  const colas = await prisma.cola.findMany({ where: { localId: local.id, activa: true, configCitas: { activo: true } }, orderBy: { orden: "asc" }, select: { id: true, nombre: true, descripcion: true, configCitas: { select: { duracionSlotMin: true, anticipacionMaxDias: true } } } });
+  return ok({ disponible: colas.length > 0, local: { nombre: local.nombreComercial, color: local.colorPrimario }, colas });
 });

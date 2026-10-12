@@ -19,7 +19,11 @@ export function useRealtime(slug: string | null | undefined, onEvento: (e: Event
   useEffect(() => {
     if (!slug) return;
     const es = new EventSource(`/api/v1/realtime/${slug}`);
-    const tipos = ["cola:actualizada", "turno:llamado", "turno:estado", "notificacion:nueva"] as const;
+    const tipos = [
+      "cola:actualizada", "turno:llamado", "turno:estado", "notificacion:nueva",
+      "prioridad:config", "cita:estado", "bot:mensaje", "bot:handoff", "kiosco:estado", "kiosco:evento",
+      "balanceo:accion", "alerta:nueva", "alerta:actualizada", "prediccion:modelo",
+    ] as const;
 
     es.addEventListener("conectado", () => setEstado("conectado"));
     es.onopen = () => setEstado("conectado");

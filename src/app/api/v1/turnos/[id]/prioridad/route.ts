@@ -1,32 +1,17 @@
 import { z } from "zod";
-import { conRol, error, ok, paramsDe, parseBody } from "@/lib/api";
-import { localActualAdmin } from "@/lib/admin";
-import { prisma } from "@/lib/db";
-import { aplicarPrioridad } from "@/lib/operacion";
-import { publicar } from "@/lib/realtime";
+import { ok, paramsDe, parseBody } from "@/lib/api";
+import { STAFF, enLocal } from "@/lib/rutas";
+import { cambiarPrioridadTurno } from "@/lib/prioridades/service";
 
 const schema = z.object({
   accion: z.enum(["VERIFICAR", "RECHAZAR", "CAMBIAR"]),
-  categoriaCodigo: z.string().max(16).optional(),
+  categoriaCodigo: z.string().max(16).optional().nullable(),
 });
 
-export const PATCH = conRol<{ params: Promise<{ id: string }> }>(["OPERADOR", "ADMIN_LOCAL", "SUPER_ADMIN"], async (req, ctx) => {
+/** PATCH /api/v1/turnos/:id/prioridad — verificar, rechazar (pasa a General conservando su hora) o cambiar (RF-M1-07) */
+export const PATCH = enLocal<{ params: Promise<{ id: string }> }>(STAFF, "M1", async (req, ctx) => {
   const { id } = await paramsDe(ctx);
-  const body = await parseBody(req, schema);
-  const turno = await prisma.turno.findUnique({ where: { id: Number(id) } });
-  if (!turno) return error("NO_ENCONTRADO", "El turno no existe", 404);
-  const local = await localActualAdmin(ctx.session);
-  if (!local || turno.localId !== local.id) return error("PROHIBIDO", "Turno de otro local", 403);
-  if (body.accion === "VERIFICAR") {
-    await prisma.turno.update({ where: { id: turno.id }, data: { prioridadVerificada: true } });
-  } else {
-    const codigo = body.accion === "RECHAZAR" ? "GENERAL" : body.categoriaCodigo ?? "GENERAL";
-    await aplicarPrioridad(turno.id, codigo, "PERSONAL");
-    await prisma.turno.update({ where: { id: turno.id }, data: { emitidoAt: turno.emitidoAt, prioridadVerificada: body.accion === "CAMBIAR" } });
-  }
-  await prisma.auditoria.create({
-    data: { localId: turno.localId, usuarioId: ctx.session.sub, accion: `PRIORIDAD_${body.accion}`, entidad: "turno", entidadId: String(turno.id) },
-  });
-  publicar({ tipo: "cola:actualizada", localId: turno.localId });
-  return ok({ id: turno.id });
+  const b = await parseBody(req, schema);
+  const t = await cambiarPrioridadTurno(ctx, ctx.localId, Number(id), b.accion, b.categoriaCodigo);
+  return ok({ id: t?.id, categoria: t?.categoria?.codigo ?? "GENERAL", prioridadVerificada: t?.prioridadVerificada ?? null });
 });

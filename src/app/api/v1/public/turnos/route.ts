@@ -12,7 +12,7 @@ const schema = z.object({
 
 /** POST /api/v1/public/turnos — RF01 tomar turno por QR (rate limit 5/min por IP) */
 export const POST = publico(async (req) => {
-  if (!rateLimit(req, "turnos", 5)) return error("RATE_LIMIT", "Demasiadas solicitudes. Intenta en un minuto.", 429);
+  if (!await rateLimit(req, "turnos", 5)) return error("RATE_LIMIT", "Demasiadas solicitudes. Intenta en un minuto.", 429);
   const body = await parseBody(req, schema);
   const turno = await emitirTurno({
     colaId: body.colaId,

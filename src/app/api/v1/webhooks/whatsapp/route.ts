@@ -3,6 +3,9 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/db";
 import { publicar } from "@/lib/realtime";
 import { configOpenWA } from "@/lib/openwa";
+import { adaptarMeta, adaptarOpenWA } from "@/lib/bot/adaptadores";
+import { procesarEntrante } from "@/lib/bot/service";
+import { log } from "@/lib/log";
 
 /**
  * Webhook de estados de entrega de WhatsApp. Acepta dos formatos:
@@ -51,11 +54,14 @@ async function aplicarEstado(proveedorMsgId: string, nuevo: EstadoNotif, error?:
     where: { id: n.id },
     data: { estado: nuevo, error: nuevo === "FALLIDO" ? (error ?? "Fallo de entrega") : null },
   });
-  publicar({
-    tipo: "notificacion:nueva",
-    localId: n.turno.localId,
-    notificacion: { id: actualizado.id, turnoId: actualizado.turnoId, mensaje: actualizado.mensaje, destino: actualizado.destino },
-  });
+  const localId = n.localId ?? n.turno?.localId;
+  if (localId && actualizado.turnoId) {
+    publicar({
+      tipo: "notificacion:nueva",
+      localId,
+      notificacion: { id: actualizado.id, turnoId: actualizado.turnoId, mensaje: actualizado.mensaje, destino: actualizado.destino },
+    });
+  }
   return true;
 }
 
@@ -78,14 +84,10 @@ export async function POST(req: NextRequest) {
       return new Response("Firma inválida", { status: 401 });
     }
     const ev = body as { event: string; data?: { id?: string; messageId?: string; status?: string; ack?: number; error?: string; reason?: string } };
-    if (ev.event === "message" || ev.event === "message.received") {
-      const data = (ev as { data?: { from?: string; body?: string; text?: string } }).data ?? {};
-      const from = data.from ?? "";
-      const text = data.body ?? data.text ?? "";
-      if (from && text) {
-        const { procesarMensajeEntrante } = await import("@/lib/bot/procesar");
-        void procesarMensajeEntrante(from.replace("@c.us", ""), text).catch(() => {});
-      }
+    // M4: mensaje entrante → bot (se responde 200 de inmediato y se procesa aparte, RNF-M4-03)
+    const entrante = adaptarOpenWA(body);
+    if (entrante) {
+      void procesarEntrante(entrante).catch((e) => log.error("bot: fallo al procesar", { modulo: "M4", error: String(e) }));
     }
     if (ev.event === "message.ack" || ev.event === "message.failed") {
       const d = ev.data ?? {};
@@ -101,6 +103,9 @@ export async function POST(req: NextRequest) {
   const secret = process.env.WHATSAPP_APP_SECRET;
   if (secret && !firmaValida(raw, req.headers.get("x-hub-signature-256"), secret)) {
     return new Response("Firma inválida", { status: 401 });
+  }
+  for (const m of adaptarMeta(body)) {
+    void procesarEntrante(m).catch((e) => log.error("bot: fallo al procesar", { modulo: "M4", error: String(e) }));
   }
   type Status = { id: string; status: "sent" | "delivered" | "read" | "failed"; errors?: { title?: string }[] };
   const meta = body as { entry?: { changes?: { value?: { statuses?: Status[] } }[] }[] };

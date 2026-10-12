@@ -8,7 +8,7 @@ const schema = z.object({
 });
 
 export const POST = publico<{ params: Promise<{ token: string }> }>(async (req, ctx) => {
-  if (!rateLimit(req, "valoracion", 6)) return error("RATE_LIMIT", "Demasiadas solicitudes.", 429);
+  if (!await rateLimit(req, "valoracion", 6)) return error("RATE_LIMIT", "Demasiadas solicitudes.", 429);
   const { token } = await paramsDe(ctx);
   const body = await parseBody(req, schema);
   return ok(await valorarTurno(token, body.estrellas, body.comentario));

@@ -7,6 +7,6 @@ export const POST = conRol<{ params: Promise<{ id: string }> }>(["OPERADOR", "AD
   const url = new URL(req.url);
   const localId = ctx.session.rol === "SUPER_ADMIN" ? Number(url.searchParams.get("localId") ?? ctx.session.localId) : ctx.session.localId;
   if (!localId) return error("SIN_LOCAL", "El usuario no tiene un local asignado", 400);
-  const turno = await llamarSiguiente(Number(id), localId);
+  const turno = await llamarSiguiente(Number(id), localId, { usuarioId: ctx.session.sub, requestId: ctx.requestId, ip: ctx.ip });
   return ok({ turno, vacia: !turno });
 });

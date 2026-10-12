@@ -54,11 +54,92 @@ enum EstadoCita {
   CHECKIN
   CANCELADA
   NO_SHOW
+  ATENDIDA
+}
+
+enum CanalCita {
+  WEB
+  BOT
+  ADMIN
+  KIOSCO
 }
 
 enum TipoNotificacion {
   WHATSAPP
   WEB
+}
+
+enum ModuloCodigo {
+  M1
+  M2
+  M3
+  M4
+  M5
+  M6
+  M7
+  M8
+}
+
+enum ModeloPrediccion {
+  BASELINE
+  EMA
+  ESTACIONAL
+}
+
+enum EstadoBot {
+  INICIO
+  MENU
+  ELEGIR_COLA
+  ELEGIR_CATEGORIA
+  PEDIR_NOMBRE
+  PEDIR_CONSENTIMIENTO
+  CONFIRMAR_TURNO
+  ELEGIR_TURNO_ACTIVO
+  SEGUIMIENTO
+  CONFIRMAR_CANCELAR
+  ELEGIR_FECHA
+  ELEGIR_HORA
+  CONFIRMAR_CITA
+  HANDOFF
+  CERRADA
+}
+
+enum DireccionMensaje {
+  ENTRANTE
+  SALIENTE
+}
+
+enum EstadoEventoKiosco {
+  PENDIENTE
+  APLICADO
+  DUPLICADO
+  REVISION
+  RECHAZADO
+}
+
+enum OrigenTransferencia {
+  MANUAL
+  REGLA
+}
+
+enum EstadoAlerta {
+  ABIERTA
+  RECONOCIDA
+  RESUELTA
+  SILENCIADA
+}
+
+enum TipoAlerta {
+  SLA_INCUMPLIDO
+  ESPERA_ALTA
+  COLA_LARGA
+  ANOMALIA_LLEGADAS
+  VENTANILLA_INACTIVA
+  WHATSAPP_CAIDO
+  KIOSCO_OFFLINE
+  PREDICCION_DERIVA
+  BALANCEO_LIMITE
+  JOB_FALLIDO
 }
 
 enum EstadoNotificacion {
@@ -87,6 +168,7 @@ model Plan {
   descripcion        String?
 
   locales Local[]
+  modulos PlanModulo[]
 
   @@map("plan")
 }
@@ -125,8 +207,47 @@ model Local {
   configPrioridad ConfigPrioridad?
   horarios    HorarioLocal[]
   citas       Cita[]
+  modulos     LocalModulo[]
+  bloqueosAgenda  BloqueoAgenda[]
+  bloqueosCliente BloqueoCliente[]
+  notificaciones  Notificacion[]
+  configPrediccion ConfigPrediccion?
+  canalesWhatsapp CanalWhatsapp[]
+  conversaciones  ConversacionBot[]
+  dispositivos    DispositivoKiosco[]
+  reglasBalanceo  ReglaBalanceo[]
+  transferencias  Transferencia[]
+  reglasAlerta    ReglaAlerta[]
+  alertas         Alerta[]
+  reportesProgramados ReporteProgramado[]
+  escenarios      EscenarioSimulacion[]
 
   @@map("local")
+}
+
+/// F3 · Módulos incluidos en cada plan (matriz §7 del plan integral)
+model PlanModulo {
+  planId Int          @map("plan_id")
+  modulo ModuloCodigo
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@id([planId, modulo])
+  @@map("plan_modulo")
+}
+
+/// F3 · Interruptor por local (un módulo del plan nace apagado hasta que el admin lo activa)
+model LocalModulo {
+  localId       Int          @map("local_id")
+  modulo        ModuloCodigo
+  habilitado    Boolean      @default(false)
+  config        Json?
+  actualizadoAt DateTime     @default(now()) @updatedAt @map("actualizado_at")
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@id([localId, modulo])
+  @@map("local_modulo")
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +291,11 @@ model Cola {
   ventanillas Ventanilla[]
   turnos      Turno[]
   contadores  ContadorCola[]
+  citas       Cita[]
+  slots       Slot[]
+  configCitas ConfigCitas?
+  bloqueos    BloqueoAgenda[]
+  sla         SlaCola?
 
   @@unique([localId, prefijo])
   @@map("cola")
@@ -181,6 +307,11 @@ model Ventanilla {
   nombre  String
   colaId  Int?    @map("cola_id")
   activa  Boolean @default(true)
+
+  /// M6: asignación temporal hecha por una regla (para poder revertirla)
+  colaOriginalId          Int?      @map("cola_original_id")
+  asignacionTemporalHasta DateTime? @map("asignacion_temporal_hasta")
+  reglaAsignadoraId       Int?      @map("regla_asignadora_id")
 
   local  Local   @relation(fields: [localId], references: [id], onDelete: Cascade)
   cola   Cola?   @relation(fields: [colaId], references: [id], onDelete: SetNull)
@@ -217,6 +348,8 @@ model Cliente {
   createdAt        DateTime @default(now()) @map("created_at")
 
   turnos Turno[]
+  citas  Cita[]
+  bloqueos BloqueoCliente[]
 
   @@index([telefonoHash])
   @@map("cliente")
@@ -244,6 +377,17 @@ model Turno {
   categoriaId  Int?        @map("categoria_id")
   claveOrden   Float       @default(0) @map("clave_orden")
   prioridadVerificada Boolean? @map("prioridad_verificada")
+  // F5: contexto de emisión y trazabilidad entre módulos
+  citaId                Int?      @map("cita_id")
+  origenDispositivoId   Int?      @map("origen_dispositivo_id")
+  codigoProvisional     String?   @map("codigo_provisional") @db.VarChar(16)
+  transferidoDeTurnoId  Int?      @map("transferido_de_turno_id")
+  sucesorId             Int?      @map("sucesor_id")
+  delanteEmision        Int?      @map("delante_emision")
+  ventanillasActivasEmision Int?  @map("ventanillas_activas_emision")
+  /// M2: el cliente pidió aviso cuando falten N minutos (opt-in)
+  avisoMinAntes         Int?      @map("aviso_min_antes")
+  avisoMinEnviadoAt     DateTime? @map("aviso_min_enviado_at")
 
   local         Local          @relation(fields: [localId], references: [id], onDelete: Cascade)
   cola          Cola           @relation(fields: [colaId], references: [id], onDelete: Cascade)
@@ -252,7 +396,7 @@ model Turno {
   categoria     CategoriaPrioridad? @relation(fields: [categoriaId], references: [id])
   notificaciones Notificacion[]
   valoracion    Valoracion?
-  cita          Cita?
+  cita          Cita?          @relation("CitaTurno")
 
   @@unique([colaId, fecha, numero])
   @@index([colaId, estado, emitidoAt])
@@ -262,7 +406,9 @@ model Turno {
 
 model Notificacion {
   id             Int                @id @default(autoincrement())
-  turnoId        Int                @map("turno_id")
+  turnoId        Int?               @map("turno_id")
+  localId        Int?               @map("local_id")
+  citaId         Int?               @map("cita_id")
   tipo           TipoNotificacion
   /// Destino enmascarado (p. ej. +51 9** *** 123)
   destino        String?
@@ -274,10 +420,13 @@ model Notificacion {
   error          String?
   createdAt      DateTime           @default(now()) @map("created_at")
 
-  turno Turno @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  turno Turno? @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  local Local? @relation(fields: [localId], references: [id], onDelete: Cascade)
+  cita  Cita?  @relation(fields: [citaId], references: [id], onDelete: Cascade)
 
   @@index([turnoId])
   @@index([createdAt])
+  @@index([localId, createdAt])
   @@map("notificacion")
 }
 
@@ -289,12 +438,16 @@ model Auditoria {
   entidad   String
   entidadId String?  @map("entidad_id")
   datosJson Json?    @map("datos_json")
+  ip        String?
+  requestId String?  @map("request_id")
+  accionHumana String? @map("accion_humana")
   createdAt DateTime @default(now()) @map("created_at")
 
   local   Local?   @relation(fields: [localId], references: [id], onDelete: Cascade)
   usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
   @@index([localId, createdAt])
+  @@index([requestId])
   @@map("auditoria")
 }
 
@@ -306,6 +459,8 @@ model CategoriaPrioridad {
   pesoBase       Int                @default(0) @map("peso_base")
   absoluta       Boolean            @default(false)
   documento      DocumentoPrioridad @default(NINGUNO)
+  icono          String?
+  esperaMaxSeg   Int?               @map("espera_max_seg")
   visibleCliente Boolean            @default(true) @map("visible_cliente")
   activa         Boolean            @default(true)
   orden          Int                @default(0)
@@ -322,6 +477,7 @@ model ConfigPrioridad {
   alfaPuntosPorMin Decimal @default(1.5) @map("alfa_puntos_por_min") @db.Decimal(6, 3)
   topeAdelantos    Int     @default(3) @map("tope_adelantos")
   agingActivo      Boolean @default(true) @map("aging_activo")
+  actualizadoAt    DateTime @default(now()) @updatedAt @map("actualizado_at")
 
   local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
   @@map("config_prioridad")
@@ -350,23 +506,134 @@ model HorarioLocal {
 }
 
 model Cita {
-  id         Int        @id @default(autoincrement())
-  localId    Int        @map("local_id")
-  colaId     Int        @map("cola_id")
-  inicio     DateTime
-  fin        DateTime
-  nombre     String
-  telefono   String?
-  estado     EstadoCita @default(RESERVADA)
-  token      String     @unique @db.VarChar(16)
-  turnoId    Int?       @unique @map("turno_id")
-  createdAt  DateTime   @default(now()) @map("created_at")
+  id                Int        @id @default(autoincrement())
+  localId           Int        @map("local_id")
+  colaId            Int        @map("cola_id")
+  slotId            Int        @map("slot_id")
+  clienteId         Int        @map("cliente_id")
+  /// Fecha local (America/Lima) del slot
+  fecha             DateTime   @db.Date
+  inicio            DateTime
+  fin               DateTime
+  estado            EstadoCita @default(RESERVADA)
+  canal             CanalCita  @default(WEB)
+  /// Token público (URL /c/:token y QR)
+  token             String     @unique @db.VarChar(16)
+  /// Código corto para teclear en el kiosco
+  codigoCheckin     String     @unique @map("codigo_checkin") @db.VarChar(6)
+  turnoId           Int?       @unique @map("turno_id")
+  tarde             Boolean    @default(false)
+  creadaAt          DateTime   @default(now()) @map("creada_at")
+  confirmadaAt      DateTime?  @map("confirmada_at")
+  checkinAt         DateTime?  @map("checkin_at")
+  canceladaAt       DateTime?  @map("cancelada_at")
+  motivoCancelacion String?    @map("motivo_cancelacion")
 
-  local Local  @relation(fields: [localId], references: [id], onDelete: Cascade)
-  turno Turno? @relation(fields: [turnoId], references: [id])
+  local         Local              @relation(fields: [localId], references: [id], onDelete: Cascade)
+  cola          Cola               @relation(fields: [colaId], references: [id])
+  slot          Slot               @relation(fields: [slotId], references: [id])
+  cliente       Cliente            @relation(fields: [clienteId], references: [id])
+  turno         Turno?             @relation("CitaTurno", fields: [turnoId], references: [id])
+  eventos       CitaEvento[]
+  recordatorios CitaRecordatorio[]
+  notificaciones Notificacion[]
 
   @@index([localId, inicio])
+  @@index([localId, fecha, estado])
+  @@index([slotId])
   @@map("cita")
+}
+
+model ConfigCitas {
+  colaId              Int     @id @map("cola_id")
+  activo              Boolean @default(false)
+  duracionSlotMin     Int     @default(15) @map("duracion_slot_min")
+  cuotaCitasPct       Int     @default(60) @map("cuota_citas_pct")
+  capacidadFija       Int?    @map("capacidad_fija")
+  anticipacionMinMin  Int     @default(60) @map("anticipacion_min_min")
+  anticipacionMaxDias Int     @default(14) @map("anticipacion_max_dias")
+  checkinAntesMin     Int     @default(10) @map("checkin_antes_min")
+  checkinDespuesMin   Int     @default(15) @map("checkin_despues_min")
+  graciaNoShowMin     Int     @default(10) @map("gracia_no_show_min")
+  maxNoShow           Int     @default(3) @map("max_no_show")
+  bloqueoDias         Int     @default(30) @map("bloqueo_dias")
+  pesoCita            Int     @default(40) @map("peso_cita")
+  recordatoriosMin    Int[]   @default([1440, 120]) @map("recordatorios_min")
+
+  cola Cola @relation(fields: [colaId], references: [id], onDelete: Cascade)
+
+  @@map("config_citas")
+}
+
+model BloqueoAgenda {
+  id      Int      @id @default(autoincrement())
+  localId Int      @map("local_id")
+  colaId  Int?     @map("cola_id")
+  inicio  DateTime
+  fin     DateTime
+  motivo  String
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+  cola  Cola? @relation(fields: [colaId], references: [id], onDelete: Cascade)
+
+  @@index([localId, inicio])
+  @@map("bloqueo_agenda")
+}
+
+model Slot {
+  id         Int      @id @default(autoincrement())
+  colaId     Int      @map("cola_id")
+  inicio     DateTime
+  fin        DateTime
+  capacidad  Int
+  reservados Int      @default(0)
+
+  cola  Cola   @relation(fields: [colaId], references: [id], onDelete: Cascade)
+  citas Cita[]
+
+  @@unique([colaId, inicio])
+  @@map("slot")
+}
+
+model CitaEvento {
+  id        BigInt   @id @default(autoincrement())
+  citaId    Int      @map("cita_id")
+  tipo      String
+  datos     Json?
+  actor     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  cita Cita @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@index([citaId])
+  @@map("cita_evento")
+}
+
+model CitaRecordatorio {
+  citaId    Int      @map("cita_id")
+  tipo      String
+  enviadoAt DateTime @default(now()) @map("enviado_at")
+
+  cita Cita @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@id([citaId, tipo])
+  @@map("cita_recordatorio")
+}
+
+model BloqueoCliente {
+  id          Int      @id @default(autoincrement())
+  localId     Int      @map("local_id")
+  clienteId   Int      @map("cliente_id")
+  hasta       DateTime
+  motivo      String
+  liberadoPor Int?     @map("liberado_por")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  local   Local   @relation(fields: [localId], references: [id], onDelete: Cascade)
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId, hasta])
+  @@map("bloqueo_cliente")
 }
 
 model Valoracion {
@@ -378,4 +645,468 @@ model Valoracion {
 
   turno Turno @relation(fields: [turnoId], references: [id], onDelete: Cascade)
   @@map("valoracion")
+}
+
+// ---------------------------------------------------------------------------
+// Infraestructura (F1 jobs, ADR-04 idempotencia, F7 límite de peticiones)
+// ---------------------------------------------------------------------------
+
+model JobEstado {
+  nombre           String    @id
+  ultimaCorrida    DateTime? @map("ultima_corrida")
+  ultimaDuracionMs Int?      @map("ultima_duracion_ms")
+  ultimoResultado  Json?     @map("ultimo_resultado")
+  ultimoError      String?   @map("ultimo_error")
+  corridas         Int       @default(0)
+  fallos           Int       @default(0)
+  proxima          DateTime?
+
+  @@map("job_estado")
+}
+
+model Idempotencia {
+  clave     String
+  ruta      String
+  status    Int
+  respuesta Json
+  creadaAt  DateTime @default(now()) @map("creada_at")
+  expiraAt  DateTime @map("expira_at")
+
+  @@id([ruta, clave])
+  @@index([expiraAt])
+  @@map("idempotencia")
+}
+
+model RateLimit {
+  clave    String
+  ventana  DateTime
+  contador Int      @default(0)
+
+  @@id([clave, ventana])
+  @@index([ventana])
+  @@map("rate_limit")
+}
+
+// ---------------------------------------------------------------------------
+// M2 · Predicción de espera
+// ---------------------------------------------------------------------------
+
+model ConfigPrediccion {
+  localId           Int     @id @map("local_id")
+  /// AUTO | BASELINE | EMA | ESTACIONAL
+  modelo            String  @default("AUTO")
+  alfaEma           Decimal @default(0.2) @map("alfa_ema") @db.Decimal(4, 3)
+  nivelConfianza    Decimal @default(0.8) @map("nivel_confianza") @db.Decimal(3, 2)
+  diasEntrenamiento Int     @default(60) @map("dias_entrenamiento")
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@map("config_prediccion")
+}
+
+model ModeloEntrenado {
+  id          Int              @id @default(autoincrement())
+  localId     Int              @map("local_id")
+  colaId      Int              @map("cola_id")
+  tipo        ModeloPrediccion
+  version     Int
+  parametros  Json
+  nMuestras   Int              @map("n_muestras")
+  mae         Float?
+  medae       Float?
+  acierto5    Float?           @map("acierto_5")
+  sesgo       Float?
+  cobertura   Float?
+  anchoMedio  Float?           @map("ancho_medio")
+  importancia Json?
+  activo      Boolean          @default(false)
+  deriva      Boolean          @default(false)
+  entrenadoAt DateTime         @default(now()) @map("entrenado_at")
+
+  @@unique([colaId, tipo, version])
+  @@index([colaId, activo])
+  @@map("modelo_entrenado")
+}
+
+model PrediccionLog {
+  id        BigInt           @id @default(autoincrement())
+  turnoId   Int              @unique @map("turno_id")
+  colaId    Int              @map("cola_id")
+  tipo      ModeloPrediccion
+  version   Int
+  delante   Int
+  c         Int
+  predSeg   Int              @map("pred_seg")
+  loSeg     Int              @map("lo_seg")
+  hiSeg     Int              @map("hi_seg")
+  realSeg   Int?             @map("real_seg")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@index([colaId, createdAt])
+  @@map("prediccion_log")
+}
+
+// ---------------------------------------------------------------------------
+// M4 · Chatbot de WhatsApp
+// ---------------------------------------------------------------------------
+
+model CanalWhatsapp {
+  id             Int     @id @default(autoincrement())
+  localId        Int     @map("local_id")
+  /// openwa | meta
+  proveedor      String
+  /// Sesión de OpenWA o phone_number_id de Meta
+  identificador  String
+  botActivo      Boolean @default(false) @map("bot_activo")
+  bienvenida     String?
+  atencionHumana Json?   @map("atencion_humana")
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@unique([proveedor, identificador])
+  @@index([localId])
+  @@map("canal_whatsapp")
+}
+
+model ConversacionBot {
+  id                String    @id
+  localId           Int       @map("local_id")
+  telefonoHash      String    @map("telefono_hash")
+  telefonoCifrado   String    @map("telefono_cifrado")
+  estado            EstadoBot @default(INICIO)
+  contexto          Json      @default("{}")
+  handoff           Boolean   @default(false)
+  handoffAt         DateTime? @map("handoff_at")
+  consentimientoAt  DateTime? @map("consentimiento_at")
+  intentosInvalidos Int       @default(0) @map("intentos_invalidos")
+  infracciones      Int       @default(0)
+  silenciadaHasta   DateTime? @map("silenciada_hasta")
+  ultimoMensajeAt   DateTime  @default(now()) @map("ultimo_mensaje_at")
+  expiraAt          DateTime  @map("expira_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  local    Local        @relation(fields: [localId], references: [id], onDelete: Cascade)
+  mensajes MensajeBot[]
+
+  @@unique([localId, telefonoHash])
+  @@index([localId, handoff, ultimoMensajeAt])
+  @@map("conversacion_bot")
+}
+
+model MensajeBot {
+  id             BigInt           @id @default(autoincrement())
+  conversacionId String           @map("conversacion_id")
+  direccion      DireccionMensaje
+  proveedorMsgId String?          @map("proveedor_msg_id")
+  textoCifrado   String           @map("texto_cifrado")
+  estado         String           @default("PENDIENTE")
+  autor          String?
+  intencion      String?
+  estadoBot      String?          @map("estado_bot")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  conversacion ConversacionBot @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+
+  @@index([conversacionId, createdAt])
+  @@map("mensaje_bot")
+}
+
+model EventoBotProcesado {
+  proveedor   String
+  mensajeId   String   @map("mensaje_id")
+  procesadoAt DateTime @default(now()) @map("procesado_at")
+
+  @@id([proveedor, mensajeId])
+  @@map("evento_bot_procesado")
+}
+
+// ---------------------------------------------------------------------------
+// M5 · Kiosco offline-first
+// ---------------------------------------------------------------------------
+
+model DispositivoKiosco {
+  id                   Int       @id @default(autoincrement())
+  localId              Int       @map("local_id")
+  numero               Int
+  nombre               String
+  colaIds              Int[]     @default([]) @map("cola_ids")
+  tokenHash            String?   @map("token_hash")
+  codigoEmparejHash    String?   @map("codigo_emparej_hash")
+  codigoEmparejExpira  DateTime? @map("codigo_emparej_expira")
+  pinMantenimiento     String?   @map("pin_mantenimiento")
+  activo               Boolean   @default(true)
+  versionApp           String?   @map("version_app")
+  ultimoHeartbeatAt    DateTime? @map("ultimo_heartbeat_at")
+  offsetRelojMs        Int       @default(0) @map("offset_reloj_ms")
+  pendientesReportados Int       @default(0) @map("pendientes_reportados")
+  impresora            String?
+  configVersion        Int       @default(1) @map("config_version")
+  enLinea              Boolean   @default(false) @map("en_linea")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  local   Local          @relation(fields: [localId], references: [id], onDelete: Cascade)
+  eventos EventoKiosco[]
+
+  @@unique([localId, numero])
+  @@map("dispositivo_kiosco")
+}
+
+model EventoKiosco {
+  id               BigInt             @id @default(autoincrement())
+  dispositivoId    Int                @map("dispositivo_id")
+  claveIdem        String             @unique @map("clave_idem")
+  seq              Int
+  /// EMITIR_TURNO | CHECKIN_CITA
+  tipo             String
+  payload          Json
+  tsDispositivo    DateTime           @map("ts_dispositivo")
+  offsetMsAlEmitir Int                @default(0) @map("offset_ms_al_emitir")
+  tsCorregido      DateTime?          @map("ts_corregido")
+  recibidoAt       DateTime           @default(now()) @map("recibido_at")
+  estado           EstadoEventoKiosco @default(PENDIENTE)
+  motivo           String?
+  turnoId          Int?               @map("turno_id")
+  resueltoPor      Int?               @map("resuelto_por")
+  resueltoAt       DateTime?          @map("resuelto_at")
+
+  dispositivo DispositivoKiosco @relation(fields: [dispositivoId], references: [id], onDelete: Cascade)
+
+  @@index([dispositivoId, seq])
+  @@index([estado, recibidoAt])
+  @@map("evento_kiosco")
+}
+
+// ---------------------------------------------------------------------------
+// M6 · Transferencia y balanceo
+// ---------------------------------------------------------------------------
+
+model ReglaBalanceo {
+  id                   Int      @id @default(autoincrement())
+  localId              Int      @map("local_id")
+  nombre               String
+  activa               Boolean  @default(false)
+  /// SIMULACION | ACTIVA
+  modo                 String   @default("SIMULACION")
+  condicion            Json
+  accion               Json
+  forSegundos          Int      @default(300) @map("for_segundos")
+  forSegundosReversa   Int      @default(300) @map("for_segundos_reversa")
+  cooldownSeg          Int      @default(600) @map("cooldown_seg")
+  histeresisPct        Int      @default(20) @map("histeresis_pct")
+  ttlSeg               Int?     @map("ttl_seg")
+  requiereConfirmacion Boolean  @default(false) @map("requiere_confirmacion")
+  prioridad            Int      @default(100)
+  createdBy            Int?     @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  local       Local            @relation(fields: [localId], references: [id], onDelete: Cascade)
+  estado      ReglaEstado?
+  ejecuciones EjecucionRegla[]
+
+  @@index([localId, activa])
+  @@map("regla_balanceo")
+}
+
+model ReglaEstado {
+  reglaId           Int       @id @map("regla_id")
+  /// INACTIVA | ARMADA | ACTIVA
+  fase              String    @default("INACTIVA")
+  verdaderaDesde    DateTime? @map("verdadera_desde")
+  falsaDesde        DateTime? @map("falsa_desde")
+  ultimaEjecucionAt DateTime? @map("ultima_ejecucion_at")
+  estadoAccion      Json?     @map("estado_accion")
+
+  regla ReglaBalanceo @relation(fields: [reglaId], references: [id], onDelete: Cascade)
+
+  @@map("regla_estado")
+}
+
+model EjecucionRegla {
+  id            BigInt   @id @default(autoincrement())
+  reglaId       Int      @map("regla_id")
+  localId       Int      @map("local_id")
+  ts            DateTime @default(now())
+  fase          String
+  metricas      Json
+  resultado     String
+  detalle       Json?
+  confirmadaPor Int?     @map("confirmada_por")
+
+  regla ReglaBalanceo @relation(fields: [reglaId], references: [id], onDelete: Cascade)
+
+  @@index([localId, ts])
+  @@map("ejecucion_regla")
+}
+
+model Transferencia {
+  id                 Int                 @id @default(autoincrement())
+  localId            Int                 @map("local_id")
+  turnoOrigenId      Int                 @map("turno_origen_id")
+  turnoDestinoId     Int                 @map("turno_destino_id")
+  deColaId           Int                 @map("de_cola_id")
+  aColaId            Int                 @map("a_cola_id")
+  aVentanillaId      Int?                @map("a_ventanilla_id")
+  /// OTRO_SERVICIO | FALTA_DOCUMENTO | DERIVACION | ERROR_DE_COLA | BALANCEO
+  motivo             String
+  detalle            String?
+  origen             OrigenTransferencia
+  reglaId            Int?                @map("regla_id")
+  usuarioId          Int?                @map("usuario_id")
+  conservoAntiguedad Boolean             @default(true) @map("conservo_antiguedad")
+  createdAt          DateTime            @default(now()) @map("created_at")
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@index([localId, createdAt])
+  @@map("transferencia")
+}
+
+// ---------------------------------------------------------------------------
+// M7 · Analítica, SLA y alertas
+// ---------------------------------------------------------------------------
+
+model SlaCola {
+  colaId       Int     @id @map("cola_id")
+  esperaMaxMin Int     @map("espera_max_min")
+  objetivoPct  Decimal @map("objetivo_pct") @db.Decimal(5, 2)
+  ventanaMin   Int     @default(60) @map("ventana_min")
+  activo       Boolean @default(true)
+
+  cola Cola @relation(fields: [colaId], references: [id], onDelete: Cascade)
+
+  @@map("sla_cola")
+}
+
+model ReglaAlerta {
+  id              Int        @id @default(autoincrement())
+  localId         Int        @map("local_id")
+  tipo            TipoAlerta
+  nombre          String
+  umbral          Json
+  niveles         Json
+  resolverTrasMin Int        @default(10) @map("resolver_tras_min")
+  silenciadaHasta DateTime?  @map("silenciada_hasta")
+  activa          Boolean    @default(true)
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  local   Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  alertas Alerta[]
+
+  @@index([localId, activa])
+  @@map("regla_alerta")
+}
+
+model AlertaRacha {
+  huella        String    @id
+  localId       Int       @map("local_id")
+  disparos      Int       @default(0)
+  normalDesde   DateTime? @map("normal_desde")
+  actualizadaAt DateTime  @default(now()) @map("actualizada_at")
+
+  @@map("alerta_racha")
+}
+
+model Alerta {
+  id              BigInt       @id @default(autoincrement())
+  localId         Int          @map("local_id")
+  reglaId         Int?         @map("regla_id")
+  tipo            TipoAlerta
+  huella          String
+  entidad         String?
+  nivel           Int          @default(1)
+  estado          EstadoAlerta @default(ABIERTA)
+  titulo          String
+  detalle         Json
+  ocurrencias     Int          @default(1)
+  primeraVezAt    DateTime     @default(now()) @map("primera_vez_at")
+  ultimaVezAt     DateTime     @default(now()) @map("ultima_vez_at")
+  proximoEscalaAt DateTime?    @map("proximo_escala_at")
+  reconocidaPor   Int?         @map("reconocida_por")
+  reconocidaAt    DateTime?    @map("reconocida_at")
+  resueltaAt      DateTime?    @map("resuelta_at")
+  silenciadaHasta DateTime?    @map("silenciada_hasta")
+
+  local          Local                @relation(fields: [localId], references: [id], onDelete: Cascade)
+  regla          ReglaAlerta?         @relation(fields: [reglaId], references: [id], onDelete: SetNull)
+  notificaciones AlertaNotificacion[]
+
+  @@index([localId, estado, ultimaVezAt])
+  @@map("alerta")
+}
+
+model AlertaNotificacion {
+  id        BigInt   @id @default(autoincrement())
+  alertaId  BigInt   @map("alerta_id")
+  nivel     Int
+  canal     String
+  destino   String?
+  estado    String
+  hora      DateTime
+  createdAt DateTime @default(now()) @map("created_at")
+
+  alerta Alerta @relation(fields: [alertaId], references: [id], onDelete: Cascade)
+
+  @@unique([alertaId, nivel, canal, hora])
+  @@map("alerta_notificacion")
+}
+
+model ReporteProgramado {
+  id                Int       @id @default(autoincrement())
+  localId           Int       @map("local_id")
+  nombre            String
+  /// OPERATIVO_DIARIO | SEMANAL_EJECUTIVO | MENSUAL
+  tipo              String
+  /// DIARIO | SEMANAL | MENSUAL
+  frecuencia        String
+  diaSemana         Int?      @map("dia_semana")
+  diaMes            Int?      @map("dia_mes")
+  hora              String
+  formato           String[]  @default(["PDF"])
+  destinatarios     String[]
+  filtros           Json?
+  activo            Boolean   @default(true)
+  ultimaEjecucionAt DateTime? @map("ultima_ejecucion_at")
+
+  local     Local             @relation(fields: [localId], references: [id], onDelete: Cascade)
+  generados ReporteGenerado[]
+
+  @@map("reporte_programado")
+}
+
+model ReporteGenerado {
+  id           BigInt   @id @default(autoincrement())
+  programadoId Int      @map("programado_id")
+  periodo      String
+  archivo      String?
+  bytes        Int      @default(0)
+  /// GENERANDO | GENERADO | ENVIADO | FALLIDO
+  estado       String
+  error        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  programado ReporteProgramado @relation(fields: [programadoId], references: [id], onDelete: Cascade)
+
+  @@unique([programadoId, periodo])
+  @@map("reporte_generado")
+}
+
+// ---------------------------------------------------------------------------
+// M8 · Simulador de capacidad
+// ---------------------------------------------------------------------------
+
+model EscenarioSimulacion {
+  id         Int      @id @default(autoincrement())
+  localId    Int      @map("local_id")
+  colaId     Int?     @map("cola_id")
+  nombre     String
+  parametros Json
+  resultados Json?
+  semilla    Int
+  createdBy  Int?     @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@index([localId, createdAt])
+  @@map("escenario_simulacion")
 }

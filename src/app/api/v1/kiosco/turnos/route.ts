@@ -1,25 +1,24 @@
 import { z } from "zod";
-import { ok, parseBody, publico, rateLimit, error } from "@/lib/api";
-import { emitirTurno } from "@/lib/turnos";
-import { prisma } from "@/lib/db";
+import { error, ok, parseBody, publico, rateLimit } from "@/lib/api";
+import { aplicarEvento, autenticar } from "@/lib/kiosco/service";
 
 const schema = z.object({
-  id: z.string().min(8),
-  colaId: z.number().int(),
-  nombre: z.string().max(60).optional().default(""),
+  claveIdem: z.string().min(20).max(64),
+  seq: z.number().int().min(1),
+  tsDispositivo: z.string(),
+  offsetMsAlEmitir: z.number().int().default(0),
+  colaId: z.number().int().positive(),
+  categoria: z.string().max(16).nullable().optional(),
+  nombre: z.string().max(60).nullable().optional(),
+  telefono: z.string().max(20).nullable().optional(),
+  consentimiento: z.boolean().optional(),
 });
 
-const vistos = new Set<string>();
-
+/** POST /api/v1/kiosco/turnos — emisión online idempotente por claveIdem (Bearer del dispositivo) */
 export const POST = publico(async (req) => {
-  if (!rateLimit(req, "kiosco", 30)) return error("RATE_LIMIT", "Demasiadas solicitudes.", 429);
-  const body = await parseBody(req, schema);
-  if (vistos.has(body.id)) {
-    const previo = await prisma.turno.findFirst({ where: { token: body.id.slice(0, 16) } });
-    if (previo) return ok(previo);
-    return error("REVISION", "Ese turno ya se envió y no se pudo confirmar. Reintenta con otro.", 409);
-  }
-  vistos.add(body.id);
-  const turno = await emitirTurno({ colaId: body.colaId, nombre: body.nombre || null, canal: "KIOSCO" });
-  return ok(turno, { status: 201 });
+  if (!await rateLimit(req, "kiosco", 60)) return error("RATE_LIMIT", "Demasiadas solicitudes.", 429);
+  const d = await autenticar(req);
+  const b = await parseBody(req, schema);
+  const r = await aplicarEvento(d, { claveIdem: b.claveIdem, seq: b.seq, tipo: "EMITIR_TURNO", tsDispositivo: b.tsDispositivo, offsetMsAlEmitir: b.offsetMsAlEmitir, payload: { colaId: b.colaId, categoria: b.categoria, nombre: b.nombre, telefono: b.telefono, consentimiento: b.consentimiento } });
+  return ok(r, { status: r.estado === "APLICADO" ? 201 : 200 });
 });

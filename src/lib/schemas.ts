@@ -61,3 +61,18 @@ export const localSchema = z.object({
   adminEmail: z.string().trim().email().optional(),
   adminPassword: z.string().min(6).max(72).optional(),
 });
+
+/** N08 · Plan con su matriz de módulos. */
+export const planSchema = z.object({
+  codigo: z.string().trim().toUpperCase().regex(/^[A-Z0-9_]{3,20}$/),
+  nombre: z.string().trim().min(2).max(40),
+  precioMensual: z.number().min(0).max(100000),
+  maxTurnosMes: z.number().int().min(1),
+  maxColas: z.number().int().min(1),
+  maxVentanillas: z.number().int().min(1),
+  whatsappHabilitado: z.boolean(),
+  maxAvisosWhatsapp: z.number().int().min(0),
+  reportes: z.boolean(),
+  descripcion: z.string().trim().max(200).nullable().optional(),
+  modulos: z.array(z.enum(["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"])).default([]),
+});

@@ -166,7 +166,7 @@ export async function registrarWebhook(): Promise<WebhookOpenWA> {
     method: "POST",
     body: JSON.stringify({
       url: webhookUrl,
-      events: ["message.ack", "message.failed", "session.status"],
+      events: ["message.received", "message.ack", "message.failed", "session.status"],
       ...(webhookSecret.length >= 16 ? { secret: webhookSecret } : {}),
       retryCount: 3,
     }),
