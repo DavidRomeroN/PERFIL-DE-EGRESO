@@ -12,6 +12,7 @@ import {
   Calculator,
   Clock,
   Cpu,
+  CreditCard,
   Layers,
   ScrollText,
   Tablet,
@@ -61,6 +62,7 @@ const NAV = [
   { href: "/admin/pantalla", label: "Pantalla TV y QR", icon: QrCode },
   { href: "/admin/operacion", label: "Horario y ausencias", icon: Clock },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
+  { href: "/admin/plan", label: "Mi plan y pagos", icon: CreditCard },
   { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
   { href: "/admin/modulos", label: "Módulos", icon: Layers },
 ];

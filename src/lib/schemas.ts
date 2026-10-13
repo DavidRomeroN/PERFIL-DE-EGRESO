@@ -76,3 +76,16 @@ export const planSchema = z.object({
   descripcion: z.string().trim().max(200).nullable().optional(),
   modulos: z.array(z.enum(["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"])).default([]),
 });
+
+/** Datos que entrega el Card Payment Brick de Mercado Pago (la tarjeta ya viene tokenizada). */
+export const tarjetaSchema = z.object({
+  token: z.string().min(10).max(100),
+  issuer_id: z.union([z.string(), z.number()]).optional().nullable(),
+  payment_method_id: z.string().min(2).max(40),
+  transaction_amount: z.number().optional(),
+  installments: z.number().int().min(1).max(36),
+  payer: z.object({
+    email: z.string().email(),
+    identification: z.object({ type: z.string().max(10), number: z.string().max(20) }).optional(),
+  }),
+});

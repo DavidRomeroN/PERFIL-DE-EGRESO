@@ -288,7 +288,7 @@ export default async function Home() {
                         {p.reportes && <li className="flex gap-2"><CheckCircle2 className="size-4 shrink-0 text-teal-600" /> Reportes y soporte prioritario</li>}
                       </ul>
                       <Button asChild className="mt-6" variant={destacado ? "default" : "outline"}>
-                        <Link href="/login">Comenzar</Link>
+                        <Link href={`/registro?plan=${p.codigo}`}>Comenzar</Link>
                       </Button>
                     </CardContent>
                   </Card>

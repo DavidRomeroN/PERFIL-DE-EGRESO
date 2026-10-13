@@ -142,6 +142,15 @@ enum TipoAlerta {
   JOB_FALLIDO
 }
 
+enum EstadoPago {
+  PENDIENTE
+  APROBADO
+  EN_PROCESO
+  RECHAZADO
+  CANCELADO
+  REEMBOLSADO
+}
+
 enum EstadoNotificacion {
   PENDIENTE
   ENVIADO
@@ -169,6 +178,7 @@ model Plan {
 
   locales Local[]
   modulos PlanModulo[]
+  pagos   Pago[]
 
   @@map("plan")
 }
@@ -195,6 +205,8 @@ model Local {
   avisarFaltando  Int      @default(2) @map("avisar_faltando")
   /// RN04: segundos antes de marcar NO_SE_PRESENTO. NULL desactiva la expiración automática.
   tiempoAusenciaSeg Int?   @default(180) @map("tiempo_ausencia_seg")
+  /// Fin del periodo pagado del plan (Mercado Pago). NULL = plan gratuito o sin vencimiento
+  planVenceAt     DateTime? @map("plan_vence_at")
   createdAt       DateTime @default(now()) @map("created_at")
 
   plan        Plan         @relation(fields: [planId], references: [id])
@@ -221,6 +233,7 @@ model Local {
   alertas         Alerta[]
   reportesProgramados ReporteProgramado[]
   escenarios      EscenarioSimulacion[]
+  pagos           Pago[]
 
   @@map("local")
 }
@@ -1109,4 +1122,35 @@ model EscenarioSimulacion {
 
   @@index([localId, createdAt])
   @@map("escenario_simulacion")
+}
+
+// ---------------------------------------------------------------------------
+// Pagos de suscripción (Mercado Pago, Checkout API)
+// ---------------------------------------------------------------------------
+
+model Pago {
+  id              Int        @id @default(autoincrement())
+  localId         Int?       @map("local_id")
+  planId          Int        @map("plan_id")
+  proveedor       String     @default("mercadopago")
+  proveedorPagoId String?    @unique @map("proveedor_pago_id")
+  claveIdem       String     @unique @map("clave_idem")
+  estado          EstadoPago @default(PENDIENTE)
+  estadoDetalle   String?    @map("estado_detalle")
+  monto           Decimal    @db.Decimal(10, 2)
+  moneda          String     @default("PEN")
+  meses           Int        @default(1)
+  metodo          String?
+  ultimos4        String?
+  emailPagador    String?    @map("email_pagador")
+  registro        Json?
+  aplicadoAt      DateTime?  @map("aplicado_at")
+  creadoAt        DateTime   @default(now()) @map("creado_at")
+  actualizadoAt   DateTime   @default(now()) @updatedAt @map("actualizado_at")
+
+  local Local? @relation(fields: [localId], references: [id], onDelete: SetNull)
+  plan  Plan   @relation(fields: [planId], references: [id])
+
+  @@index([localId, creadoAt])
+  @@map("pago")
 }
