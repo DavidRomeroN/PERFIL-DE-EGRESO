@@ -31,8 +31,7 @@ export function MiPlan() {
   const vencido = datos?.venceAt ? new Date(datos.venceAt).getTime() < Date.parse(new Date().toISOString()) : false;
 
   async function pagar(tarjeta: DatosTarjetaBrick) {
-    const r = await api<Resultado>("/api/v1/pagos/plan", { method: "POST", json: { plan: elegido, meses, claveIdem: clave, tarjeta } });
-    setClave(crypto.randomUUID());
+    const r = await api<Resultado>("/api/v1/pagos/plan", { method: "POST", json: { plan: elegido, meses, claveIdem: clave, tarjeta } }).finally(() => setClave(crypto.randomUUID()));
     if (r.estado === "RECHAZADO") {
       toast.error(r.mensaje);
       throw new Error(r.mensaje);

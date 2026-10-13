@@ -131,5 +131,7 @@ export function mensajeRechazo(detalle: string) {
     cc_rejected_high_risk: "El pago fue rechazado por seguridad. Prueba con otra tarjeta.",
     cc_rejected_other_reason: "El banco rechazó el pago. Prueba con otra tarjeta.",
   };
-  return m[detalle] ?? "El pago fue rechazado. Prueba con otra tarjeta.";
+  if (m[detalle]) return m[detalle];
+  // Errores de la API (credenciales, validación) ya vienen como texto legible
+  return detalle.startsWith("Mercado Pago") ? detalle : "El pago fue rechazado. Prueba con otra tarjeta.";
 }

@@ -24,7 +24,7 @@ export function Registro({ planes, inicial }: { planes: Plan[]; inicial: string 
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [res, setRes] = useState<Resultado | null>(null);
-  const [clave] = useState(() => crypto.randomUUID());
+  const [clave, setClave] = useState(() => crypto.randomUUID());
   const elegido = useMemo(() => planes.find((p) => p.codigo === plan)!, [planes, plan]);
   const gratis = elegido.precio === 0;
 
@@ -55,6 +55,7 @@ export function Registro({ planes, inicial }: { planes: Plan[]; inicial: string 
     } catch (e) {
       const msg = e instanceof ApiError || e instanceof Error ? e.message : "No se pudo completar el registro";
       setError(msg);
+      setClave(crypto.randomUUID()); // un reintento es un cobro nuevo, no el mismo intento rechazado
       if (e instanceof ApiError && ["SLUG_OCUPADO", "EMAIL_OCUPADO", "VALIDACION"].includes(e.codigo)) setPaso("datos");
       throw e; // el Brick muestra el error y permite reintentar
     } finally {
