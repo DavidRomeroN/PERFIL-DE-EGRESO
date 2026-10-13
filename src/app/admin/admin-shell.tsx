@@ -175,7 +175,7 @@ export function AdminShell({ session, local, locales, modulos, children }: { ses
   );
 
   const sidebar = (
-    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+    <div className="flex h-full flex-col overflow-y-auto bg-sidebar text-sidebar-foreground">
       <div className="flex items-center justify-between px-5 py-5">
         <Logo light href="/admin" />
         <CampanaAlertas slug={local?.slug ?? null} />
