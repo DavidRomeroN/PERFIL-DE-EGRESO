@@ -47,6 +47,9 @@ export default function Kiosco() {
   const muestras = useRef<MuestraReloj[]>([]);
   const fallos = useRef({ n: 0, desde: 0 });
   const ultimaActividad = useRef(0);
+  const [offsetMs, setOffsetMs] = useState(0);
+  // La sincronización se invoca desde efectos y desde el service worker: se guarda la última versión en una ref
+  const syncRef = useRef<() => Promise<void>>(async () => {});
 
   // --- Arranque: token cifrado en IndexedDB, almacenamiento persistente, SW con alcance /kiosco
   useEffect(() => {
@@ -59,11 +62,10 @@ export default function Kiosco() {
       void navigator.storage?.persist?.();
       if ("serviceWorker" in navigator) {
         void navigator.serviceWorker.register("/kiosco/sw.js", { scope: "/kiosco" }).catch(() => {});
-        navigator.serviceWorker.addEventListener("message", (e) => e.data?.tipo === "sync" && void sincronizar());
+        navigator.serviceWorker.addEventListener("message", (e) => e.data?.tipo === "sync" && void syncRef.current());
       }
       ultimaActividad.current = Date.now();
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const llamar = useCallback(async <T,>(url: string, json?: unknown, timeoutMs = 4000): Promise<T> => {
@@ -91,7 +93,7 @@ export default function Kiosco() {
   }, []);
 
   // --- Sincronización por lotes (candado entre pestañas con navigator.locks)
-  const sincronizar = useCallback(async () => {
+  async function sincronizar() {
     if (!token) return;
     const correr = async () => {
       const todos = await pendientes();
@@ -109,7 +111,10 @@ export default function Kiosco() {
     };
     if (navigator.locks) await navigator.locks.request("turnoya-kiosco-sync", { ifAvailable: true }, async (l) => (l ? correr() : undefined));
     else await correr();
-  }, [token, llamar]);
+  }
+  useEffect(() => {
+    syncRef.current = sincronizar;
+  });
 
   // --- Heartbeat cada 20 s: estima el desfase de reloj (muestra de menor RTT) y la configuración
   useEffect(() => {
@@ -121,6 +126,7 @@ export default function Kiosco() {
         const t1 = Date.now();
         muestras.current = [...muestras.current, muestraReloj(t0, t1, Date.parse(r.serverTime))].slice(-5);
         offset.current = mejorOffset(muestras.current);
+        setOffsetMs(offset.current);
         fallos.current = { n: 0, desde: 0 };
         const p = (await pendientes()).length;
         setConexion((e) => siguienteConexion(e, { tipo: "OK", rtt: t1 - t0, pendientes: p }));
@@ -129,7 +135,7 @@ export default function Kiosco() {
           setConfig(c);
           await escribirMeta("config", c);
         }
-        if (p) void sincronizar();
+        if (p) void syncRef.current();
       } catch (e) {
         if (!(e instanceof Error && e.message.includes("autorizado"))) registrarFallo();
       }
@@ -142,7 +148,7 @@ export default function Kiosco() {
       clearInterval(t);
       window.removeEventListener("online", on);
     };
-  }, [token, llamar, sincronizar, registrarFallo, conexion, nPend, config]);
+  }, [token, llamar, registrarFallo, conexion, nPend, config]);
 
   // --- Inactividad: vuelve al inicio a los 30 s (RF-M5-09)
   useEffect(() => {
@@ -308,7 +314,7 @@ export default function Kiosco() {
             }}>Validar PIN</button>
             {error === "PIN correcto" && (
               <>
-                <p>Pendientes: {nPend} · desfase {Math.round(offset.current / 1000)} s · {VERSION_APP}</p>
+                <p>Pendientes: {nPend} · desfase {Math.round(offsetMs / 1000)} s · {VERSION_APP}</p>
                 <button type="button" className="rounded-xl border p-3" onClick={() => void sincronizar()}>Forzar sincronización</button>
                 <button type="button" className="rounded-xl border p-3" onClick={() => window.print()}>Reimprimir último</button>
                 <button type="button" className="rounded-xl border p-3 text-rose-700" onClick={async () => { await escribirMeta("token", undefined); setToken(null); }}>Desemparejar</button>

@@ -2,7 +2,7 @@ import { ok } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { ErrorNegocio } from "@/lib/errores";
 import { fechaLocalISO, sumarDiasISO } from "@/lib/fechas";
-import { ADMIN, enLocal, q, qNum } from "@/lib/rutas";
+import { ADMIN, enLocal, q } from "@/lib/rutas";
 import { csat } from "@/lib/analitica/consultas";
 function rango(req: Parameters<typeof q>[0], zona: string) {
   const hasta = q(req, "hasta") ?? fechaLocalISO(zona);

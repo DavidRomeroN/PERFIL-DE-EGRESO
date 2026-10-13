@@ -28,9 +28,8 @@ export default function Page() {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "alertas" || t === "reportes") setTab(t);
   }, []);
-  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
-  const hace = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date(Date.now() - 55 * 86400000));
-  const [rango, setRango] = useState({ desde: hace, hasta: hoy });
+  const [hoy] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date()));
+  const [rango, setRango] = useState(() => ({ desde: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date(Date.now() - 55 * 86400000)), hasta: hoy }));
   const [metrica, setMetrica] = useState("llegadas");
   const q = `desde=${rango.desde}&hasta=${rango.hasta}`;
   const res = useDatos<Resumen>(`/api/v1/analitica/resumen?${q}`, [q]);

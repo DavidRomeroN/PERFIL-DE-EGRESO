@@ -176,6 +176,7 @@ export default function Page() {
                   <Kpi etiqueta="Abandono" valor={pct(sim.abandonoPct.media)} />
                   <Kpi etiqueta="Costo del día" valor={`S/ ${sim.costo.media.toFixed(0)}`} pista={`quedan ${sim.backlog.media.toFixed(1)} al cierre`} />
                 </div>
+                <p className="mt-2 text-xs text-muted-foreground">La simulación modela un día real (sala vacía al abrir, atención log-normal, no-show y abandono); Erlang C supone régimen estacionario y atención exponencial, por eso pueden diferir.</p>
                 <div className="mt-4 h-48">
                   <ResponsiveContainer>
                     <BarChart data={sim.histograma.filter((h) => h.n > 0)}>

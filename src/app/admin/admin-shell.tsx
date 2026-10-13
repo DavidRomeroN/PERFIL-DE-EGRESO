@@ -78,6 +78,7 @@ const NAV_MODULOS = [
 ];
 
 function CampanaAlertas({ slug }: { slug: string | null }) {
+  const router = useRouter();
   const [resumen, setResumen] = useState<{ activo: boolean; abiertas: number } | null>(null);
   const cargar = useCallback(() => api<{ activo: boolean; abiertas: number }>("/api/v1/alertas/resumen").then(setResumen).catch(() => {}), []);
   useEffect(() => {
@@ -87,7 +88,7 @@ function CampanaAlertas({ slug }: { slug: string | null }) {
   }, [cargar]);
   useRealtime(slug, (e) => {
     if (e.tipo === "alerta:nueva") {
-      toast.warning(`Alerta: ${e.alerta.titulo}`, { action: { label: "Ver", onClick: () => (window.location.href = "/admin/analitica?tab=alertas") } });
+      toast.warning(`Alerta: ${e.alerta.titulo}`, { action: { label: "Ver", onClick: () => router.push("/admin/analitica?tab=alertas") } });
       void cargar();
     }
     if (e.tipo === "alerta:actualizada") void cargar();

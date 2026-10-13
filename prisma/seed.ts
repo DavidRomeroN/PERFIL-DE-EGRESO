@@ -51,6 +51,7 @@ async function main() {
   await prisma.auditoria.deleteMany();
   await prisma.notificacion.deleteMany();
   await prisma.valoracion.deleteMany();
+  await prisma.turno.updateMany({ data: { citaId: null, sucesorId: null, transferidoDeTurnoId: null } });
   await prisma.cita.deleteMany();
   await prisma.estadoPrioridadCola.deleteMany();
   await prisma.turno.deleteMany();
@@ -78,6 +79,13 @@ async function main() {
     }),
   ]);
   void gratis;
+  // Matriz plan × módulo (§7 del plan integral)
+  await prisma.planModulo.createMany({
+    data: [
+      ...(["M1", "M3", "M4", "M6"] as const).map((modulo) => ({ planId: emprende.id, modulo })),
+      ...(["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"] as const).map((modulo) => ({ planId: pro.id, modulo })),
+    ],
+  });
 
   console.log("🏥 Locales…");
   const poli = await prisma.local.create({
@@ -131,6 +139,13 @@ async function main() {
     });
   }
 
+  // Módulos encendidos en la demo: todos los del plan de cada local
+  for (const l of [poli, julsa]) {
+    const incluidos = await prisma.planModulo.findMany({ where: { planId: l.planId } });
+    await prisma.localModulo.createMany({ data: incluidos.map((m) => ({ localId: l.id, modulo: m.modulo, habilitado: true })) });
+  }
+  await prisma.local.update({ where: { id: poli.id }, data: { tiempoAusenciaSeg: 180 } });
+
   console.log("👤 Usuarios…");
   const hashAdmin = await bcrypt.hash("admin123", 10);
   const hashOper = await bcrypt.hash("operador123", 10);
@@ -163,6 +178,12 @@ async function main() {
     prisma.ventanilla.create({ data: { localId: julsa.id, nombre: "Ventanilla 2", colaId: colaV.id } }),
     prisma.ventanilla.create({ data: { localId: julsa.id, nombre: "Encomiendas", colaId: colaE.id } }),
   ]);
+
+  // Configuración de módulos para la demo: citas (M3), SLA (M7) y canal del bot (M4)
+  await prisma.configCitas.createMany({ data: [colaA, colaB, colaC, colaV, colaE].map((c) => ({ colaId: c.id, activo: c.id === colaA.id || c.id === colaV.id })) });
+  await prisma.categoriaPrioridad.updateMany({ where: { codigo: "CITA" }, data: { pesoBase: 40 } });
+  await prisma.slaCola.createMany({ data: [colaA, colaB, colaC].map((c) => ({ colaId: c.id, esperaMaxMin: c.id === colaA.id ? 20 : 15, objetivoPct: 90 })) });
+  await prisma.canalWhatsapp.createMany({ data: [{ localId: poli.id, proveedor: "openwa", identificador: process.env.OPENWA_SESSION ?? "turnoya", botActivo: true }] });
 
   // ------------------------------------------------------------------------
   // Historial de turnos (14 días) + turnos activos de hoy
@@ -327,6 +348,7 @@ async function main() {
   }
 
   console.log(`✅ Semilla lista: ${totalTurnos} turnos, 2 locales, 5 colas, 7 ventanillas.`);
+  console.log("   Para 60 días de histórico (M2, M7, M8): npm run db:seed:historico");
   console.log("\nCredenciales de demo:");
   console.log("  Super admin : superadmin@turnoya.pe / admin123");
   console.log("  Admin local : admin@policlinico.pe / admin123");

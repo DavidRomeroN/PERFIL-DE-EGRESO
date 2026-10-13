@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 /** Piezas compartidas por las pantallas de los módulos M1–M8 (estado de carga, error, pestañas, secciones). */
 
 export function useDatos<T>(url: string | null, deps: unknown[] = []) {
+  const clave = JSON.stringify(deps);
   const [datos, setDatos] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -22,8 +23,9 @@ export function useDatos<T>(url: string | null, deps: unknown[] = []) {
     } finally {
       setCargando(false);
     }
+    // `clave` fuerza la recarga cuando cambian dependencias que no están en la URL
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, ...deps]);
+  }, [url, clave]);
   useEffect(() => {
     void recargar();
   }, [recargar]);
@@ -101,7 +103,7 @@ export function Tabla({ columnas, filas, vacio }: { columnas: string[]; filas: R
     <div className="overflow-x-auto rounded-xl border">
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-          <tr>{columnas.map((c) => <th key={c} scope="col" className="px-3 py-2 font-medium">{c}</th>)}</tr>
+          <tr>{columnas.map((c, i) => <th key={`${i}-${c}`} scope="col" className="px-3 py-2 font-medium">{c}</th>)}</tr>
         </thead>
         <tbody>
           {filas.map((f, i) => (
