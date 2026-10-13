@@ -8,7 +8,7 @@ import "dotenv/config";
 import { PrismaClient, type EstadoTurno, type CanalTurno } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
-import { cifrar, generarToken, hashTelefono } from "../src/lib/crypto";
+import { cifrar, enmascararTelefono, generarToken, hashTelefono } from "../src/lib/crypto";
 import { renderTurnoProximo } from "../src/lib/whatsapp";
 
 const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -36,13 +36,15 @@ function horaLima(iso: string, h: number, m: number, s = 0) {
   return new Date(`${iso}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}-05:00`);
 }
 
-const NOMBRES = ["María", "José", "Ana", "Luis", "Rosa", "Carlos", "Juana", "Pedro", "Lucía", "Jorge", "Elena", "Raúl", "Flor", "Víctor", "Yesenia", "Wilber", "Nancy", "Edwin", "Sonia", "Rubén"];
-const APELLIDOS = ["Quispe", "Mamani", "Condori", "Apaza", "Huanca", "Choque", "Flores", "Ccama", "Calsina", "Pari", "Ticona", "Chura", "Vilca", "Larico", "Sucasaire"];
+// Únicas personas de ejemplo que hacen fila en la demo
+const PERSONAS = [
+  { nombre: "Jhan Logan", tel: "+51912067030" },
+  { nombre: "Nick Saim", tel: "+51958787651" },
+  { nombre: "David Romero", tel: "+51940893552" },
+];
 
 function clienteFalso() {
-  const nombre = `${elegir(NOMBRES)} ${elegir(APELLIDOS)}`;
-  const tel = `+519${entre(10000000, 99999999)}`;
-  return { nombre, tel };
+  return elegir(PERSONAS);
 }
 
 // --------------------------------------------------------------------------
@@ -203,19 +205,24 @@ async function main() {
   const ahora = new Date();
   const clientesCache = new Map<string, number>();
 
-  async function crearCliente(conTelefono: boolean) {
+  // Un celular solo puede tener un turno activo por cola: si esa persona ya está activa en la cola, va sin celular
+  const activosHoy = new Set<string>();
+  async function crearClienteConTel(conTelefono: boolean, colaActiva?: number) {
     const { nombre, tel } = clienteFalso();
-    if (!conTelefono) {
-      const c = await prisma.cliente.create({ data: { nombre } });
-      return c.id;
-    }
     const hash = hashTelefono(tel);
+    const clave = `${colaActiva}:${hash}`;
+    if (!conTelefono || (colaActiva !== undefined && activosHoy.has(clave))) {
+      const c = await prisma.cliente.create({ data: { nombre } });
+      return { id: c.id, tel: null };
+    }
+    if (colaActiva !== undefined) activosHoy.add(clave);
     const cached = clientesCache.get(hash);
-    if (cached) return cached;
+    if (cached) return { id: cached, tel };
     const c = await prisma.cliente.create({ data: { nombre, telefonoHash: hash, telefonoCifrado: cifrar(tel) } });
     clientesCache.set(hash, c.id);
-    return c.id;
+    return { id: c.id, tel };
   }
+  const crearCliente = async (conTelefono: boolean, colaActiva?: number) => (await crearClienteConTel(conTelefono, colaActiva)).id;
 
   let totalTurnos = 0;
   const turnosData: Parameters<typeof prisma.turno.create>[0]["data"][] = [];
@@ -319,7 +326,7 @@ async function main() {
       await prisma.turno.create({
         data: {
           localId: h.cfg.cola.localId, colaId: h.cfg.cola.id, numero, codigo: `${h.cfg.cola.prefijo}-${String(numero).padStart(3, "0")}`, token: generarToken(10),
-          clienteId: await crearCliente(true), estado: "LLAMADO", ventanillaId: h.cfg.ventanillas[0].id, canal: "QR", fecha: fechaADate(hoyISO),
+          clienteId: await crearCliente(true, h.cfg.cola.id), estado: "LLAMADO", ventanillaId: h.cfg.ventanillas[0].id, canal: "QR", fecha: fechaADate(hoyISO),
           emitidoAt: emitido, avisadoAt: new Date(ahora.getTime() - 5 * 60000), llamadoAt: new Date(ahora.getTime() - entre(1, 3) * 60000),
         },
       });
@@ -329,16 +336,17 @@ async function main() {
       const emitido = new Date(ahora.getTime() - (h.enEspera - i) * 3 * 60000 - entre(0, 50) * 1000);
       const canal: CanalTurno = i % 3 === 2 ? "TICKET" : "QR";
       const avisado = i < 2; // los dos primeros ya fueron avisados
+      const cliente = await crearClienteConTel(canal === "QR", h.cfg.cola.id);
       const t = await prisma.turno.create({
         data: {
           localId: h.cfg.cola.localId, colaId: h.cfg.cola.id, numero, codigo: `${h.cfg.cola.prefijo}-${String(numero).padStart(3, "0")}`, token: generarToken(10),
-          clienteId: await crearCliente(canal === "QR"), estado: avisado ? "AVISADO" : "EMITIDO", canal, fecha: fechaADate(hoyISO), emitidoAt: emitido,
+          clienteId: cliente.id, estado: avisado ? "AVISADO" : "EMITIDO", canal, fecha: fechaADate(hoyISO), emitidoAt: emitido,
           avisadoAt: avisado ? new Date(ahora.getTime() - 60000) : null,
         },
       });
-      if (avisado && canal === "QR") {
+      if (avisado && cliente.tel) {
         await prisma.notificacion.create({
-          data: { turnoId: t.id, tipo: "WHATSAPP", destino: "+51 9** *** 123", plantilla: "turno_proximo", estado: "LEIDO", enviadoAt: new Date(ahora.getTime() - 60000),
+          data: { turnoId: t.id, tipo: "WHATSAPP", destino: enmascararTelefono(cliente.tel), plantilla: "turno_proximo", estado: "LEIDO", enviadoAt: new Date(ahora.getTime() - 60000),
             mensaje: renderTurnoProximo({ codigo: t.codigo, local: h.cfg.cola.localId === poli.id ? poli.nombreComercial : julsa.nombreComercial, faltan: i, url: `${appUrl}/t/${t.token}` }) },
         });
       }
