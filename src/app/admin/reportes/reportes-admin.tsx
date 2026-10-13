@@ -58,7 +58,7 @@ export function ReportesAdmin() {
       </PageHeader>
 
       {/* Filtros */}
-      <div className="mb-6 flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+      <div className="mb-6 flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-4 shadow-soft">
         <div className="space-y-1">
           <Label htmlFor="desde" className="text-xs">Desde</Label>
           <Input id="desde" type="date" value={desde} max={hasta} onChange={(e) => setDesde(e.target.value)} className="h-9 w-40" />
@@ -91,7 +91,7 @@ export function ReportesAdmin() {
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <section className="rounded-2xl border bg-card p-5 shadow-sm">
+            <section className="rounded-2xl border bg-card p-5 shadow-soft">
               <h2 className="font-semibold">Turnos y abandonos por día</h2>
               <div className="mt-3 h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -114,7 +114,7 @@ export function ReportesAdmin() {
               </div>
             </section>
 
-            <section className="rounded-2xl border bg-card p-5 shadow-sm">
+            <section className="rounded-2xl border bg-card p-5 shadow-soft">
               <h2 className="font-semibold">Espera promedio por día (min)</h2>
               <div className="mt-3 h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -129,7 +129,7 @@ export function ReportesAdmin() {
               </div>
             </section>
 
-            <section className="rounded-2xl border bg-card p-5 shadow-sm">
+            <section className="rounded-2xl border bg-card p-5 shadow-soft">
               <h2 className="font-semibold">Demanda por hora del día</h2>
               <p className="text-xs text-muted-foreground">Llegadas acumuladas en el periodo y espera promedio por franja.</p>
               <div className="mt-3 h-64">
@@ -148,7 +148,7 @@ export function ReportesAdmin() {
               </div>
             </section>
 
-            <section className="rounded-2xl border bg-card p-5 shadow-sm">
+            <section className="rounded-2xl border bg-card p-5 shadow-soft">
               <h2 className="font-semibold">Por cola</h2>
               <Table>
                 <TableHeader>
@@ -176,7 +176,7 @@ export function ReportesAdmin() {
           </div>
 
           {/* Detalle */}
-          <section className="mt-6 rounded-2xl border bg-card shadow-sm">
+          <section className="mt-6 rounded-2xl border bg-card shadow-soft">
             <div className="flex items-center justify-between border-b px-5 py-4">
               <div>
                 <h2 className="font-semibold">Detalle de turnos</h2>

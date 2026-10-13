@@ -3,18 +3,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-transparent text-sm font-medium transition-all outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-transparent text-sm font-medium outline-none select-none transition-[scale,background-color,border-color,color,box-shadow,opacity] duration-160 ease-out focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
-        outline: "border-border bg-background hover:bg-muted hover:text-foreground",
+        default: "bg-primary text-primary-foreground shadow-soft inset-ring inset-ring-white/10 hover:bg-primary/90",
+        outline: "border-border bg-background shadow-xs hover:border-foreground/15 hover:bg-muted hover:text-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/70",
         ghost: "hover:bg-muted hover:text-foreground",
-        destructive: "bg-destructive text-white shadow-sm hover:bg-destructive/90",
-        success: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-600/90",
-        warning: "bg-amber-500 text-white shadow-sm hover:bg-amber-500/90",
-        link: "text-primary underline-offset-4 hover:underline",
+        destructive: "bg-destructive text-white shadow-soft hover:bg-destructive/90",
+        success: "bg-emerald-600 text-white shadow-soft hover:bg-emerald-600/90",
+        warning: "bg-amber-500 text-white shadow-soft hover:bg-amber-500/90",
+        link: "text-primary underline-offset-4 active:scale-100 hover:underline",
       },
       size: {
         default: "h-10 px-4",

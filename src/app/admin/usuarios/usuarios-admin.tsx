@@ -84,11 +84,11 @@ export function UsuariosAdmin({ miId }: { miId: number }) {
       </PageHeader>
 
       {items === null ? (
-        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Cargando…</div>
+        <div className="space-y-2.5" aria-busy="true" aria-label="Cargando"><div className="skeleton h-12 rounded-2xl" /><div className="skeleton h-12 rounded-2xl opacity-80" /><div className="skeleton h-12 rounded-2xl opacity-60" /></div>
       ) : items.length === 0 ? (
         <EmptyState icon={Users} title="Sin usuarios" description="Crea cuentas para tu equipo." />
       ) : (
-        <div className="rounded-2xl border bg-card shadow-sm">
+        <div className="rounded-2xl border bg-card shadow-soft">
           <Table>
             <TableHeader>
               <TableRow>

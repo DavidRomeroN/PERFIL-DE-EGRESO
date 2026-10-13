@@ -92,7 +92,7 @@ export function ConexionOpenWA() {
   const toneClass = { ok: "bg-emerald-100 text-emerald-800", warn: "bg-amber-100 text-amber-900", bad: "bg-rose-100 text-rose-800", muted: "bg-slate-100 text-slate-700" }[info.tone];
 
   return (
-    <section className="rounded-2xl border bg-card shadow-sm">
+    <section className="rounded-2xl border bg-card shadow-soft">
       <div className="flex flex-wrap items-center gap-3 border-b px-5 py-4">
         <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white"><Smartphone className="size-5" /></span>
         <div className="min-w-0 flex-1">
@@ -114,11 +114,11 @@ export function ConexionOpenWA() {
         <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Consultando OpenWA…</div>
       ) : !st.configurado ? (
         <div className="p-5 text-sm">
-          <p className="flex items-start gap-2 text-amber-900"><AlertTriangle className="mt-0.5 size-4 shrink-0" /> Define <code className="rounded bg-muted px-1">OPENWA_API_KEY</code> (y opcionalmente <code className="rounded bg-muted px-1">OPENWA_URL</code>) en el archivo <code className="rounded bg-muted px-1">.env</code>, levanta el gateway con <code className="rounded bg-muted px-1">docker compose --profile whatsapp up -d</code> y pon <code className="rounded bg-muted px-1">WHATSAPP_PROVIDER=openwa</code>.</p>
+          <p className="flex items-start gap-2 text-amber-900"><AlertTriangle className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0">Define <code className="rounded bg-muted px-1">OPENWA_API_KEY</code> (y opcionalmente <code className="rounded bg-muted px-1">OPENWA_URL</code>) en el archivo <code className="rounded bg-muted px-1">.env</code>, levanta el gateway con <code className="rounded bg-muted px-1 break-all">docker compose --profile whatsapp up -d</code> y pon <code className="rounded bg-muted px-1">WHATSAPP_PROVIDER=openwa</code>.</span></p>
         </div>
       ) : !st.alcanzable ? (
         <div className="p-5 text-sm">
-          <p className="flex items-start gap-2 text-rose-800"><WifiOff className="mt-0.5 size-4 shrink-0" /> No se pudo conectar con OpenWA en <span className="font-mono">{st.url}</span>. {st.error && <span className="text-muted-foreground">({st.error})</span>}</p>
+          <p className="flex items-start gap-2 text-rose-800"><WifiOff className="mt-0.5 size-4 shrink-0" /> <span className="min-w-0 break-words">No se pudo conectar con OpenWA en <span className="font-mono">{st.url}</span>. {st.error && <span className="text-muted-foreground">({st.error})</span>}</span></p>
           <p className="mt-2 text-muted-foreground">Inicia el gateway: <code className="rounded bg-muted px-1">docker compose --profile whatsapp up -d openwa</code> y vuelve a intentar.</p>
           <Button className="mt-3" variant="outline" size="sm" onClick={() => cargar(false)}><RefreshCw className="size-4" /> Reintentar</Button>
         </div>
@@ -201,7 +201,7 @@ export function ConexionOpenWA() {
             {st.proveedor !== "openwa" && (
               <p className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-amber-900">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                El proveedor activo es <b className="mx-1">{st.proveedor}</b>: los avisos de turno aún no salen por este número. Cambia <code className="mx-1 rounded bg-white/70 px-1">WHATSAPP_PROVIDER=openwa</code> y reinicia la app.
+                <span className="min-w-0">El proveedor activo es <b className="mx-1">{st.proveedor}</b>: los avisos de turno aún no salen por este número. Cambia <code className="mx-1 rounded bg-white/70 px-1">WHATSAPP_PROVIDER=openwa</code> y reinicia la app.</span>
               </p>
             )}
           </div>

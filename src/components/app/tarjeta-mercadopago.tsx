@@ -86,7 +86,7 @@ export function TarjetaMercadoPago({ monto, email, onPagar, deshabilitado }: { m
   if (!publicKey) return <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Los pagos no están configurados (falta NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY).</p>;
   return (
     <div>
-      {!listo && !error && <div className="h-40 animate-pulse rounded-xl bg-muted" aria-busy="true" aria-label="Cargando formulario de pago" />}
+      {!listo && !error && <div className="skeleton h-40 rounded-xl" aria-busy="true" aria-label="Cargando formulario de pago" />}
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
       <div id={id} />
       <p className="mt-2 text-center text-xs text-muted-foreground">Pago seguro procesado por Mercado Pago. TurnoYa no guarda los datos de tu tarjeta.</p>

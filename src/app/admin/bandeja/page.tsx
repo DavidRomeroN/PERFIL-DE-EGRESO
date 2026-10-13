@@ -71,7 +71,7 @@ export default function Page() {
               <Estado cargando={msgs.cargando} error={msgs.error}>
                 <div className="max-h-[50vh] space-y-2 overflow-y-auto">
                   {msgs.datos?.map((m) => (
-                    <div key={m.id} className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.direccion === "ENTRANTE" ? "bg-muted" : "ml-auto bg-teal-700 text-white"}`}>
+                    <div key={m.id} className={`max-w-[80%] animate-pop whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.direccion === "ENTRANTE" ? "origin-bottom-left rounded-bl-sm bg-muted" : "ml-auto origin-bottom-right rounded-br-sm bg-teal-700 text-white"}`}>
                       {m.texto}
                       <span className="mt-1 block text-[10px] opacity-70">{fmtFechaHora(m.createdAt)}{m.autor && m.autor !== "bot" && m.direccion === "SALIENTE" ? " · persona" : ""}</span>
                     </div>
@@ -95,7 +95,7 @@ export default function Page() {
       {tab === "probar" && (
         <Seccion titulo="Probar chatbot" descripcion="Ejecuta la conversación sin enviar mensajes ni crear turnos.">
           <div className="max-h-[50vh] space-y-2 overflow-y-auto">
-            {sim.chat.map((m, i) => <div key={i} className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.de === "yo" ? "ml-auto bg-teal-700 text-white" : "bg-muted"}`}>{m.t}</div>)}
+            {sim.chat.map((m, i) => <div key={i} className={`max-w-[80%] animate-pop whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.de === "yo" ? "ml-auto origin-bottom-right rounded-br-sm bg-teal-700 text-white" : "origin-bottom-left rounded-bl-sm bg-muted"}`}>{m.t}</div>)}
           </div>
           <form className="mt-3 flex gap-2" onSubmit={async (e) => {
             e.preventDefault();

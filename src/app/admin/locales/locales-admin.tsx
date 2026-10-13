@@ -151,7 +151,7 @@ export function LocalesAdmin() {
       {/* Planes */}
       <div className="mt-6 grid gap-3 md:grid-cols-3">
         {planes.map((p) => (
-          <div key={p.id} className="rounded-2xl border bg-card p-4 shadow-sm">
+          <div key={p.id} className="rounded-2xl border bg-card p-4 shadow-soft">
             <div className="flex items-center justify-between">
               <p className="font-semibold">{p.nombre}</p>
               <Badge variant="outline">{Number(p.precioMensual) === 0 ? "Gratis" : `${soles(Number(p.precioMensual))}/mes`}</Badge>
@@ -165,11 +165,11 @@ export function LocalesAdmin() {
       </div>
 
       {locales === null ? (
-        <div className="mt-6 flex items-center gap-2 text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Cargando…</div>
+        <div className="mt-6 space-y-2.5" aria-busy="true" aria-label="Cargando"><div className="skeleton h-12 rounded-2xl" /><div className="skeleton h-12 rounded-2xl opacity-80" /><div className="skeleton h-12 rounded-2xl opacity-60" /></div>
       ) : locales.length === 0 ? (
         <div className="mt-6"><EmptyState icon={Building2} title="Sin locales" description="Da de alta el primer local." /></div>
       ) : (
-        <div className="mt-6 rounded-2xl border bg-card shadow-sm">
+        <div className="mt-6 rounded-2xl border bg-card shadow-soft">
           <Table>
             <TableHeader>
               <TableRow>

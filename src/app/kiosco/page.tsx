@@ -229,15 +229,16 @@ export default function Kiosco() {
   }
 
   const color = config?.local.color ?? "#0f766e";
-  const boton = "min-h-16 rounded-3xl px-6 text-2xl font-semibold text-white shadow-lg active:scale-[0.98]";
+  const boton = "min-h-16 rounded-3xl px-6 text-2xl font-semibold text-white shadow-lifted transition-[scale,opacity] duration-150 ease-out active:scale-[0.98] disabled:opacity-50";
+  const opcion = "min-h-20 rounded-3xl border-2 bg-white text-2xl transition-[scale,background-color,border-color] duration-150 ease-out active:scale-[0.98] active:bg-muted";
 
   if (!listo) return null;
   if (revocado || !token) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-5 p-8 text-center">
+      <main className="mx-auto flex min-h-dvh w-full max-w-md animate-enter-soft flex-col justify-center gap-5 p-8 text-center">
         <h1 className="text-3xl font-bold">{revocado ? "Dispositivo no autorizado" : "Emparejar kiosco"}</h1>
         <p className="text-lg text-muted-foreground">Ingresa el código de 6 dígitos generado en Admin → Kiosco.</p>
-        <input inputMode="numeric" maxLength={6} aria-label="Código de emparejamiento" value={codigoPar} onChange={(e) => setCodigoPar(e.target.value.replace(/\D/g, ""))} className="h-20 rounded-2xl border text-center font-mono text-4xl tracking-[0.4em]" />
+        <input inputMode="numeric" maxLength={6} aria-label="Código de emparejamiento" value={codigoPar} onChange={(e) => setCodigoPar(e.target.value.replace(/\D/g, ""))} className="h-20 w-full min-w-0 rounded-2xl border text-center font-mono text-4xl tracking-[0.4em]" />
         {error && <p role="alert" className="text-rose-700">{error}</p>}
         <button type="button" className={boton} style={{ background: color }} disabled={codigoPar.length !== 6} onClick={emparejar}>Emparejar</button>
       </main>
@@ -245,28 +246,34 @@ export default function Kiosco() {
   }
 
   return (
-    <main className="flex min-h-screen select-none flex-col bg-white" onContextMenu={(e) => e.preventDefault()}>
-      <style>{`@media print { body * { visibility: hidden } #ticket, #ticket * { visibility: visible } #ticket { position: absolute; left: 0; top: 0; width: 72mm } @page { size: 80mm auto; margin: 0 } }`}</style>
+    <main className="flex min-h-dvh select-none flex-col bg-white" style={{ ["--local" as string]: color }} onContextMenu={(e) => e.preventDefault()}>
+      <style>{`@media print { *, *::before, *::after { animation: none !important; transition: none !important } body * { visibility: hidden } #ticket, #ticket * { visibility: visible } #ticket { position: absolute; left: 0; top: 0; width: 72mm } @page { size: 80mm auto; margin: 0 } }`}</style>
       {conexion === "OFFLINE" && <p role="status" className="bg-amber-300 p-3 text-center text-lg font-medium text-amber-950">Sin conexión: tu ticket es provisional; tu número definitivo aparecerá en la pantalla.</p>}
       <header className="flex items-center justify-between px-8 py-5" style={{ background: color }}>
         <button type="button" className="text-left text-2xl font-bold text-white" onClick={() => { setToques((t) => t + 1); if (toques + 1 >= 5) { setToques(0); setPantalla("mantenimiento"); } }}>{config?.local.nombre ?? "TurnoYa"}</button>
-        <span className="text-sm text-white/80" aria-label="Estado de conexión">{conexion === "ONLINE" ? "●" : conexion === "OFFLINE" ? "○" : "◐"}{nPend ? ` · ${nPend} pendientes` : ""}</span>
+        <span className="flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm text-white/90" role="status" aria-label="Estado de conexión">
+          <span className="relative flex size-2">
+            {conexion === "ONLINE" && <span className="absolute inset-0 animate-live rounded-full bg-emerald-300" />}
+            <span className={`relative size-2 rounded-full ${conexion === "ONLINE" ? "bg-emerald-300" : conexion === "OFFLINE" ? "bg-rose-300" : "bg-amber-300"}`} />
+          </span>
+          {conexion === "ONLINE" ? "En línea" : conexion === "OFFLINE" ? "Sin conexión" : "Conexión inestable"}{nPend ? ` · ${nPend} pendientes` : ""}
+        </span>
       </header>
 
-      <section className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
+      <section key={pantalla} className="flex flex-1 animate-[enter_350ms_var(--ease-out)_backwards] flex-col items-center justify-center gap-6 p-8">
         {pantalla === "inicio" && (
           <>
             {config && !config.abierto && <p className="text-2xl text-muted-foreground">{config.mensajeCerrado}</p>}
-            <button type="button" className={`${boton} h-48 w-full max-w-xl text-4xl`} style={{ background: color }} onClick={() => setPantalla("servicio")}>Toque para sacar turno</button>
-            {config?.citas && <button type="button" className="min-h-16 rounded-3xl border-2 px-8 text-2xl" onClick={() => setPantalla("cita")}>Tengo una cita</button>}
+            <button type="button" className={`${boton} h-48 w-full max-w-xl animate-pulse-ring text-4xl`} style={{ background: color }} onClick={() => setPantalla("servicio")}>Toque para sacar turno</button>
+            {config?.citas && <button type="button" className={`${opcion} min-h-16 px-8`} onClick={() => setPantalla("cita")}>Tengo una cita</button>}
           </>
         )}
 
         {pantalla === "servicio" && (
           <div className="grid w-full max-w-2xl gap-4">
             <h1 className="text-center text-3xl font-bold">Elige el servicio</h1>
-            {config?.colas.map((c) => (
-              <button key={c.id} type="button" className="min-h-24 rounded-3xl border-2 p-5 text-left text-3xl font-semibold active:bg-muted" onClick={() => { setCola(c); if (config.categorias.length) setPantalla("tipo"); else void imprimir(null); }}>
+            {config?.colas.map((c, i) => (
+              <button key={c.id} type="button" style={{ ["--i" as string]: i }} className={`${opcion} min-h-24 animate-enter stagger p-5 text-left text-3xl font-semibold`} onClick={() => { setCola(c); if (config.categorias.length) setPantalla("tipo"); else void imprimir(null); }}>
                 {c.nombre}{c.descripcion && <span className="block text-lg font-normal text-muted-foreground">{c.descripcion}</span>}
               </button>
             ))}
@@ -277,8 +284,8 @@ export default function Kiosco() {
         {pantalla === "tipo" && (
           <div className="grid w-full max-w-2xl gap-4">
             <h1 className="text-center text-3xl font-bold">Tipo de atención</h1>
-            <button type="button" className="min-h-20 rounded-3xl border-2 text-2xl" onClick={() => imprimir(null)}>General</button>
-            {config?.categorias.map((c) => <button key={c.codigo} type="button" className="min-h-20 rounded-3xl border-2 text-2xl" onClick={() => imprimir(c.codigo)}>{c.nombre}</button>)}
+            <button type="button" className={`${opcion} animate-enter stagger`} onClick={() => imprimir(null)}>General</button>
+            {config?.categorias.map((c, i) => <button key={c.codigo} type="button" style={{ ["--i" as string]: i + 1 }} className={`${opcion} animate-enter stagger`} onClick={() => imprimir(c.codigo)}>{c.nombre}</button>)}
             <p className="text-center text-lg text-muted-foreground">La atención preferente se verifica en ventanilla.</p>
           </div>
         )}
@@ -286,7 +293,7 @@ export default function Kiosco() {
         {pantalla === "cita" && (
           <div className="grid w-full max-w-md gap-4 text-center">
             <h1 className="text-3xl font-bold">Check-in de cita</h1>
-            <input aria-label="Código de la cita" maxLength={6} value={codigoCita} onChange={(e) => setCodigoCita(e.target.value.toUpperCase())} className="h-20 rounded-2xl border text-center font-mono text-4xl tracking-[0.3em]" />
+            <input aria-label="Código de la cita" maxLength={6} value={codigoCita} onChange={(e) => setCodigoCita(e.target.value.toUpperCase())} className="h-20 w-full min-w-0 rounded-2xl border text-center font-mono text-4xl tracking-[0.3em]" />
             {error && <p role="alert" className="text-lg text-rose-700">{error}</p>}
             <button type="button" className={boton} style={{ background: color }} onClick={checkinCita} disabled={codigoCita.length < 6}>Confirmar llegada</button>
             <button type="button" className="text-xl underline" onClick={() => setPantalla("inicio")}>Volver</button>
@@ -296,7 +303,7 @@ export default function Kiosco() {
         {pantalla === "ticket" && ticket && (
           <div id="ticket" className="flex flex-col items-center gap-3 text-center">
             <p className="text-2xl">{ticket.cola}</p>
-            <p className="font-mono text-8xl font-bold" style={{ color }}>{ticket.codigo}</p>
+            <p className="animate-pop font-mono text-8xl font-bold" style={{ color }}>{ticket.codigo}</p>
             {ticket.provisional && <p className="max-w-sm text-lg text-amber-800">Ticket provisional: tu número definitivo aparecerá en la pantalla. Conserva este papel.</p>}
             <QRCodeSVG value={ticket.url} size={180} />
             <p className="text-lg">Escanea para seguir tu turno</p>
@@ -307,7 +314,7 @@ export default function Kiosco() {
         {pantalla === "mantenimiento" && (
           <div className="grid w-full max-w-md gap-3 text-center">
             <h1 className="text-2xl font-bold">Mantenimiento</h1>
-            <input inputMode="numeric" aria-label="PIN" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} className="h-14 rounded-xl border text-center font-mono text-2xl" />
+            <input inputMode="numeric" aria-label="PIN" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} className="h-14 w-full min-w-0 rounded-xl border text-center font-mono text-2xl" />
             <button type="button" className="rounded-xl border p-3" onClick={async () => {
               const r = await llamar<{ valido: boolean }>("/api/v1/kiosco/mantenimiento", { pin }).catch(() => ({ valido: false }));
               setError(r.valido ? "PIN correcto" : "PIN incorrecto");

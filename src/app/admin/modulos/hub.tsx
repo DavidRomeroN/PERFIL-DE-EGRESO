@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/app/page-header";
 import { accion } from "@/components/app/modulo-ui";
 import { api } from "@/lib/fetcher";
+import { cn } from "@/lib/utils";
 
 interface Modulo {
   codigo: string;
@@ -40,8 +41,8 @@ export function HubModulos({ inicial, plan }: { inicial: Modulo[]; plan: string 
     <div>
       <PageHeader title="Módulos" description={`Plan ${plan}. Un módulo apagado deja el sistema exactamente como el núcleo original.`} />
       <ul className="grid gap-4 md:grid-cols-2">
-        {mods.map((m) => (
-          <li key={m.codigo} className="flex flex-col rounded-2xl border bg-card p-5 shadow-sm">
+        {mods.map((m, i) => (
+          <li key={m.codigo} style={{ ["--i" as string]: i }} className={cn("flex animate-enter stagger flex-col rounded-2xl border bg-card p-5 shadow-soft transition-[border-color,box-shadow] duration-300", m.habilitado && "border-teal-500/40 shadow-lifted")}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-muted-foreground">{m.codigo} · {m.integrante}</p>
@@ -58,7 +59,7 @@ export function HubModulos({ inicial, plan }: { inicial: Modulo[]; plan: string 
             </div>
             <p className="mt-2 flex-1 text-sm text-muted-foreground">{m.descripcion}</p>
             <div className="mt-4 flex items-center justify-between">
-              <Badge className={m.habilitado ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}>{m.habilitado ? "Activo" : m.incluido ? "Apagado" : "Requiere otro plan"}</Badge>
+              <Badge key={String(m.habilitado)} className={cn("animate-pop", m.habilitado ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground")}>{m.habilitado ? "Activo" : m.incluido ? "Apagado" : "Requiere otro plan"}</Badge>
               {m.habilitado && <Link href={m.ruta} className="inline-flex items-center gap-1 text-sm font-medium text-teal-700 hover:underline">Configurar <ArrowRight className="size-3.5" /></Link>}
             </div>
           </li>

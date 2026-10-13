@@ -48,6 +48,130 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* --- Movimiento y profundidad (tokens del sistema) -------------------
+   Curvas fuertes: las de CSS (ease, ease-out) son demasiado blandas.
+   Entradas y salidas → --ease-out · movimiento en pantalla → --ease-in-out. */
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Sombras tintadas con el azul pizarra del fondo (no negro puro) */
+  --shadow-soft: 0 1px 2px oklch(0.25 0.03 215 / 0.05), 0 2px 8px -2px oklch(0.25 0.03 215 / 0.06);
+  --shadow-lifted: 0 1px 2px oklch(0.25 0.03 215 / 0.05), 0 12px 32px -12px oklch(0.25 0.03 215 / 0.18);
+  --shadow-float: 0 2px 4px oklch(0.25 0.03 215 / 0.04), 0 24px 56px -20px oklch(0.25 0.04 200 / 0.28);
+
+  --animate-enter: enter 420ms var(--ease-out) backwards;
+  --animate-enter-soft: enter-soft 600ms var(--ease-out) backwards;
+  --animate-pop: pop 260ms var(--ease-out) backwards;
+  --animate-shake: shake 360ms var(--ease-out);
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-draw: draw 520ms var(--ease-out) 120ms both;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-drift: drift 18s ease-in-out infinite alternate;
+  --animate-live: live 2s var(--ease-out) infinite;
+  --animate-campana: campana 1.1s var(--ease-out) 0.2s 3;
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  @keyframes enter-soft {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+      filter: blur(4px);
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+  }
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-6px);
+    }
+    40% {
+      transform: translateX(5px);
+    }
+    60% {
+      transform: translateX(-3px);
+    }
+    80% {
+      transform: translateX(2px);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: var(--largo, 48);
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes float {
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  @keyframes drift {
+    from {
+      transform: translate3d(-4%, -2%, 0) scale(1);
+    }
+    to {
+      transform: translate3d(4%, 3%, 0) scale(1.08);
+    }
+  }
+  @keyframes campana {
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+    15% {
+      transform: rotate(14deg);
+    }
+    30% {
+      transform: rotate(-12deg);
+    }
+    45% {
+      transform: rotate(8deg);
+    }
+    60% {
+      transform: rotate(-5deg);
+    }
+    75% {
+      transform: rotate(2deg);
+    }
+  }
+  @keyframes live {
+    0% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    80%,
+    100% {
+      transform: scale(2.6);
+      opacity: 0;
+    }
+  }
+}
+
 :root {
   --background: oklch(0.985 0.003 200);
   --foreground: oklch(0.18 0.02 220);
@@ -123,10 +247,33 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
   }
   html {
     @apply font-sans;
     scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  /* Una grilla sin columnas explícitas no debe crecer más que su contenedor (en el celular, un gráfico,
+     un <code> largo o una fila de botones ensanchaban la columna implícita y la página se desbordaba).
+     Especificidad cero: cualquier grid-cols-* la reemplaza. */
+  :where(.grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
+  /* Anillo de foco que aparece con suavidad (solo teclado) */
+  :focus-visible {
+    transition: outline-offset 160ms var(--ease-out);
   }
 }
 
@@ -141,14 +288,86 @@
       linear-gradient(to bottom, oklch(0.9 0.01 200 / 0.5) 1px, transparent 1px);
     background-size: 32px 32px;
   }
+  /* Grano sutil para que los fondos planos no se vean estériles */
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  /* Escalonado: cada hijo define --i (0, 1, 2…) y entra 50 ms después del anterior */
+  .stagger {
+    animation-delay: calc(var(--i, 0) * 50ms);
+  }
+  /* Respuesta al presionar: el elemento "escucha" al usuario */
+  .press {
+    transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out);
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  /* Elevación al pasar el mouse, solo en dispositivos con puntero real */
+  .lift {
+    transition-property: transform, box-shadow, border-color, background-color;
+    transition-duration: 220ms;
+    transition-timing-function: var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .lift:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lifted);
+    }
+  }
+  /* Esqueleto con brillo que recorre la forma */
+  .skeleton {
+    background: linear-gradient(90deg, var(--muted) 0%, color-mix(in oklch, var(--muted) 55%, white) 50%, var(--muted) 100%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+}
+
+/* Titular enmascarado: cada línea sube desde detrás de su propia línea base (landing) */
+.linea {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.linea > span {
+  display: block;
+  animation: linea-sube 900ms var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 110ms + 120ms);
+}
+@keyframes crece {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes linea-sube {
+  from {
+    transform: translateY(105%);
+  }
+}
+
+/* Revelado al hacer scroll (componente <Revelar>): transición, no keyframes, para que sea interrumpible */
+[data-revelar] {
+  transition:
+    opacity 700ms var(--ease-out),
+    transform 700ms var(--ease-out),
+    filter 700ms var(--ease-out);
+  transition-delay: var(--retraso, 0ms);
+}
+[data-revelar="oculto"] {
+  opacity: 0;
+  transform: translateY(18px);
+  filter: blur(4px);
 }
 
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--local, var(--primary)) 45%, transparent);
   }
   70% {
     box-shadow: 0 0 0 18px transparent;
@@ -158,7 +377,7 @@
   }
 }
 .animate-pulse-ring {
-  animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse-ring 2s var(--ease-out) infinite;
 }
 
 @keyframes flash-call {
@@ -168,12 +387,12 @@
     filter: brightness(1);
   }
   50% {
-    transform: scale(1.03);
-    filter: brightness(1.15);
+    transform: scale(1.02);
+    filter: brightness(1.12);
   }
 }
 .animate-flash-call {
-  animation: flash-call 0.9s ease-in-out 4;
+  animation: flash-call 0.9s var(--ease-in-out) 4;
 }
 
 @keyframes marquee {
@@ -186,6 +405,45 @@
 }
 .animate-marquee {
   animation: marquee 28s linear infinite;
+}
+
+/* Movimiento reducido: menos y más suave, no cero. Se conservan los fundidos de opacidad. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-enter,
+  .animate-enter-soft,
+  .animate-pop {
+    animation-name: fade-in-only;
+  }
+  .animate-float,
+  .animate-drift,
+  .animate-marquee,
+  .animate-flash-call,
+  .animate-pulse-ring,
+  .animate-live,
+  .animate-campana,
+  .animate-shake,
+  .skeleton {
+    animation: none;
+  }
+  [data-revelar="oculto"] {
+    transform: none;
+    filter: none;
+  }
+  .linea > span {
+    animation-name: fade-in-only;
+  }
+  .press:active:not(:disabled),
+  .lift:hover {
+    transform: none;
+  }
+}
+@keyframes fade-in-only {
+  from {
+    opacity: 0;
+  }
 }
 
 @media print {

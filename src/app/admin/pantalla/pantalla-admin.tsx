@@ -68,7 +68,7 @@ export function PantallaAdmin({ local, claveTv }: { local: LocalCfg; claveTv?: s
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         {/* Personalización */}
-        <section className="rounded-2xl border bg-card p-6 shadow-sm">
+        <section className="rounded-2xl border bg-card p-6 shadow-soft">
           <h2 className="font-semibold">Personalización</h2>
           <div className="mt-4 grid gap-4">
             <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
@@ -137,7 +137,7 @@ export function PantallaAdmin({ local, claveTv }: { local: LocalCfg; claveTv?: s
 
         {/* QR */}
         <aside className="space-y-4">
-          <div className="rounded-2xl border bg-card p-6 shadow-sm">
+          <div className="rounded-2xl border bg-card p-6 shadow-soft">
             <h2 className="font-semibold">Código QR del local</h2>
             <p className="text-xs text-muted-foreground">Imprímelo y colócalo en la entrada, recepción y la sala.</p>
             <div ref={qrRef} className="mt-4 flex justify-center rounded-2xl border bg-white p-4">

@@ -19,11 +19,11 @@ import {
   Timer,
   Users,
   UserX,
-  Wifi,
-  WifiOff,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { Logo } from "@/components/brand/logo";
+import { EnVivo, Numero } from "@/components/app/motion";
 import { UserMenu } from "@/components/app/user-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,27 @@ import { useSonido } from "@/hooks/use-sonido";
 import { PanelModulos } from "./panel-modulos";
 
 type Snap = SnapshotLocal;
+
+const EASE = [0.23, 1, 0.32, 1] as const;
+
+/** Esqueleto con la forma del panel mientras llega el primer estado. */
+function PanelCargando() {
+  return (
+    <div className="flex min-h-dvh flex-col bg-muted/30" aria-busy="true" aria-label="Cargando panel">
+      <div className="h-16 border-b bg-card" />
+      <div className="mx-auto grid w-full max-w-7xl flex-1 gap-6 p-4 lg:grid-cols-[1.1fr_0.9fr] lg:p-6">
+        <div className="space-y-5">
+          <div className="skeleton h-52 rounded-3xl" />
+          <div className="skeleton h-24 rounded-3xl opacity-80" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-20 rounded-2xl opacity-70" />)}
+          </div>
+        </div>
+        <div className="skeleton h-96 rounded-3xl opacity-80" />
+      </div>
+    </div>
+  );
+}
 
 export function PanelVentanilla({ session, slug, locales }: { session: Session; slug: string; locales: { slug: string; nombreComercial: string }[] }) {
   const router = useRouter();
@@ -156,20 +177,14 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
     }
   }
 
-  if (!snap) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 size-5 animate-spin" /> Cargando panel…
-      </div>
-    );
-  }
+  if (!snap) return <PanelCargando />;
 
   const color = snap.local.colorPrimario;
 
   return (
     <div className="flex min-h-screen flex-col bg-muted/30" style={{ ["--local" as string]: color }}>
       {/* Barra superior */}
-      <header className="sticky top-0 z-30 border-b bg-card/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b bg-card/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
           <div className="flex min-w-0 items-center gap-4">
             <Logo href={esAdmin ? "/admin" : "/panel"} />
@@ -200,9 +215,7 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
                 <Link href="/admin"><LayoutDashboard className="size-4" /></Link>
               </Button>
             )}
-            <span className={cn("hidden items-center gap-1 rounded-lg border px-2 py-1 text-xs sm:inline-flex", conexion === "conectado" ? "text-emerald-700" : "text-amber-700")}>
-              {conexion === "conectado" ? <Wifi className="size-3.5" /> : <WifiOff className="size-3.5" />} {conexion === "conectado" ? "En vivo" : "Reconectando"}
-            </span>
+            <EnVivo estado={conexion} className="hidden sm:inline-flex" />
             <UserMenu session={session} compact />
           </div>
         </div>
@@ -212,24 +225,32 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
         {/* ---------------- Columna de operación */}
         <section className="space-y-5">
           {/* Turno actual */}
-          <div className={cn("relative overflow-hidden rounded-3xl border bg-card p-6 shadow-sm", actual && "ring-2 ring-[var(--local)]/40")}>
+          <div className={cn("relative animate-enter overflow-hidden rounded-3xl border bg-card p-6 shadow-soft transition-shadow duration-300", actual && "ring-2 ring-[var(--local)]/40")}>
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{ventanilla?.nombre ?? "Ventanilla"} · turno actual</p>
               {actual && (
-                <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium tabular", excedido ? "bg-rose-100 text-rose-800" : "bg-muted text-muted-foreground")}>
+                <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium tabular-nums transition-colors duration-500", excedido ? "bg-rose-100 text-rose-800" : "bg-muted text-muted-foreground")}>
                   <Timer className="size-3.5" /> {Math.floor(segundosLlamado / 60)}:{String(segundosLlamado % 60).padStart(2, "0")}
                 </span>
               )}
             </div>
 
+            <AnimatePresence mode="wait" initial={false}>
             {actual ? (
-              <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-center">
+              <motion.div
+                key={actual.id}
+                initial={{ opacity: 0, y: 14, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-center"
+              >
                 <div className="text-center sm:text-left">
                   <p className="font-mono text-7xl font-bold leading-none tracking-tight" style={{ color }}>{actual.codigo}</p>
                   <p className="mt-2 text-lg font-medium">{actual.nombre ?? "Cliente sin nombre"}</p>
                   <p className="text-sm text-muted-foreground">{actual.cola} · llamado {fmtHora(actual.llamadoAt)}{actual.rellamadas > 0 && ` · ${actual.rellamadas} rellamada${actual.rellamadas > 1 ? "s" : ""}`}</p>
                   {excedido && (
-                    <p className="mt-2 inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700">
+                    <p className="mt-2 inline-flex animate-enter items-center gap-1 rounded-lg bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700">
                       <AlertTriangle className="size-3.5" /> Más de {Math.round(limiteAusencia / 60)} min sin presentarse (RN04). Puedes marcarlo como no se presentó.
                     </p>
                   )}
@@ -245,26 +266,34 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
                     <UserX className="size-5" /> <span className="text-xs font-normal">No se presentó</span>
                   </Button>
                 </div>
-              </div>
+              </motion.div>
             ) : (
-              <div className="mt-4 rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
-                <BellRing className="mx-auto size-8 opacity-40" />
+              <motion.div
+                key="libre"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                className="mt-4 rounded-2xl border border-dashed p-8 text-center text-muted-foreground"
+              >
+                <BellRing className="mx-auto size-8 animate-float opacity-40" />
                 <p className="mt-2">Ventanilla libre. Pulsa <b>Llamar siguiente</b> para atender al próximo turno.</p>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
 
           {/* Botón principal */}
           <Button
             size="xl"
-            className={cn("h-24 w-full rounded-3xl text-2xl shadow-lg", !ocupado && espera.length > 0 && "animate-pulse-ring")}
+            className={cn("h-24 w-full rounded-3xl text-2xl shadow-lifted", !ocupado && espera.length > 0 && "animate-pulse-ring")}
             style={{ background: color }}
             disabled={ocupado || !ventanillaId}
             onClick={llamarSiguiente}
           >
             {ocupado ? <Loader2 className="size-7 animate-spin" /> : <BellRing className="size-7" />}
             Llamar siguiente
-            {espera[0] && <span className="ml-2 rounded-xl bg-white/20 px-3 py-1 font-mono text-xl">{espera[0].codigo}</span>}
+            {espera[0] && <span key={espera[0].id} className="ml-2 animate-pop rounded-xl bg-white/20 px-3 py-1 font-mono text-xl">{espera[0].codigo}</span>}
           </Button>
           <p className="-mt-2 text-center text-xs text-muted-foreground">
             {actual ? "Al llamar al siguiente, el turno actual se marca como atendido automáticamente." : espera.length ? `${espera.length} en espera en ${ventanilla?.cola ? ventanilla.cola.nombre : "todas las colas"}` : "No hay nadie en espera"}
@@ -273,14 +302,14 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
           {/* Métricas del día */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { l: "En espera", v: snap.stats.enEspera, i: Users },
-              { l: "Atendidos hoy", v: snap.stats.atendidos, i: Check },
-              { l: "Espera prom.", v: `${snap.stats.esperaPromedioMin} min`, i: Clock },
-              { l: "Abandono", v: `${snap.stats.tasaAbandono}%`, i: UserX },
-            ].map((m) => (
-              <div key={m.l} className="rounded-2xl border bg-card p-4">
+              { l: "En espera", v: snap.stats.enEspera, s: "", i: Users },
+              { l: "Atendidos hoy", v: snap.stats.atendidos, s: "", i: Check },
+              { l: "Espera prom.", v: snap.stats.esperaPromedioMin, s: " min", i: Clock },
+              { l: "Abandono", v: snap.stats.tasaAbandono, s: "%", i: UserX },
+            ].map((m, i) => (
+              <div key={m.l} className="animate-enter stagger rounded-2xl border bg-card p-4 shadow-soft" style={{ ["--i" as string]: i + 2 }}>
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><m.i className="size-3.5" /> {m.l}</p>
-                <p className="mt-1 text-2xl font-bold tabular">{m.v}</p>
+                <p className="mt-1 text-2xl font-semibold tracking-tight"><Numero valor={m.v} sufijo={m.s} /></p>
               </div>
             ))}
           </div>
@@ -297,23 +326,36 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
 
         {/* ---------------- Columna de cola */}
         <section className="flex flex-col gap-5">
-          <div className="flex-1 rounded-3xl border bg-card shadow-sm">
+          <div className="flex-1 animate-enter overflow-hidden rounded-3xl border bg-card shadow-soft [animation-delay:80ms]">
             <div className="flex items-center justify-between border-b px-5 py-4">
               <div>
                 <h2 className="font-semibold">Cola de espera</h2>
-                <p className="text-xs text-muted-foreground">{ventanilla?.cola ? `${ventanilla.cola.nombre} (${ventanilla.cola.prefijo})` : "Todas las colas"} · {espera.length} turno{espera.length === 1 ? "" : "s"}</p>
+                <p className="text-xs text-muted-foreground">{ventanilla?.cola ? `${ventanilla.cola.nombre} (${ventanilla.cola.prefijo})` : "Todas las colas"} · <Numero valor={espera.length} /> turno{espera.length === 1 ? "" : "s"}</p>
               </div>
               <Button variant="outline" size="sm" onClick={() => { setTicketCola(colasVisibles[0]?.id ?? null); setTicketOpen(true); }}>
                 <Ticket className="size-4" /> Ticket impreso
               </Button>
             </div>
-            <ul className="max-h-[60vh] divide-y overflow-y-auto">
-              {espera.length === 0 && <li className="p-8 text-center text-sm text-muted-foreground">Nadie en espera. ¡Buen trabajo!</li>}
+            <motion.ul layoutScroll className="max-h-[60vh] overflow-y-auto">
+              {espera.length === 0 && (
+                <li className="flex animate-enter flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
+                  <Check className="size-6 text-emerald-500" /> Nadie en espera. Buen trabajo.
+                </li>
+              )}
+              <AnimatePresence initial={false}>
               {espera.map((t, i) => {
                 const esperaSeg = Math.floor((ahora - new Date(t.emitidoAt).getTime()) / 1000);
                 return (
-                  <li key={t.id} className={cn("flex items-center gap-3 px-5 py-3", i === 0 && "bg-accent/40")}>
-                    <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold", i === 0 ? "text-white" : "bg-muted text-muted-foreground")} style={i === 0 ? { background: color } : undefined}>{i + 1}</span>
+                  <motion.li
+                    key={t.id}
+                    layout="position"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -24, transition: { duration: 0.2, ease: EASE } }}
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className={cn("flex items-center gap-3 border-b px-5 py-3 transition-colors duration-300 last:border-b-0", i === 0 && "bg-accent/40")}
+                  >
+                    <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-300", i === 0 ? "text-white" : "bg-muted text-muted-foreground")} style={i === 0 ? { background: color } : undefined}>{i + 1}</span>
                     <span className="w-20 shrink-0 font-mono text-xl font-bold">{t.codigo}{t.codigoProvisional && <span className="block text-[10px] font-normal text-muted-foreground">({t.codigoProvisional})</span>}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{t.nombre ?? <span className="text-muted-foreground">Sin nombre</span>}{t.categoria ? <span className="ml-2 rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-900">{t.categoria}</span> : null}</span>
@@ -327,24 +369,25 @@ export function PanelVentanilla({ session, slug, locales }: { session: Session; 
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1">
                       <Badge className={cn("border", ESTADO_CLASS[t.estado])}>{t.estado === "AVISADO" ? <><MessageCircle className="size-3" /> Avisado</> : ESTADO_LABEL[t.estado]}</Badge>
-                      <span className="text-xs tabular text-muted-foreground">{fmtDuracion(esperaSeg)}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{fmtDuracion(esperaSeg)}</span>
                     </span>
-                  </li>
+                  </motion.li>
                 );
               })}
-            </ul>
+              </AnimatePresence>
+            </motion.ul>
           </div>
 
           {/* Otras ventanillas */}
-          <div className="rounded-3xl border bg-card p-5 shadow-sm">
-            <h2 className="font-semibold">Ventanillas del local</h2>
+          <div className="animate-enter rounded-3xl border bg-card p-5 shadow-soft [animation-delay:140ms]">
+            <h2 className="font-semibold tracking-tight">Ventanillas del local</h2>
             <ul className="mt-3 space-y-2">
               {snap.ventanillas.map((v) => {
                 const en = snap.colas.flatMap((c) => c.llamados).find((l) => l.ventanillaId === v.id);
                 return (
-                  <li key={v.id} className={cn("flex items-center justify-between rounded-xl border px-3 py-2 text-sm", v.id === ventanillaId && "border-[var(--local)]/50 bg-accent/30")}>
+                  <li key={v.id} className={cn("flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition-colors duration-300", v.id === ventanillaId && "border-[var(--local)]/50 bg-accent/30")}>
                     <span className="font-medium">{v.nombre} <span className="text-xs text-muted-foreground">{v.cola ? `· ${v.cola.nombre}` : "· todas"}</span></span>
-                    {en ? <span className="font-mono font-semibold" style={{ color }}>{en.codigo} <span className="text-xs font-normal text-muted-foreground">{haceCuanto(en.llamadoAt!)}</span></span> : <span className="text-xs text-muted-foreground">libre</span>}
+                    {en ? <span key={en.id} className="animate-pop font-mono font-semibold" style={{ color }}>{en.codigo} <span className="text-xs font-normal text-muted-foreground">{haceCuanto(en.llamadoAt!)}</span></span> : <span className="text-xs text-muted-foreground">libre</span>}
                   </li>
                 );
               })}

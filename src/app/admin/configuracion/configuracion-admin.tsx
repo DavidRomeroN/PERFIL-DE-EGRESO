@@ -44,7 +44,7 @@ export function ConfiguracionAdmin({ local, plan, uso }: Props) {
       <PageHeader title="Configuración del local" description="Datos del negocio, plan contratado y uso del mes." />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <section className="rounded-2xl border bg-card p-6 shadow-sm">
+        <section className="rounded-2xl border bg-card p-6 shadow-soft">
           <h2 className="flex items-center gap-2 font-semibold"><Building2 className="size-4 text-teal-600" /> Datos del negocio</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
@@ -96,7 +96,7 @@ export function ConfiguracionAdmin({ local, plan, uso }: Props) {
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border bg-card p-6 shadow-sm">
+          <div className="rounded-2xl border bg-card p-6 shadow-soft">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 font-semibold"><CreditCard className="size-4 text-teal-600" /> Plan actual</h2>
               <Badge>{plan.nombre}</Badge>

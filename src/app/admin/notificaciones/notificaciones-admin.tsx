@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, CheckCheck, Clock, Globe, Loader2, MessageCircle, Send, X } from "lucide-react";
+import { Check, CheckCheck, Clock, Globe, MessageCircle, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, StatCard, EmptyState } from "@/components/app/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -85,13 +85,13 @@ export function NotificacionesAdmin({ slug, proveedor, whatsappHabilitado, maxAv
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <section className="rounded-2xl border bg-card shadow-sm">
+        <section className="rounded-2xl border bg-card shadow-soft">
           <div className="border-b px-5 py-4">
             <h2 className="font-semibold">Bandeja de salida</h2>
             <p className="text-xs text-muted-foreground">Se actualiza en tiempo real cuando el proveedor confirma la entrega (webhook): enviado → entregado → leído.</p>
           </div>
           {data === null ? (
-            <div className="flex items-center gap-2 p-6 text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Cargando…</div>
+            <div className="p-6 space-y-2.5" aria-busy="true" aria-label="Cargando"><div className="skeleton h-12 rounded-2xl" /><div className="skeleton h-12 rounded-2xl opacity-80" /><div className="skeleton h-12 rounded-2xl opacity-60" /></div>
           ) : data.notificaciones.length === 0 ? (
             <div className="p-6"><EmptyState icon={Send} title="Aún no se envió ningún aviso" description="Cuando una cola avance y falten pocas personas, aparecerán aquí." /></div>
           ) : (
@@ -119,7 +119,7 @@ export function NotificacionesAdmin({ slug, proveedor, whatsappHabilitado, maxAv
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-5 shadow-soft">
             <h3 className="font-semibold">Plantillas aprobadas</h3>
             <div className="mt-3 space-y-3 text-sm">
               <div className="rounded-xl bg-[#e7f6ec] p-3 text-emerald-950">
@@ -132,7 +132,7 @@ export function NotificacionesAdmin({ slug, proveedor, whatsappHabilitado, maxAv
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border bg-card p-5 text-sm shadow-sm">
+          <div className="rounded-2xl border bg-card p-5 text-sm shadow-soft">
             <h3 className="font-semibold">Cómo funciona</h3>
             <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-muted-foreground">
               <li>El cliente deja su celular y acepta la política de datos (opt-in).</li>

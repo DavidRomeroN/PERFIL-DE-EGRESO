@@ -89,14 +89,14 @@ export function PanelModulos({ localId, colaId, colas, actual, espera, onCambio 
   return (
     <div className="space-y-3">
       {mods.has("M1") && exp && (
-        <div className="rounded-2xl border bg-card p-4">
+        <div className="animate-enter rounded-2xl border bg-card p-4 shadow-soft">
           <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Scale className="size-3.5" /> Por qué {exp.codigo} es el siguiente</p>
-          <p className="mt-1 text-sm"><b>{exp.categoria}</b> · {exp.texto}</p>
+          <p key={exp.codigo} className="mt-1 animate-enter text-sm"><b>{exp.categoria}</b> · {exp.texto}</p>
         </div>
       )}
 
       {mods.has("M6") && (actual || espera.length > 0) && otrasColas.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-4">
+        <div className="flex animate-enter flex-wrap items-center gap-2 rounded-2xl border bg-card p-4 shadow-soft">
           <ArrowRightLeft className="size-4 text-muted-foreground" />
           <span className="text-sm">Transferir a otra cola (conserva su lugar):</span>
           {actual && <Button size="sm" variant="outline" onClick={() => { setTransferir(actual); setDestino(otrasColas[0].id); }}>{actual.codigo} (actual)</Button>}
@@ -108,10 +108,10 @@ export function PanelModulos({ localId, colaId, colas, actual, espera, onCambio 
       )}
 
       {mods.has("M3") && (
-        <div className="rounded-2xl border bg-card p-4">
+        <div className="animate-enter rounded-2xl border bg-card p-4 shadow-soft">
           <div className="flex items-center justify-between">
             <p className="flex items-center gap-1.5 text-sm font-medium"><CalendarClock className="size-4" /> Citas próximas (60 min)</p>
-            {pin && <p className="flex items-center gap-1 rounded-lg bg-teal-50 px-2 py-1 font-mono text-sm text-teal-800" title={`Cambia en ${pin.segundosRestantes} s`}><KeyRound className="size-3.5" /> PIN {pin.pin}</p>}
+            {pin && <p key={pin.pin} className="flex animate-pop items-center gap-1 rounded-lg bg-teal-50 px-2 py-1 font-mono text-sm text-teal-800" title={`Cambia en ${pin.segundosRestantes} s`}><KeyRound className="size-3.5" /> PIN {pin.pin}</p>}
           </div>
           {citas.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Sin citas en la próxima hora.</p> : (
             <ul className="mt-2 divide-y text-sm">

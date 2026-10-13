@@ -25,7 +25,7 @@ export function Historial() {
   const { datos, error, cargando } = useDatos<Respuesta>(url, [url]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-5 p-4 md:p-8">
+    <main className="mx-auto w-full max-w-5xl space-y-5 p-4 md:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="icon-sm"><Link href="/panel" aria-label="Volver al panel"><ArrowLeft className="size-4" /></Link></Button>

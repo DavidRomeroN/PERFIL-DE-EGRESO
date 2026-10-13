@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ProveedorMovimiento } from "@/components/app/motion";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,8 +38,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es-PE" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster richColors position="top-center" closeButton />
+        <ProveedorMovimiento>
+          <TooltipProvider>{children}</TooltipProvider>
+        </ProveedorMovimiento>
+        <Toaster richColors position="top-center" closeButton toastOptions={{ style: { fontFamily: "var(--font-sans)", borderRadius: "14px" } }} />
       </body>
     </html>
   );

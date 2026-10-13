@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { tiempoEstimado } from "@/lib/turnos";
-import Link from "next/link";
 import { TomarTurno } from "./tomar-turno";
 import { modulosActivos } from "@/lib/modulos";
 import { localAbierto } from "@/lib/operacion";
@@ -47,14 +46,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const { local, colas, categorias, horario, conCitas } = data;
 
   return (
-    <>
-    {(!horario.abierto || conCitas) && (
-      <div className="mx-auto max-w-lg px-4 pt-4 text-sm">
-        {!horario.abierto && <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900">{horario.mensaje ?? "Esta cola está cerrada ahora."}</p>}
-        {conCitas && <p className="mt-2 text-center"><Link href={`/l/${local.slug}/citas`} className="font-medium underline">¿Prefieres reservar un horario? Agenda una cita</Link></p>}
-      </div>
-    )}
     <TomarTurno
+      aviso={horario.abierto ? null : (horario.mensaje ?? "Esta cola está cerrada ahora.")}
+      citasHref={conCitas ? `/l/${local.slug}/citas` : null}
       local={{
         slug: local.slug,
         nombreComercial: local.nombreComercial,
@@ -69,6 +63,5 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       colas={colas}
       categorias={categorias}
     />
-    </>
   );
 }

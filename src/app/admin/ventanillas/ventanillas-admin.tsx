@@ -85,13 +85,13 @@ export function VentanillasAdmin() {
       </PageHeader>
 
       {items === null ? (
-        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Cargando…</div>
+        <div className="space-y-2.5" aria-busy="true" aria-label="Cargando"><div className="skeleton h-12 rounded-2xl" /><div className="skeleton h-12 rounded-2xl opacity-80" /><div className="skeleton h-12 rounded-2xl opacity-60" /></div>
       ) : items.length === 0 ? (
         <EmptyState icon={Columns3} title="Sin ventanillas" description="Crea al menos una ventanilla para poder llamar turnos." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((v) => (
-            <div key={v.id} className="flex flex-col rounded-2xl border bg-card p-5 shadow-sm">
+          {items.map((v, i) => (
+            <div key={v.id} style={{ ["--i" as string]: i }} className="flex animate-enter stagger flex-col rounded-2xl border bg-card p-5 shadow-soft">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-lg font-semibold">{v.nombre}</p>
