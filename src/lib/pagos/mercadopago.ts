@@ -17,6 +17,40 @@ export function configMercadoPago() {
     publicKey: process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "",
     webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET ?? "",
     configurado: accessToken.length > 20,
+    /** Solo desarrollo: el cobro no va a /v1/payments; el resultado sale del titular de la tarjeta de prueba (APRO, CONT, OTHE…). */
+    simulado: process.env.MERCADOPAGO_SIMULADO === "1" && process.env.NODE_ENV !== "production",
+  };
+}
+
+const SIMULACION: Record<string, [PagoMP["status"], string]> = {
+  APRO: ["approved", "accredited"],
+  CONT: ["in_process", "pending_contingency"],
+  OTHE: ["rejected", "cc_rejected_other_reason"],
+  CALL: ["rejected", "cc_rejected_call_for_authorize"],
+  FUND: ["rejected", "cc_rejected_insufficient_amount"],
+  SECU: ["rejected", "cc_rejected_bad_filled_security_code"],
+  EXPI: ["rejected", "cc_rejected_bad_filled_date"],
+  FORM: ["rejected", "cc_rejected_bad_filled_other"],
+};
+
+/** Pago simulado: la tarjeta SÍ se tokenizó en Mercado Pago; se lee el titular del token para decidir el resultado. */
+async function pagoSimulado(p: { tarjeta: DatosTarjeta; monto: number; referencia: string }): Promise<PagoMP> {
+  const { publicKey } = configMercadoPago();
+  const t = (await fetch(`${API}/v1/card_tokens/${encodeURIComponent(p.tarjeta.token)}?public_key=${encodeURIComponent(publicKey)}`, { cache: "no-store" })
+    .then((r) => r.json())
+    .catch(() => ({}))) as { cardholder?: { name?: string }; last_four_digits?: string };
+  const [status, status_detail] = SIMULACION[(t.cardholder?.name ?? "").trim().toUpperCase()] ?? SIMULACION.OTHE;
+  log.warn("Pago SIMULADO (MERCADOPAGO_SIMULADO=1)", { referencia: p.referencia, status });
+  return {
+    id: Date.now(),
+    status,
+    status_detail,
+    transaction_amount: p.monto,
+    currency_id: "PEN",
+    payment_method_id: p.tarjeta.payment_method_id,
+    external_reference: p.referencia,
+    card: { last_four_digits: t.last_four_digits },
+    payer: { email: p.tarjeta.payer.email },
   };
 }
 
@@ -68,6 +102,7 @@ async function llamar<T>(ruta: string, init: RequestInit & { idempotencia?: stri
 
 /** Crea el cobro con el token de la tarjeta. El monto lo fija SIEMPRE el servidor (precio del plan). */
 export function crearPago(p: { tarjeta: DatosTarjeta; monto: number; descripcion: string; referencia: string; idempotencia: string; urlNotificacion?: string }) {
+  if (configMercadoPago().simulado) return pagoSimulado(p);
   return llamar<PagoMP>("/v1/payments", {
     method: "POST",
     idempotencia: p.idempotencia,
