@@ -13,5 +13,5 @@ npm-debug.log*
 .windsurf
 .agents
 .cursor
-src/generated
+backend/src/generated
 video-promo

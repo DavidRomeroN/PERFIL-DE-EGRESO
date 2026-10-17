@@ -174,7 +174,7 @@ intención(norm):
 Ejemplos: `"Cuánto falta??"` → POSICION · `"quiero sacar un tuno"` → TOMAR_TURNO (Levenshtein) · `"👍"` → SI · `"asdf"` → OTRO.
 
 ### 6.3b Tabla de transiciones (fuente única de verdad)
-La tabla está en código (`src/lib/bot/fsm.ts`) como datos; de ella se **genera** el diagrama (Mermaid) que muestra la UI y la documentación.
+La tabla está en código (`backend/src/bot/fsm.ts`) como datos; de ella se **genera** el diagrama (Mermaid) que muestra la UI y la documentación.
 
 | Estado | Entrada | Efectos / respuesta | Siguiente |
 |---|---|---|---|
@@ -279,9 +279,9 @@ Estados de UI: bot desactivado (CTA para activarlo), sin conversaciones, error d
 ## 10. Integración con el núcleo
 | Archivo | Cambio |
 |---|---|
-| `src/app/api/v1/webhooks/whatsapp/route.ts` | Ruta de mensajes entrantes (conserva la rama de *acks*) |
-| `src/lib/whatsapp.ts` / `openwa.ts` | `enviarTexto` con *throttle*; adaptadores `adaptarEntranteMeta/OpenWA` |
-| `src/lib/turnos.ts` · `emitirTurno` | `canal: "WHATSAPP"`; consentimiento tomado de la conversación |
+| `frontend/src/app/api/v1/webhooks/whatsapp/route.ts` | Ruta de mensajes entrantes (conserva la rama de *acks*) |
+| `backend/src/whatsapp.ts` / `openwa.ts` | `enviarTexto` con *throttle*; adaptadores `adaptarEntranteMeta/OpenWA` |
+| `backend/src/turnos.ts` · `emitirTurno` | `canal: "WHATSAPP"`; consentimiento tomado de la conversación |
 | M1 | Si activo, el bot pregunta categoría (solo `visibleCliente`) |
 | M2 | Espera estimada en la lista de colas y en `SEGUIMIENTO` |
 | M3 | Estados de cita y respuesta "1 confirmar / 2 cancelar" a los recordatorios |

@@ -303,14 +303,14 @@ Accesibilidad: el selector debe operarse con teclado; íconos con texto alternat
 ## 10. Integración con el núcleo (archivos a tocar)
 | Archivo | Cambio |
 |---|---|
-| `prisma/schema.prisma` + migración | Modelos y columnas de §5 |
-| `src/lib/turnos.ts` · `emitirTurno` | Recibe `categoriaId`, valida `visibleCliente` y módulo activo, pasa `p_categoria` a `emitir_turno` |
-| `src/lib/turnos.ts` · `llamarSiguiente` | Sustituye `findFirst … orderBy emitidoAt` por `siguienteTurno(tx, …)` (F5) |
-| `src/lib/turnos.ts` · `obtenerTurnoPorToken` | `posicion` con `posicion_turno()` |
-| `src/lib/turnos.ts` · `revisarAvisos` | Ordenar la espera por `claveOrden desc, emitidoAt asc` |
-| `src/lib/turnos.ts` · `snapshotLocal` | Ordenar `espera[]` por clave y **no** exponer categoría en el snapshot público |
-| `src/app/api/v1/turnos/ticket/route.ts` | El operador puede emitir ticket con categoría |
-| `src/lib/prioridades/{reglas,service,repo}.ts` | Lógica pura, casos de uso, SQL |
+| `backend/prisma/schema.prisma` + migración | Modelos y columnas de §5 |
+| `backend/src/turnos.ts` · `emitirTurno` | Recibe `categoriaId`, valida `visibleCliente` y módulo activo, pasa `p_categoria` a `emitir_turno` |
+| `backend/src/turnos.ts` · `llamarSiguiente` | Sustituye `findFirst … orderBy emitidoAt` por `siguienteTurno(tx, …)` (F5) |
+| `backend/src/turnos.ts` · `obtenerTurnoPorToken` | `posicion` con `posicion_turno()` |
+| `backend/src/turnos.ts` · `revisarAvisos` | Ordenar la espera por `claveOrden desc, emitidoAt asc` |
+| `backend/src/turnos.ts` · `snapshotLocal` | Ordenar `espera[]` por clave y **no** exponer categoría en el snapshot público |
+| `frontend/src/app/api/v1/turnos/ticket/route.ts` | El operador puede emitir ticket con categoría |
+| `backend/src/prioridades/{reglas,service,repo}.ts` | Lógica pura, casos de uso, SQL |
 
 ## 11. Seguridad y privacidad
 - La categoría es **dato sensible**: solo la ven roles OPERADOR+ del mismo local; se omite en `snapshotLocal` público, TV, ticket y plantillas de WhatsApp.

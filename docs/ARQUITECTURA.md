@@ -10,11 +10,11 @@ Navegador (cliente, TV, panel, admin, kiosco PWA)
       │  HTTP /api/v1 (JSON, zod)          SSE /api/v1/realtime/:slug
       ▼
 Next.js 16 (App Router, una instancia)
-  ├─ src/app/api/v1/**          rutas delgadas: validan (zod), resuelven el local de la sesión y llaman a servicios
-  ├─ src/lib/<modulo>/reglas.ts lógica PURA (sin I/O) — 100 % probada con node:test
-  ├─ src/lib/<modulo>/service.ts casos de uso (Prisma + SQL)
-  ├─ src/lib/jobs/              planificador (F1) y tabla de jobs
-  └─ src/instrumentation.ts     arranque: valida secretos (F7) y lanza los jobs
+  ├─ frontend/src/app/api/v1/**       rutas delgadas: validan (zod), resuelven el local de la sesión y llaman a servicios
+  ├─ backend/src/<modulo>/reglas.ts   lógica PURA (sin I/O) — 100 % probada con node:test
+  ├─ backend/src/<modulo>/service.ts  casos de uso (Prisma + SQL)
+  ├─ backend/src/jobs/                planificador (F1) y tabla de jobs
+  └─ frontend/src/instrumentation.ts  arranque: valida secretos (F7) y lanza los jobs
       ▼
 PostgreSQL 16 (Prisma 7 + adapter-pg)
   funciones: emitir_turno (8 args), siguiente_turno, posicion_turno, recalcular_claves, calcular_clave_orden, tiempo_estimado
@@ -38,7 +38,7 @@ PostgreSQL 16 (Prisma 7 + adapter-pg)
 
 | Plan | Implementado | Por qué |
 |---|---|---|
-| ADR-01 `pg-boss` | **Planificador propio** (`src/lib/jobs/scheduler.ts`): cada job se reclama con `UPDATE job_estado … WHERE proxima <= now() RETURNING` | Misma garantía (una sola corrida aunque haya varias instancias) sin un esquema extra ni dependencias; el estado es visible en `/admin/jobs` y `/api/health`. Si se pierde una corrida (servidor apagado), corre una vez al volver. |
+| ADR-01 `pg-boss` | **Planificador propio** (`backend/src/jobs/scheduler.ts`): cada job se reclama con `UPDATE job_estado … WHERE proxima <= now() RETURNING` | Misma garantía (una sola corrida aunque haya varias instancias) sin un esquema extra ni dependencias; el estado es visible en `/admin/jobs` y `/api/health`. Si se pierde una corrida (servidor apagado), corre una vez al volver. |
 | ADR-02 bus `LISTEN/NOTIFY` (F2) | Bus en memoria (`realtime.ts`) | La app corre en **una** instancia (Docker). La API `publicar/suscribir` no cambia: se puede reemplazar el interior si se escala. |
 | F0 Vitest + Testcontainers | `node:test` + `tsx`, BD `turnoya_test` en el mismo contenedor | Ya era el runner del repo; sin dependencias nuevas. CI levanta PostgreSQL como servicio. |
 | M7 `@react-pdf/renderer` | `pdf-lib` | Sin JSX en el servidor ni fuentes externas; PDF de varias páginas con barras y mapa de calor. |
@@ -50,15 +50,15 @@ PostgreSQL 16 (Prisma 7 + adapter-pg)
 
 | Garantía | Cómo | Prueba |
 |---|---|---|
-| Dos ventanillas nunca llaman el mismo turno (C2) | `siguiente_turno` con `FOR UPDATE SKIP LOCKED` + reintento si la fila está bloqueada un instante | `tests/integracion/nucleo.test.ts` (3 ventanillas concurrentes) |
-| Prioridad sin inanición (M1) | clave estable `peso − α·minutos` + tope de adelantos | `tests/unit/prioridades.test.ts` (propiedades P1–P4) |
+| Dos ventanillas nunca llaman el mismo turno (C2) | `siguiente_turno` con `FOR UPDATE SKIP LOCKED` + reintento si la fila está bloqueada un instante | `backend/tests/integracion/nucleo.test.ts` (3 ventanillas concurrentes) |
+| Prioridad sin inanición (M1) | clave estable `peso − α·minutos` + tope de adelantos | `backend/tests/unit/prioridades.test.ts` (propiedades P1–P4) |
 | Citas sin sobrecupo (M3) | un solo `UPDATE slot … WHERE reservados < capacidad` + `INSERT` | 50 reservas simultáneas ⇒ 3 |
 | Un celular = un cliente | índice único parcial `ux_cliente_telefono_hash` + `INSERT … ON CONFLICT` | reservas simultáneas del mismo celular |
 | Bot: cada mensaje una sola vez (M4) | `evento_bot_procesado` + candado por (local, teléfono) | mensaje duplicado ⇒ 1 turno |
 | Kiosco: exactamente una vez (M5) | clave de idempotencia por pulsación guardada en IndexedDB antes de la red + `clave_idem` única | lote repetido 3 veces ⇒ 3 turnos |
-| Predicción sin fuga de datos (M2) | replay cronológico: el estado solo aprende de eventos pasados | `tests/unit/prediccion.test.ts` |
+| Predicción sin fuga de datos (M2) | replay cronológico: el estado solo aprende de eventos pasados | `backend/tests/unit/prediccion.test.ts` |
 | Alertas sin duplicados (M7) | índice único parcial por huella + candado consultivo por local | evaluaciones concurrentes ⇒ 1 alerta |
-| Aislamiento entre locales | `enLocal()` toma el local de la sesión, nunca del cuerpo; módulos exigen bandera | rutas `src/lib/rutas.ts`; prueba D1 del bot |
+| Aislamiento entre locales | `enLocal()` toma el local de la sesión, nunca del cuerpo; módulos exigen bandera | rutas `backend/src/rutas.ts`; prueba D1 del bot |
 | Privacidad (Ley 29733) | categoría solo para el personal; teléfonos cifrados + hash; purga a 90 días; SSE público sin texto de avisos | snapshot público sin categoría |
 
 ## 4. Seguridad (F7)

@@ -236,7 +236,7 @@ Estados: sin datos (muestra "Estimación inicial"), cargando, entrenando (progre
 ## 10. Integración con el núcleo
 | Archivo | Cambio |
 |---|---|
-| `src/lib/turnos.ts` · `tiempoEstimado` | Delegar en `prediccion.service.predecir()`; mantener SQL `tiempo_estimado` como respaldo |
+| `backend/src/turnos.ts` · `tiempoEstimado` | Delegar en `prediccion.service.predecir()`; mantener SQL `tiempo_estimado` como respaldo |
 | `emitirTurno` | Tras emitir: calcular y guardar `PrediccionLog` y `delante_emision`/`ventanillas_activas_emision` (vía F5) |
 | `llamarSiguiente` / `cambiarEstadoTurno` | Al LLAMADO completar `real_seg`; al ATENDIDO actualizar el estado en línea |
 | `revisarAvisos` | Considerar `aviso_min_antes` además de `avisarFaltando` |

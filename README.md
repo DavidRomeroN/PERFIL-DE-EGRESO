@@ -70,20 +70,33 @@ Todo se actualiza en **tiempo real** entre pestañas (SSE): abre la TV, el panel
 
 ### Estructura de carpetas
 
+Monorepo con **npm workspaces**: `backend/` (`@turnoya/backend`) y `frontend/` (`@turnoya/frontend`). Los comandos se ejecutan desde la raíz y el `.env` vive en la raíz (lo leen ambos).
+
 ```
-prisma/              schema.prisma, migraciones (incl. funciones SQL), seed.ts
-src/app/             rutas App Router
-  ├─ page.tsx          landing
-  ├─ l/[slug]          tomar turno (QR) · l/[slug]/tv pantalla TV
-  ├─ t/[token]         seguimiento del turno (cliente)
-  ├─ ticket/[token]    ticket imprimible 80 mm
-  ├─ login, panel      autenticación y panel de ventanilla
-  ├─ admin/**          dashboard, colas, ventanillas, usuarios, reportes, notificaciones, pantalla, configuración, locales
-  └─ api/v1/**         API REST + SSE + webhook WhatsApp
-src/lib/             dominio y utilidades (turnos, auth, crypto, realtime, whatsapp, api, schemas)
-src/components/      ui (shadcn), app (header, stat cards, diálogos), brand (logo)
-src/hooks/           useRealtime (SSE), useSonido (timbre + voz)
+backend/                 lógica de servidor (se importa como @backend/*)
+  ├─ src/                  dominio y servicios por módulo (turnos, auth, crypto, realtime, whatsapp, api, schemas,
+  │                        prioridades, prediccion, citas, bot, kiosco, balanceo, analitica, capacidad, pagos, jobs)
+  ├─ prisma/               schema.prisma, migraciones (incl. funciones SQL), seed.ts
+  ├─ tests/                unit (lógica pura) e integracion (BD turnoya_test)
+  └─ scripts/              bd-pruebas.mjs (prepara la BD de pruebas)
+frontend/                aplicación Next.js
+  ├─ src/app/              rutas App Router
+  │   ├─ page.tsx            landing
+  │   ├─ l/[slug]            tomar turno (QR) · l/[slug]/tv pantalla TV
+  │   ├─ t/[token]           seguimiento del turno (cliente)
+  │   ├─ ticket/[token]      ticket imprimible 80 mm
+  │   ├─ login, panel        autenticación y panel de ventanilla
+  │   ├─ admin/**            dashboard, colas, ventanillas, usuarios, reportes, notificaciones, pantalla, configuración, locales
+  │   └─ api/v1/**           API REST + SSE + webhooks (rutas delgadas que llaman a @backend/*)
+  ├─ src/lib/              solo navegador: utils (cn), format, fetcher, kiosco/almacen (IndexedDB), worker del simulador
+  ├─ src/components/       ui (shadcn), app (header, stat cards, diálogos), brand (logo)
+  ├─ src/hooks/            useRealtime (SSE), useSonido (timbre + voz)
+  └─ public/               estáticos y service worker del kiosco
+docs/                    arquitectura, módulos, plan de migración y manual de usuario
+video-promo/             video promocional (Remotion), proyecto independiente
 ```
+
+> El backend todavía depende de `next/server` y `next/headers` (capa HTTP en `api.ts`, `auth.ts`, `admin.ts`, `rutas.ts`). Esa dependencia desaparece al migrar a Spring Boot (ver [`docs/MIGRACION_SPRING.md`](docs/MIGRACION_SPRING.md)).
 
 ### Modelo de datos (resumen)
 
@@ -216,6 +229,9 @@ Recomendaciones de OpenWA (es un cliente no oficial): usa un **número dedicado*
 | `npm run setup` | Levanta BD, migra y siembra |
 | `npm run db:migrate` · `db:seed` · `db:reset` · `db:studio` | Utilidades Prisma |
 | `npm run docker:prod` | Build y despliegue completo con Docker |
+| `npm test` · `npm run test:int` | Pruebas unitarias e integración (`backend/tests`) |
+
+Todos los scripts se lanzan desde la raíz y delegan en el workspace que corresponde (`-w backend` o `-w frontend`). Para agregar una dependencia, indica el workspace: `npm install <paquete> -w frontend`.
 
 ---
 

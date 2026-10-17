@@ -268,10 +268,10 @@ Estados: sin reglas (plantillas sugeridas), modo simulación visible con etiquet
 | Archivo | Cambio |
 |---|---|
 | `emitir_turno()` / `siguienteTurno()` (F5/M1) | Respetan `p_emitido` y `clave_orden` |
-| `src/lib/turnos.ts` | `transicionValida`: `EMITIDO/AVISADO/LLAMADO → TRANSFERIDO`; `obtenerTurnoPorToken` devuelve `redirigidoA` |
-| `src/app/api/v1/ventanillas/[id]/route.ts` | Soporta asignación temporal (`colaOriginalId`, `asignacionTemporalHasta`) |
-| `src/lib/whatsapp.ts` | Plantilla `turno_transferido` |
-| `src/lib/realtime.ts` | Evento `balanceo:accion` |
+| `backend/src/turnos.ts` | `transicionValida`: `EMITIDO/AVISADO/LLAMADO → TRANSFERIDO`; `obtenerTurnoPorToken` devuelve `redirigidoA` |
+| `frontend/src/app/api/v1/ventanillas/[id]/route.ts` | Soporta asignación temporal (`colaOriginalId`, `asignacionTemporalHasta`) |
+| `backend/src/whatsapp.ts` | Plantilla `turno_transferido` |
+| `backend/src/realtime.ts` | Evento `balanceo:accion` |
 | M7 | Las ejecuciones fallidas/omitidas generan alertas; métricas de SLA disponibles para condiciones |
 
 ## 11. Seguridad y privacidad

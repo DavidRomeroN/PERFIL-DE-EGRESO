@@ -336,9 +336,9 @@ Accesibilidad: el mapa de calor incluye tabla equivalente; el color nunca es el 
 | Archivo | Cambio |
 |---|---|
 | `reporteEspera` / `/admin/reportes` | Se mantiene; M7 añade percentiles y reutiliza las métricas |
-| `src/lib/realtime.ts` | `alerta:*` |
-| `src/lib/whatsapp.ts` | Envío de alertas a admins (plantilla simple; cuenta en la cuota) |
-| Correo | Nuevo `src/lib/correo.ts` (`nodemailer`, `SMTP_*`) |
+| `backend/src/realtime.ts` | `alerta:*` |
+| `backend/src/whatsapp.ts` | Envío de alertas a admins (plantilla simple; cuenta en la cuota) |
+| Correo | Nuevo `backend/src/correo.ts` (`nodemailer`, `SMTP_*`) |
 | Admin shell | Campana de alertas |
 | M2/M5/M6 | Publican eventos que M7 convierte en alertas |
 | Super admin | Vista de alertas de sistema (jobs, WhatsApp) |

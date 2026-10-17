@@ -31,7 +31,8 @@ try {
 echo "🗄️  Aplicando migraciones…"
 ok=0
 for intento in 1 2 3 4 5; do
-  if DATABASE_URL="$MIGRATE_URL" PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 node ./node_modules/prisma/build/index.js migrate deploy; then
+  # Prisma (schema, migraciones y prisma.config.ts) vive en backend/
+  if (cd backend && DATABASE_URL="$MIGRATE_URL" PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 node ../node_modules/prisma/build/index.js migrate deploy); then
     ok=1
     break
   fi
@@ -45,7 +46,8 @@ fi
 
 if [ "${SEED_ON_START:-false}" = "true" ]; then
   echo "🌱 Cargando datos de demostración…"
-  node ./node_modules/tsx/dist/cli.mjs prisma/seed.ts
+  # Desde backend/ para que tsx use backend/tsconfig.json (alias @backend/*)
+  (cd backend && node ../node_modules/tsx/dist/cli.mjs prisma/seed.ts)
 fi
 
 echo "🚀 Iniciando TurnoYa en el puerto ${PORT:-3000}"

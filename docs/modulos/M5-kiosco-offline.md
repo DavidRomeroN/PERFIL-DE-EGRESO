@@ -274,9 +274,9 @@ Operador/TV: etiqueta secundaria con el código provisional (RF-M5-12). Estados 
 | Archivo | Cambio |
 |---|---|
 | `emitir_turno()` (F5) | Parámetros `p_emitido` y `p_origen` (`dispositivo`, `seq`, `codigo_provisional`) |
-| `src/lib/turnos.ts` · `emitirTurno` | Canal `KIOSCO`; versión interna reutilizable por el *sync* con fecha de emisión |
+| `backend/src/turnos.ts` · `emitirTurno` | Canal `KIOSCO`; versión interna reutilizable por el *sync* con fecha de emisión |
 | `snapshotLocal` / TV / panel | Mostrar `codigoProvisional` si existe |
-| `src/lib/realtime.ts` | Eventos `kiosco:*` |
+| `backend/src/realtime.ts` | Eventos `kiosco:*` |
 | M1 | Categorías visibles en K1b |
 | M3 | Check-in de citas |
 | M7 | Alerta `KIOSCO_OFFLINE` |

@@ -50,7 +50,7 @@ Verificado leyendo el repositorio (commit `eedf527`, rama principal).
 | Capa | Tecnología (versión del `package.json`) |
 |---|---|
 | Front-end | Next.js 16.3.8 (App Router, Turbopack), React 19.2.8, TypeScript 5, Tailwind CSS 4, shadcn/ui sobre `@base-ui/react`, lucide-react, recharts 3, sonner, qrcode.react |
-| Back-end | Route Handlers en `src/app/api/v1/**`, zod 4, jose (JWT HS256 en cookie httpOnly), bcryptjs |
+| Back-end | Route Handlers en `frontend/src/app/api/v1/**`, zod 4, jose (JWT HS256 en cookie httpOnly), bcryptjs |
 | Datos | PostgreSQL 16, Prisma 7.10 con `@prisma/adapter-pg`, funciones SQL, vista, triggers |
 | Tiempo real | Server-Sent Events (`/api/v1/realtime/:slug`) sobre un `EventEmitter` en memoria |
 | Mensajería | Patrón estrategia: `mock` · `openwa` (gateway auto-hospedado) · `meta` (Cloud API) |
@@ -61,7 +61,7 @@ Verificado leyendo el repositorio (commit `eedf527`, rama principal).
 `plan → local → { usuario, cola → contador_cola, ventanilla }`, `turno (local, cola, ventanilla, cliente) → notificacion`, `auditoria`.
 
 - **Estados del turno:** `EMITIDO → AVISADO → LLAMADO → ATENDIDO | NO_SE_PRESENTO`; `EMITIDO/AVISADO → CANCELADO`; `LLAMADO → LLAMADO` (rellamada).
-  "En espera" = `EMITIDO` o `AVISADO`. Transiciones validadas en `TRANSICIONES` (`src/lib/turnos.ts`), error `409 TRANSICION_INVALIDA`.
+  "En espera" = `EMITIDO` o `AVISADO`. Transiciones validadas en `TRANSICIONES` (`backend/src/turnos.ts`), error `409 TRANSICION_INVALIDA`.
 - **Canales:** `QR`, `TICKET`. **Roles:** `SUPER_ADMIN`, `ADMIN_LOCAL`, `OPERADOR`.
 - **Planes sembrados:**
 
@@ -74,9 +74,9 @@ Verificado leyendo el repositorio (commit `eedf527`, rama principal).
 - **Funciones SQL (`20261002194000_funciones_sql`):** `emitir_turno()` (upsert del contador diario ⇒ sin duplicados),
   `tiempo_estimado()` (posición × promedio de los últimos 10 ATENDIDO, mínimo 30 s, si no hay datos usa `tiempo_atencion_base`),
   vista `v_espera_diaria`, `fn_auditoria()` + triggers en `turno` y `usuario`, índice único parcial `ux_turno_activo_cliente` (RN03).
-- **Datos personales:** teléfono cifrado AES-256-GCM + hash SHA-256 (`src/lib/crypto.ts`), enmascarado en UI, `purgarDatosPersonales(90)`.
+- **Datos personales:** teléfono cifrado AES-256-GCM + hash SHA-256 (`backend/src/crypto.ts`), enmascarado en UI, `purgarDatosPersonales(90)`.
 
-### 1.3 Funciones de dominio (`src/lib/turnos.ts`, 668 líneas)
+### 1.3 Funciones de dominio (`backend/src/turnos.ts`, 668 líneas)
 
 `emitirTurno` · `obtenerTurnoPorToken` (posición = `count(emitidoAt < mío)`) · `cancelarTurno` · `llamarSiguiente`
 (`findFirst … orderBy emitidoAt asc`, cierra el anterior como ATENDIDO) · `cambiarEstadoTurno` · `revisarAvisos` (RF03, avisa cuando
@@ -90,14 +90,14 @@ Eventos de dominio por el bus: `cola:actualizada`, `turno:llamado`, `turno:estad
 - **API `/api/v1`:** `public/locales/:slug[/estado]`, `public/turnos[/:token]`, `realtime/:slug`, `auth/{login,logout,me}`, `panel/estado`,
   `ventanillas[/:id[/llamar-siguiente]]`, `turnos/:id/estado`, `turnos/ticket`, `colas[/:id]`, `usuarios[/:id]`, `local`, `locales[/:id|activo]`,
   `planes`, `reportes/espera`, `notificaciones`, `webhooks/whatsapp`, `whatsapp/conexion`, `/api/health`.
-- **Patrón de handlers:** `publico()` y `conRol([...], handler)` en `src/lib/api.ts`; respuesta `{ ok, data | error:{codigo,mensaje} }`; zod en `src/lib/schemas.ts`.
+- **Patrón de handlers:** `publico()` y `conRol([...], handler)` en `backend/src/api.ts`; respuesta `{ ok, data | error:{codigo,mensaje} }`; zod en `backend/src/schemas.ts`.
 
 ### 1.5 Brechas y deuda técnica detectadas
 
 | # | Hallazgo | Evidencia | Impacto | Se resuelve en |
 |---|---|---|---|---|
-| B1 | El bus de eventos es un `EventEmitter` por proceso | `src/lib/realtime.ts` | Con 2 instancias de la app los SSE no se enteran de lo que pasó en la otra | F2 |
-| B2 | Rate limit en memoria por proceso | `rateLimit()` en `src/lib/api.ts` | Se evade con varias instancias o reinicios | F7 |
+| B1 | El bus de eventos es un `EventEmitter` por proceso | `backend/src/realtime.ts` | Con 2 instancias de la app los SSE no se enteran de lo que pasó en la otra | F2 |
+| B2 | Rate limit en memoria por proceso | `rateLimit()` en `backend/src/api.ts` | Se evade con varias instancias o reinicios | F7 |
 | B3 | Secretos con valor por defecto inseguro | `JWT_SECRET ?? "turnoya-dev-secret…"`, `DATA_ENCRYPTION_KEY ?? "0123…"` | En producción sin variables, sesiones y cifrado triviales | F7 |
 | B4 | No existe ningún job programado | `grep setInterval/cron` solo en UI | `purgarDatosPersonales(90)` nunca se ejecuta (incumple RNF08/Ley 29733); RN04 no cambia el estado solo | F1, N04, N09 |
 | B5 | Auditoría sin actor y sin pantalla | `fn_auditoria` inserta `usuario_id = NULL`; no hay `/admin/auditoria` | No se sabe quién hizo qué | F4, N01 |
@@ -133,7 +133,7 @@ Criterio de reparto: cada persona lleva **un módulo de lógica/algoritmo y otro
 
 | Rol transversal | Responsable sugerido | Qué hace |
 |---|---|---|
-| Líder técnico del repo | Integrante 1 | Guardián de `main`, revisa migraciones y cambios en `src/lib/turnos.ts` |
+| Líder técnico del repo | Integrante 1 | Guardián de `main`, revisa migraciones y cambios en `backend/src/turnos.ts` |
 | Dueño del modelo de datos | Integrante 2 | Una sola persona numera las migraciones para evitar conflictos |
 | QA / datos de prueba | Integrante 4 | Mantiene `seed` histórico, escenarios de carga y checklist de aceptación |
 | Prototipo/UX | Integrante 3 | Mantiene el Figma alineado con lo implementado |
@@ -159,7 +159,7 @@ Formato corto: **contexto → decisión → consecuencias**. Si el equipo discre
 
 ### ADR-01 · Jobs programados con `pg-boss`
 - **Contexto:** hacen falta jobs (purga 90 días, expiración RN04, recordatorios de citas, reentrenamiento, evaluación de reglas y alertas, refresco de vistas, reportes). No hay Redis ni otro servicio; el despliegue es Docker con Postgres.
-- **Decisión:** usar **pg-boss** (cola de trabajos sobre PostgreSQL). Un `JobRunner` se registra en `src/instrumentation.ts` (`register()` solo si `process.env.NEXT_RUNTIME === "nodejs"` y `ENABLE_JOBS !== "false"`). Cada job define `cron`, `singletonKey` (evita ejecución doble con varias instancias) y reintentos con *backoff*.
+- **Decisión:** usar **pg-boss** (cola de trabajos sobre PostgreSQL). Un `JobRunner` se registra en `frontend/src/instrumentation.ts` (`register()` solo si `process.env.NEXT_RUNTIME === "nodejs"` y `ENABLE_JOBS !== "false"`). Cada job define `cron`, `singletonKey` (evita ejecución doble con varias instancias) y reintentos con *backoff*.
 - **Alternativas descartadas:** `node-cron` (no coordina varias instancias), Vercel Cron (el despliegue es Docker), Redis/BullMQ (infra extra).
 - **Consecuencias:** nuevo esquema `pgboss` en la misma BD; los jobs deben ser **idempotentes**; hay que leer la doc de Next 16 sobre `instrumentation`.
 
@@ -187,7 +187,7 @@ Formato corto: **contexto → decisión → consecuencias**. Si el equipo discre
 - **Consecuencias:** un módulo desactivado devuelve `403 MODULO_NO_DISPONIBLE` y no aparece en el hub; los límites del plan (RN05) se mantienen.
 
 ### ADR-04 · Convenciones de dominio y API
-- Código de dominio por módulo en `src/lib/<modulo>/` con `service.ts` (casos de uso), `repo.ts` (Prisma/SQL), `types.ts`, `reglas.ts` (funciones **puras**, sin I/O, 100 % testeables). Esquemas zod en `src/lib/schemas/<modulo>.ts`.
+- Código de dominio por módulo en `backend/src/<modulo>/` con `service.ts` (casos de uso), `repo.ts` (Prisma/SQL), `types.ts`, `reglas.ts` (funciones **puras**, sin I/O, 100 % testeables). Esquemas zod en `backend/src/schemas/<modulo>.ts`.
 - Rutas bajo `/api/v1/<recurso>`; usar `publico()` o `conRol()`; errores de negocio con `ErrorNegocio(codigo, mensaje, status)` y **prefijo de módulo** (`M3_SLOT_LLENO`).
 - Fechas: **UTC en BD (`timestamptz`)**, conversión a zona del local (`America/Lima`) en el borde. Reutilizar `fechaLocalISO`.
 - Idempotencia: operaciones expuestas a reintentos (`POST /citas`, `POST /kiosco/sync`, webhook del bot) aceptan `Idempotency-Key` y la guardan en la tabla `idempotencia(clave, ruta, respuesta, expira_at)`.
@@ -212,7 +212,7 @@ imprescindible, con las siguientes garantías:
 
 1. **Aditivo primero:** tablas nuevas, columnas `NULL`/con `DEFAULT`, enums ampliados, rutas nuevas. Nada de `DROP`, `RENAME` ni cambios de tipo en lo existente.
 2. **Apagado = comportamiento actual:** cada módulo nace desactivado (ADR-03). Con el módulo apagado, el sistema se comporta **exactamente** como hoy.
-3. **Pruebas de caracterización antes de tocar nada (F0):** se escriben primero pruebas que congelan el comportamiento actual (emitir, avisar, llamar, cancelar, rellamar, reportes, seed). Un PR que toque `src/lib/turnos.ts` o `emitir_turno()` debe mantenerlas en verde.
+3. **Pruebas de caracterización antes de tocar nada (F0):** se escriben primero pruebas que congelan el comportamiento actual (emitir, avisar, llamar, cancelar, rellamar, reportes, seed). Un PR que toque `backend/src/turnos.ts` o `emitir_turno()` debe mantenerlas en verde.
 4. **Compatibilidad de firmas:** `emitir_turno()` conserva su firma original (sobrecarga con parámetros opcionales); `tiempo_estimado()` no se borra.
 5. **PR pequeños y revertibles:** un cambio a código existente = un PR de < 500 líneas que se puede revertir con un solo `git revert`.
 
@@ -220,7 +220,7 @@ imprescindible, con las siguientes garantías:
 
 | Existente | Cambio | Tipo | Por qué no altera el comportamiento actual | ¿Imprescindible? |
 |---|---|---|---|---|
-| `prisma/schema.prisma` (`Turno`, enums `CanalTurno`, `EstadoTurno`) | Columnas nuevas nullable/`DEFAULT`; valores nuevos de enum | Aditivo | Los datos y el seed actuales siguen siendo válidos | Sí (M1, M3, M5, M6) |
+| `backend/prisma/schema.prisma` (`Turno`, enums `CanalTurno`, `EstadoTurno`) | Columnas nuevas nullable/`DEFAULT`; valores nuevos de enum | Aditivo | Los datos y el seed actuales siguen siendo válidos | Sí (M1, M3, M5, M6) |
 | `emitir_turno()` (SQL) | Sobrecarga con parámetros opcionales (categoría, fecha de emisión, origen) | Compatible | Código y seed actuales siguen llamando a la firma antigua | Sí (F5) |
 | `llamarSiguiente` (`turnos.ts`) | `findFirst … orderBy emitidoAt` → `siguienteTurno()` | Compatible | Sin M1, `clave_orden = 0` para todos ⇒ desempate por `emitido_at, id` = **FIFO idéntico** | Sí (M1) |
 | `obtenerTurnoPorToken` (posición) | `count(emitidoAt < mío)` → `posicion_turno()` | Compatible | Con claves iguales da el mismo resultado | Sí (M1) |
@@ -257,29 +257,29 @@ Deben estar listas **antes** de que los módulos dependan de ellas. **Las marcad
 ### F0 · Pruebas, calidad y CI — *Integrante 1 · 16 h*
 - [ ] Añadir **Vitest** (`vitest`, `@vitest/coverage-v8`) con `vitest.config.ts` (alias `@/` → `src/`). Scripts: `test`, `test:watch`, `test:int`, `coverage`.
 - [ ] Capa de integración: BD de pruebas con **Testcontainers** (`@testcontainers/postgresql`) o un servicio `db_test` en `docker-compose.test.yml` (puerto 5433). Cada archivo de test crea un *schema* aleatorio y corre `prisma migrate deploy`.
-- [ ] Utilidades `tests/helpers/`: `crearLocal()`, `crearCola()`, `crearTurnos(n)`, `reloj falso` (`vi.useFakeTimers`), `semilla PRNG`.
-- [ ] **Playwright** para e2e (`tests/e2e/`), proyectos `cliente-movil` (390×844) y `staff-escritorio` (1280×800).
+- [ ] Utilidades `backend/tests/helpers/`: `crearLocal()`, `crearCola()`, `crearTurnos(n)`, `reloj falso` (`vi.useFakeTimers`), `semilla PRNG`.
+- [ ] **Playwright** para e2e (`backend/tests/e2e/`), proyectos `cliente-movil` (390×844) y `staff-escritorio` (1280×800).
 - [ ] `.env.example` completo (todas las variables de §10.3) y `README` actualizado.
 - [ ] ESLint: reglas `no-floating-promises`, `eqeqeq`; `tsc --noEmit` en CI.
 - [ ] GitHub Actions `ci.yml`: instalar → `prisma generate` → typecheck → lint → test → build (cache npm).
 - **Hecho cuando:** `npm test` corre 1 prueba real de `transicionValida` y 1 de integración de `emitir_turno` con 50 emisiones concurrentes sin duplicados.
 
 ### F1 · Scheduler de jobs (ADR-01) — *Integrante 1 · 12 h*
-- [ ] Instalar `pg-boss`; `src/server/jobs/runner.ts` (singleton por proceso), `src/server/jobs/registro.ts` (tabla de jobs de ADR-01), `src/instrumentation.ts`.
+- [ ] Instalar `pg-boss`; `src/server/jobs/runner.ts` (singleton por proceso), `src/server/jobs/registro.ts` (tabla de jobs de ADR-01), `frontend/src/instrumentation.ts`.
 - [ ] Helper `definirJob({ nombre, cron, singleton, reintentos, handler })` con log estructurado (`job`, `duracion_ms`, `resultado`).
 - [ ] Endpoint de salud ampliado `/api/health` con estado de `pg-boss` y último latido de cada job.
 - [ ] Panel mínimo en super-admin `/admin/jobs` (nombre, última corrida, resultado, próxima) — reutiliza `Table`.
 - **Hecho cuando:** un job de prueba corre cada minuto en una sola instancia aunque se levanten dos procesos.
 
 ### F2 · Bus de eventos con `LISTEN/NOTIFY` (ADR-02) — *Integrante 1 · 12 h*
-- [ ] Reescribir `src/lib/realtime.ts` manteniendo `publicar` y `suscribir`; conexión `pg` dedicada con reconexión exponencial.
+- [ ] Reescribir `backend/src/realtime.ts` manteniendo `publicar` y `suscribir`; conexión `pg` dedicada con reconexión exponencial.
 - [ ] Tipar el catálogo de eventos nuevos en `EventoRealtime`.
 - [ ] Prueba de integración con dos "procesos" (dos instancias del módulo) comprobando que un evento publicado en A llega a un suscriptor de B.
 - **Hecho cuando:** dos `next start` en puertos distintos comparten la TV en vivo.
 
 ### F3 · Banderas de módulo por plan y local (ADR-03) — *Integrante 2 · 8 h*
 - [ ] Migración: enum `ModuloCodigo`, `plan_modulo`, `local_modulo`; seed según §7.
-- [ ] `src/lib/modulos.ts`: `moduloActivo`, `exigirModulo(localId, codigo)` (lanza `ErrorNegocio("MODULO_NO_DISPONIBLE", …, 403)`), hook `useModulos()` en cliente.
+- [ ] `backend/src/modulos.ts`: `moduloActivo`, `exigirModulo(localId, codigo)` (lanza `ErrorNegocio("MODULO_NO_DISPONIBLE", …, 403)`), hook `useModulos()` en cliente.
 - [ ] UI `/admin/modulos` (hub) y `/admin/modulos/[codigo]` con el interruptor del local.
 - **Hecho cuando:** un local en plan GRATIS no ve M1…M8 y la API responde 403.
 
@@ -300,7 +300,7 @@ Ver detalle en `docs/modulos/M1` y `M3`. Cambios:
 - **Hecho cuando:** toda la suite F0 pasa con la firma nueva y con la antigua, y `llamarSiguiente` usa `clave_orden`.
 
 ### F6 · Observabilidad — *Integrante 4 · 8 h*
-- [ ] Logger JSON único (`src/lib/log.ts`) con `request_id`, `local_id`, `usuario_id`, `modulo`.
+- [ ] Logger JSON único (`backend/src/log.ts`) con `request_id`, `local_id`, `usuario_id`, `modulo`.
 - [ ] Métricas internas (contadores/histogramas en memoria expuestos en `/api/metrics` solo para SUPER_ADMIN o con token): turnos emitidos, latencia de `llamarSiguiente`, mensajes del bot, eventos de kiosco, ejecuciones de reglas, errores por código.
 - [ ] Correlación: `x-request-id` entrante se propaga a jobs y notificaciones.
 
@@ -312,13 +312,13 @@ Ver detalle en `docs/modulos/M1` y `M3`. Cambios:
 - [ ] Revisión OWASP ASVS nivel 1 de los endpoints nuevos (checklist en §9).
 
 ### F8 · Datos de prueba históricos — *Integrante 4 · 10 h*
-- [ ] `prisma/seed-historico.ts`: genera **60 días** de turnos con llegadas Poisson no homogéneas (curva por hora y día de semana), tiempos de servicio log-normales por cola, 8 % no-show, 5 % cancelados, categorías de prioridad (6 %/4 %/3 %), valoraciones. Semilla fija para reproducibilidad.
+- [ ] `backend/prisma/seed-historico.ts`: genera **60 días** de turnos con llegadas Poisson no homogéneas (curva por hora y día de semana), tiempos de servicio log-normales por cola, 8 % no-show, 5 % cancelados, categorías de prioridad (6 %/4 %/3 %), valoraciones. Semilla fija para reproducibilidad.
 - [ ] Script `npm run db:seed:historico -- --dias 60 --local policlinico-san-roman`.
 - [ ] Lo usan M2 (entrenar), M7 (heatmap/SLA), M8 (calibrar) y las pruebas de carga.
 
 ### F9 · Alineación de diseño — *Integrante 3 · 6 h*
 - [ ] Decidir color de marca (teal `#0f766e` del código vs esmeralda `#059669` del Figma) y unificar en tokens de Tailwind/Figma.
-- [ ] Extraer a `src/components/app/` los componentes que el prototipo ya definió: `NavItem`, `KpiCard`, `Chip`, `Tabs` de módulo, `DataTable`, `Toast`.
+- [ ] Extraer a `frontend/src/components/app/` los componentes que el prototipo ya definió: `NavItem`, `KpiCard`, `Chip`, `Tabs` de módulo, `DataTable`, `Toast`.
 - [ ] Nombres de planes y precios del Figma ← seed (GRATIS/EMPRENDE/PRO).
 
 ### F10 · Accesibilidad y localización — *Integrante 2 · 6 h*
@@ -575,7 +575,7 @@ M1: 3 · M2: 3 · M3: 3 · M4: 2 · M5: 4 · M6: 2 · M7: 3 · M8: 2 = **22 pant
 
 - **Ramas:** `main` protegida; `feat/m1-prioridades`, `feat/f1-scheduler`, `fix/…`. Una rama por tarea grande.
 - **Commits:** [Conventional Commits](https://www.conventionalcommits.org/) en español (`feat(m1): …`, `fix(core): …`). La autoría de cada commit es de la persona que lo hace.
-- **PR:** plantilla con *qué cambia*, *cómo probarlo*, *capturas*, checklist DoD §8.4. **Mínimo 1 revisión** de otra persona; el dueño del modelo de datos revisa toda migración; el líder técnico revisa cambios en `src/lib/turnos.ts`.
+- **PR:** plantilla con *qué cambia*, *cómo probarlo*, *capturas*, checklist DoD §8.4. **Mínimo 1 revisión** de otra persona; el dueño del modelo de datos revisa toda migración; el líder técnico revisa cambios en `backend/src/turnos.ts`.
 - **Tamaño:** PRs de < 500 líneas de diff (sin generados); si es mayor, dividir.
 - **Migraciones:** nunca editar una ya fusionada; crear otra.
 - **Reuniones:** daily async (3 líneas en el chat), reunión de 30 min lunes y viernes.
@@ -627,4 +627,4 @@ M1: 3 · M2: 3 · M3: 3 · M4: 2 · M5: 4 · M6: 2 · M7: 3 · M8: 2 = **22 pant
 - [ ] ¿Se actualizó `docs/` y el Figma (si cambió la UI)?
 
 ### D. Fuentes internas
-`README.md` (trazabilidad y API), `prisma/schema.prisma`, `prisma/migrations/*`, `src/lib/turnos.ts`, `src/lib/realtime.ts`, `src/lib/whatsapp.ts`, `src/lib/api.ts`, `AGENTS.md` (aviso de Next 16).
+`README.md` (trazabilidad y API), `backend/prisma/schema.prisma`, `backend/prisma/migrations/*`, `backend/src/turnos.ts`, `backend/src/realtime.ts`, `backend/src/whatsapp.ts`, `backend/src/api.ts`, `AGENTS.md` (aviso de Next 16).

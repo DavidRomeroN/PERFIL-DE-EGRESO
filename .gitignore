@@ -14,8 +14,8 @@
 /coverage
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
 /build
@@ -40,7 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/src/generated/prisma
+/backend/src/generated/prisma
 
 # artefactos de herramientas (prisma init)
 /.agents
@@ -49,5 +49,5 @@ next-env.d.ts
 /skills-lock.json
 
 # reportes generados (M7)
-/.reportes
+.reportes/
 !.env.example
