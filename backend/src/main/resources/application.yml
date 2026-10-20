@@ -1,0 +1,100 @@
+# TurnoYa — configuración. Los valores vienen de las mismas variables de entorno que usa legacy/
+# (ver .env.example en la raíz). El .env de la raíz se importa si existe.
+spring:
+  application:
+    name: turnoya
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  threads:
+    virtual:
+      # Hilos virtuales (Java 21): las conexiones SSE y las llamadas a WhatsApp no bloquean hilos del sistema
+      enabled: true
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: 2
+  flyway:
+    locations: classpath:db/migration
+    # BD creada por Prisma (legacy/): se toma como base la versión 10 y solo se aplica lo nuevo.
+    # En una BD vacía se ejecutan todas las migraciones desde V1.
+    baseline-on-migrate: true
+    baseline-version: 10
+  modulith:
+    events:
+      # La tabla event_publication la crea Flyway (V11)
+      jdbc:
+        schema-initialization:
+          enabled: false
+      republish-outstanding-events-on-restart: true
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+  thymeleaf:
+    cache: true
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 1h
+  mvc:
+    async:
+      # Las conexiones SSE las cierra el propio canal a los 30 min (el navegador reconecta)
+      request-timeout: -1
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,application/javascript,application/json,image/svg+xml
+  error:
+    whitelabel:
+      enabled: false
+
+turnoya:
+  app-url: ${APP_URL:${NEXT_PUBLIC_APP_URL:http://localhost:8080}}
+  database-url: ${DATABASE_URL:}
+  jobs-habilitados: ${ENABLE_JOBS:true}
+  seguridad:
+    jwt-secret: ${JWT_SECRET:}
+    data-encryption-key: ${DATA_ENCRYPTION_KEY:}
+    allow-insecure-secrets: ${ALLOW_INSECURE_SECRETS:false}
+    cookie-segura: ${COOKIE_SEGURA:false}
+  whatsapp:
+    proveedor: ${WHATSAPP_PROVIDER:mock}
+    token: ${WHATSAPP_TOKEN:}
+    phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+    openwa-url: ${OPENWA_URL:http://localhost:2785}
+    openwa-api-key: ${OPENWA_API_KEY:}
+    openwa-session: ${OPENWA_SESSION:turnoya}
+  tiempo-real:
+    # memoria (una instancia) | redis (varias réplicas)
+    bus: ${TURNOYA_BUS:memoria}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, modulith
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    redis:
+      # Solo cuenta para la salud cuando el bus de tiempo real usa Redis
+      enabled: ${TURNOYA_REDIS_SALUD:false}
+  metrics:
+    tags:
+      application: turnoya
+
+logging:
+  structured:
+    format:
+      # Logs JSON con request_id, usuario_id y local_id (MDC). En desarrollo se usa texto (application-dev.yml)
+      console: logstash
+  level:
+    root: info
+    pe.turnoya: ${LOG_LEVEL:info}

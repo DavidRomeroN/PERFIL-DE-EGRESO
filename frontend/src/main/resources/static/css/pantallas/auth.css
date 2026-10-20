@@ -1,0 +1,112 @@
+/* Ingreso del personal */
+.pagina-login {
+  display: grid;
+  min-height: 100dvh;
+}
+@media (min-width: 64rem) {
+  .pagina-login {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.login-lateral {
+  position: relative;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 2.5rem;
+  background: #020617;
+  color: white;
+}
+@media (min-width: 64rem) {
+  .login-lateral {
+    display: flex;
+  }
+}
+.login-lateral::before {
+  content: "";
+  position: absolute;
+  top: -33%;
+  left: -33%;
+  width: 80%;
+  height: 80%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(20 184 166 / 0.45), transparent 65%);
+  filter: blur(32px);
+}
+.login-cita {
+  position: relative;
+  max-width: 28rem;
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.login-cita footer {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: rgb(255 255 255 / 0.6);
+}
+.login-cifras {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.login-cifras div {
+  padding: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--radio-lg);
+  background: rgb(255 255 255 / 0.05);
+}
+.login-cifras strong {
+  display: block;
+  font-size: 1.5rem;
+}
+.login-cifras span {
+  font-size: 0.85rem;
+  color: rgb(255 255 255 / 0.6);
+}
+.login-formulario {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.login-caja {
+  width: 100%;
+  max-width: 24rem;
+}
+.login-caja h1 {
+  margin-top: 2rem;
+  font-size: 1.9rem;
+}
+.login-caja .formulario {
+  margin-top: 2rem;
+}
+.login-demo {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  background: var(--apagado);
+}
+.login-demo p {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--apagado-texto);
+}
+.login-demo ul {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+.login-demo code {
+  font-family: var(--fuente-mono);
+  font-size: 0.78rem;
+}

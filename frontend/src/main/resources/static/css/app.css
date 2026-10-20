@@ -1,0 +1,18 @@
+/*
+ * TurnoYa — hoja de estilos (sin herramientas de compilación).
+ *   tokens.css       colores, radios, sombras y curvas de movimiento (un solo lugar para cambiar la marca)
+ *   base.css         reinicio, tipografía, foco, movimiento reducido, impresión
+ *   componentes.css  botón, tarjeta, insignia, campo, alerta, diálogo, avisos, tabla…
+ *   pantallas/*.css  estilos propios de cada pantalla
+ * Convención: clases en español y por componente (.boton, .boton-contorno); --local es el color del local.
+ */
+@import url("tokens.css");
+@import url("base.css");
+@import url("componentes.css");
+@import url("pantallas/inicio.css");
+@import url("pantallas/auth.css");
+@import url("pantallas/cliente.css");
+@import url("pantallas/panel.css");
+@import url("pantallas/tv.css");
+@import url("pantallas/ticket.css");
+@import url("pantallas/admin.css");

@@ -1,0 +1,77 @@
+/* Ticket térmico de 80 mm (RF07) */
+@page {
+  size: 80mm auto;
+  margin: 4mm;
+}
+.pagina-ticket {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  background: #f4f4f5;
+}
+.ticket-botones {
+  display: flex;
+  width: 300px;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.ticket-botones .boton:first-child {
+  flex: 1;
+}
+.ticket-papel {
+  width: 80mm;
+  padding: 1.25rem;
+  background: white;
+  color: black;
+  font-family: var(--fuente-mono);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: var(--sombra-elevada);
+}
+.ticket-papel header,
+.ticket-papel section,
+.ticket-papel footer {
+  text-align: center;
+}
+.ticket-papel .local {
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.ticket-papel .chico {
+  font-size: 11px;
+}
+.ticket-papel .codigo {
+  margin: 0.25rem 0;
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.ticket-papel hr {
+  margin: 1rem 0;
+  border: 0;
+  border-top: 1px dashed black;
+}
+.ticket-datos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.ticket-datos strong {
+  display: block;
+  font-size: 1.25rem;
+}
+.ticket-qr {
+  display: flex;
+  justify-content: center;
+}
+@media print {
+  .pagina-ticket {
+    padding: 0;
+    background: white;
+  }
+  .ticket-papel {
+    box-shadow: none;
+  }
+}

@@ -1,0 +1,19 @@
+# Desarrollo (./gradlew :backend:bootRun lo activa por defecto)
+spring:
+  thymeleaf:
+    cache: false
+    # Plantillas y estáticos leídos directo de frontend/: se ven los cambios sin reiniciar
+    prefix: file:../frontend/src/main/resources/templates/
+  web:
+    resources:
+      static-locations: file:../frontend/src/main/resources/static/, classpath:/static/
+      cache:
+        cachecontrol:
+          max-age: 0
+
+logging:
+  structured:
+    format:
+      console:
+  level:
+    pe.turnoya: debug

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!--/*
+  Menú lateral de la administración. Las secciones que todavía viven en legacy/ (sistema anterior) aparecen
+  como "en migración" hasta que su módulo pase a Spring Boot.
+*/-->
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<aside th:fragment="menu(seccion)" class="menu-admin">
+  <a th:replace="~{fragmentos/base :: logo('/admin/colas', true)}"></a>
+  <nav aria-label="Administración">
+    <p class="menu-admin-grupo">Operación</p>
+    <a th:href="@{/panel}">Panel de ventanilla</a>
+    <a th:if="${sesion.localSlug != null}" target="_blank" th:href="@{/l/{s}/tv(s=${sesion.localSlug})}">Pantalla TV</a>
+
+    <p class="menu-admin-grupo">Configuración</p>
+    <a th:href="@{/admin/colas}" th:attr="aria-current=${seccion == 'colas'} ? 'page'">Colas</a>
+    <a th:href="@{/admin/ventanillas}" th:attr="aria-current=${seccion == 'ventanillas'} ? 'page'">Ventanillas</a>
+    <span class="pendiente">Usuarios <small>en migración</small></span>
+    <span class="pendiente">Local y pantalla <small>en migración</small></span>
+
+    <p class="menu-admin-grupo">Módulos</p>
+    <span class="pendiente">Prioridades (M1) <small>en migración</small></span>
+    <span class="pendiente">Predicción (M2) <small>en migración</small></span>
+    <span class="pendiente">Citas (M3) <small>en migración</small></span>
+    <span class="pendiente">Chatbot (M4) <small>en migración</small></span>
+    <span class="pendiente">Kiosco (M5) <small>en migración</small></span>
+    <span class="pendiente">Balanceo (M6) <small>en migración</small></span>
+    <span class="pendiente">Analítica (M7) <small>en migración</small></span>
+    <span class="pendiente">Simulador (M8) <small>en migración</small></span>
+  </nav>
+  <div class="menu-admin-pie">
+    <p><strong th:text="${sesion.nombre}">Nombre</strong><br><span th:text="${sesion.rol.etiqueta()}">Rol</span></p>
+    <form method="post" th:action="@{/salir}"><button type="submit">Salir</button></form>
+  </div>
+</aside>
+</body>
+</html>

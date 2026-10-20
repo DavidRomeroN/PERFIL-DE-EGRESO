@@ -4,8 +4,33 @@ on:
   pull_request:
 
 jobs:
-  check:
+  # Proyecto Java: backend/ (Spring Boot) + frontend/ (plantillas). Las pruebas de integración levantan
+  # PostgreSQL con Testcontainers (Docker viene instalado en los runners de GitHub).
+  java:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Pruebas (unitarias, modularidad, compatibilidad con legacy e integración)
+        run: ./gradlew --no-daemon build
+      - name: Documentación de módulos (Spring Modulith)
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: modulos
+          path: backend/build/spring-modulith-docs
+          if-no-files-found: ignore
+
+  # Sistema anterior (Next.js) mientras dure la migración
+  legacy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: legacy
     services:
       postgres:
         image: postgres:16-alpine
@@ -29,6 +54,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: legacy/package-lock.json
       - run: npm ci
       - run: npm run db:generate -w backend
       - run: npm run typecheck

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Ticket ' + ${turno.codigo})}"></head>
+<body class="pagina-ticket">
+
+<div class="ticket-botones no-imprimir">
+  <button type="button" id="ticket-imprimir" class="boton">Imprimir</button>
+  <button type="button" id="ticket-cerrar" class="boton boton-contorno">Cerrar</button>
+</div>
+
+<!--/* Ticket térmico de 80 mm (RF07) */-->
+<article class="ticket-papel">
+  <header>
+    <p class="local" th:text="${turno.local.nombreComercial}">Local</p>
+    <p th:if="${turno.local.direccion}" class="chico" th:text="${turno.local.direccion}">Dirección</p>
+    <p class="chico" th:text="${@fmt.hora(turno.emitidoAt)} + ' · ' + ${@fmt.fecha(turno.emitidoAt)}">10:00 · 01/01/2026</p>
+  </header>
+  <hr>
+  <section>
+    <p class="chico" style="text-transform: uppercase; letter-spacing: 0.2em">Su turno</p>
+    <p class="codigo" th:text="${turno.codigo}">A-001</p>
+    <p style="font-weight: 600; text-transform: uppercase" th:text="${turno.cola.nombre}">Caja</p>
+    <p th:if="${turno.cliente.nombre}" class="chico" th:text="${turno.cliente.nombre}">Nombre</p>
+  </section>
+  <hr>
+  <section class="ticket-datos">
+    <div><span class="chico">DELANTE DE UD.</span><strong th:text="${turno.personasDelante}">2</strong></div>
+    <div><span class="chico">ESPERA APROX.</span><strong th:text="${@fmt.duracion(turno.tiempoEstimadoSeg)}">10 min</strong></div>
+  </section>
+  <hr>
+  <section>
+    <div class="ticket-qr" th:utext="${qrSvg}"></div>
+    <p class="chico" style="margin-top: 0.5rem">Escanee para seguir su turno desde el celular y recibir el aviso.</p>
+    <p style="font-size: 9px; word-break: break-all; color: #52525b" th:text="${urlSeguimiento}">url</p>
+  </section>
+  <hr>
+  <footer class="chico">
+    <p>Esté atento a la pantalla. Si no se presenta tras el llamado, perderá su turno.</p>
+    <p style="margin-top: 0.5rem; font-weight: 700">TurnoYa · fila virtual</p>
+  </footer>
+</article>
+
+<script defer th:src="@{/js/ticket.js}"></script>
+</body>
+</html>

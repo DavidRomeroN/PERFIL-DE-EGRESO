@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Ventanillas')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Ventanillas</h1>
+        <p>Cada ventanilla atiende una cola o, si no se elige ninguna, todas las colas del local.</p>
+      </div>
+    </div>
+
+    <form class="tarjeta formulario-en-linea ventanillas" method="post" th:action="@{/admin/ventanillas}" th:attr="hx-post=@{/admin/ventanillas}" hx-target="#lista" hx-swap="outerHTML" data-limpiar-al-enviar>
+      <div class="campo">
+        <label class="etiqueta" for="nombre">Nombre</label>
+        <input id="nombre" name="nombre" class="entrada" required minlength="2" maxlength="40" placeholder="Ventanilla 1">
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="colaId">Atiende</label>
+        <select id="colaId" name="colaId" class="selector">
+          <option value="">Todas las colas</option>
+          <option th:each="c : ${colas}" th:value="${c.id}" th:text="${c.prefijo} + ' · ' + ${c.nombre}">A · Caja</option>
+        </select>
+      </div>
+      <button type="submit" class="boton">Agregar</button>
+    </form>
+
+    <div id="lista" th:fragment="lista" class="tarjeta tarjeta-sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Ventanilla</th><th>Atiende</th><th>Estado</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(ventanillas)}"><td colspan="4" class="vacio">Todavía no hay ventanillas.</td></tr>
+          <tr th:each="v : ${ventanillas}">
+            <td><strong th:text="${v.nombre}">Ventanilla 1</strong></td>
+            <td th:text="${v.cola != null ? v.cola.prefijo + ' · ' + v.cola.nombre : 'Todas las colas'}">Todas</td>
+            <td><span th:class="${v.activa} ? 'estado-activo' : 'estado-inactivo'" th:text="${v.activa} ? 'Activa' : 'Inactiva'">Activa</span></td>
+            <td>
+              <div class="tabla-acciones">
+                <button type="button" class="boton boton-contorno boton-pequeno" th:attr="data-abrir='editar-ventanilla-' + ${v.id}">Editar</button>
+                <form method="post" th:action="@{/admin/ventanillas/{id}/eliminar(id=${v.id})}" th:attr="hx-post=@{/admin/ventanillas/{id}/eliminar(id=${v.id})},hx-confirm='¿Eliminar ' + ${v.nombre} + '? Si tiene historial solo se desactiva.'"
+                      hx-target="#lista" hx-swap="outerHTML">
+                  <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Eliminar</button>
+                </form>
+              </div>
+
+              <dialog class="dialogo" th:id="'editar-ventanilla-' + ${v.id}">
+                <form class="formulario" method="post" th:action="@{/admin/ventanillas/{id}(id=${v.id})}" th:attr="hx-post=@{/admin/ventanillas/{id}(id=${v.id})}" hx-target="#lista" hx-swap="outerHTML">
+                  <h2 th:text="'Editar ' + ${v.nombre}">Editar</h2>
+                  <div class="campo"><label class="etiqueta">Nombre <input name="nombre" class="entrada" required maxlength="40" th:value="${v.nombre}"></label></div>
+                  <div class="campo">
+                    <label class="etiqueta">Atiende
+                      <select name="colaId" class="selector">
+                        <option value="">Todas las colas</option>
+                        <option th:each="c : ${colas}" th:value="${c.id}" th:selected="${v.colaId == c.id}" th:text="${c.prefijo} + ' · ' + ${c.nombre}">A</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label class="casilla"><input type="checkbox" name="activa" value="true" th:checked="${v.activa}"> <span>Ventanilla activa</span></label>
+                  <div class="dialogo-pie">
+                    <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+                    <button type="submit" class="boton">Guardar</button>
+                  </div>
+                </form>
+              </dialog>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

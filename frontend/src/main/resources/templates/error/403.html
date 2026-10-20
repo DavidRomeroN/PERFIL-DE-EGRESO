@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Sin permiso')}"></head>
+<body>
+<main class="pagina-error">
+  <div>
+    <a th:replace="~{fragmentos/base :: logo('/', false)}"></a>
+    <h1>No tienes permiso para ver esta página</h1>
+    <p>Si crees que es un error, pide acceso al administrador del local.</p>
+    <a class="boton" th:href="@{/}">Volver al inicio</a>
+  </div>
+</main>
+</body>
+</html>

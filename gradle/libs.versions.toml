@@ -1,0 +1,18 @@
+# Catálogo único de versiones. Spring Boot gestiona el resto mediante su BOM.
+[versions]
+spring-boot = "4.1.1"
+spring-modulith = "2.1.1"
+htmx = "2.0.11"
+htmx-sse = "2.2.4"
+zxing = "3.5.4"
+nimbus-jose-jwt = "10.10"
+
+[libraries]
+spring-modulith-bom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "spring-modulith" }
+htmx = { module = "org.webjars.npm:htmx.org", version.ref = "htmx" }
+htmx-sse = { module = "org.webjars.npm:htmx-ext-sse", version.ref = "htmx-sse" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

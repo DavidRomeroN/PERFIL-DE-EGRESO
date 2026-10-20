@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Pantalla · ' + ${snap.local.nombreComercial})}"></head>
+<body class="pagina-tv" th:style="'--local:' + ${snap.local.colorPrimario}">
+
+<div class="tv" hx-ext="sse" th:attr="sse-connect=@{/api/v1/realtime/{s}(s=${snap.local.slug})}">
+  <header class="tv-cabecera">
+    <div class="tv-local">
+      <img th:if="${snap.local.logoUrl}" class="tv-local-logo" th:src="${snap.local.logoUrl}" alt="">
+      <span th:unless="${snap.local.logoUrl}" class="tv-local-logo" th:text="${#strings.substring(snap.local.nombreComercial, 0, 1)}">P</span>
+      <div>
+        <h1 th:text="${snap.local.nombreComercial}">Local</h1>
+        <p th:text="${snap.local.direccion}">Dirección</p>
+      </div>
+    </div>
+    <div class="tv-herramientas">
+      <span id="tv-reloj" class="tv-reloj" th:text="${@fmt.horaActual()}">10:00</span>
+      <button type="button" id="tv-sonido" class="tv-boton no-imprimir" aria-pressed="false" title="Activar sonido y voz">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+        <span class="solo-lectores">Sonido</span>
+      </button>
+      <button type="button" id="tv-completa" class="tv-boton no-imprimir" title="Pantalla completa">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+        <span class="solo-lectores">Pantalla completa</span>
+      </button>
+      <span th:replace="~{fragmentos/base :: enVivo}"></span>
+    </div>
+  </header>
+
+  <!--/* Contenido en vivo: se vuelve a pedir con cada evento del local y cada 20 s */-->
+  <div id="tv-contenido" class="tv-contenido" th:fragment="contenido"
+       th:attr="hx-get=@{/l/{s}/tv/contenido(s=${snap.local.slug})}"
+       hx-trigger="sse:turno:llamado, sse:cola:actualizada delay:400ms, sse:turno:estado delay:400ms, every 20s" hx-swap="outerHTML">
+
+    <main class="tv-cuerpo">
+      <section class="tv-columna">
+        <div class="tv-llamado" th:with="ultimo=${#lists.isEmpty(snap.ultimosLlamados) ? null : snap.ultimosLlamados[0]}">
+          <th:block th:if="${ultimo != null}">
+            <p class="tv-llamado-rotulo">🔔 Llamando a</p>
+            <p class="tv-llamado-codigo" th:text="${ultimo.codigo}">A-001</p>
+            <div class="tv-llamado-ventanilla" th:text="${ultimo.ventanilla}">Ventanilla 1</div>
+          </th:block>
+          <th:block th:if="${ultimo == null}">
+            <p class="tv-esperando">Esperando el primer llamado…</p>
+            <p style="margin-top: 0.75rem; color: rgb(255 255 255 / 0.4)">Los turnos aparecerán aquí en tiempo real</p>
+          </th:block>
+        </div>
+
+        <div class="tv-colas" th:classappend="'cols-' + ${#lists.size(snap.colas) > 3 ? 3 : (#lists.isEmpty(snap.colas) ? 1 : #lists.size(snap.colas))}">
+          <div th:each="c : ${snap.colas}" class="tv-cola">
+            <div class="tv-cola-titulo"><span class="prefijo" th:text="${c.prefijo}">A</span><span th:text="${c.nombre}">Caja</span></div>
+            <div class="tv-cola-datos">
+              <div>
+                <p class="tv-cola-numero" th:text="${c.enEspera}">3</p>
+                <p class="tv-rotulo-pequeno">en espera</p>
+              </div>
+              <div style="text-align: right">
+                <p style="font-size: 1.25rem; font-weight: 600" th:text="${c.enEspera > 0} ? '~ ' + ${@fmt.duracion(c.tiempoEstimadoSeg)} : 'Sin espera'">~ 5 min</p>
+                <p class="tv-rotulo-pequeno">próximo</p>
+              </div>
+            </div>
+            <div th:unless="${#lists.isEmpty(c.espera)}" class="tv-cola-siguientes">
+              <span th:each="t, i : ${c.espera}" th:if="${i.index < 5}" th:text="${t.codigo}">A-002</span>
+              <span th:if="${#lists.size(c.espera) > 5}" style="background: none; color: rgb(255 255 255 / 0.5)" th:text="'+' + ${#lists.size(c.espera) - 5}">+2</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tv-columna">
+        <div class="tv-panel">
+          <p class="tv-panel-titulo">En atención</p>
+          <div class="tv-atencion">
+            <th:block th:each="c : ${snap.colas}">
+              <div th:each="l : ${c.llamados}" class="tv-atencion-fila">
+                <span class="mono" th:text="${l.codigo}">A-001</span>
+                <span>
+                  <strong th:text="${l.ventanilla}">Ventanilla 1</strong>
+                  <small th:text="${c.nombre} + ' · ' + ${@fmt.hora(l.llamadoAt)}">Caja · 10:00</small>
+                </span>
+              </div>
+            </th:block>
+            <p th:if="${snap.stats.llamados == 0}" style="color: rgb(255 255 255 / 0.4)">Ninguna ventanilla está atendiendo.</p>
+          </div>
+
+          <th:block th:if="${#lists.size(snap.ultimosLlamados) > 1}">
+            <p class="tv-panel-titulo" style="margin-top: 2rem">Últimos llamados</p>
+            <ul class="tv-recientes">
+              <li th:each="l, i : ${snap.ultimosLlamados}" th:if="${i.index > 0 and i.index <= 6}">
+                <span class="mono" th:text="${l.codigo}">A-001</span>
+                <span th:text="${l.ventanilla}">V1</span>
+                <span class="numeros" style="font-size: 0.8rem; color: rgb(255 255 255 / 0.5)" th:text="${@fmt.hora(l.llamadoAt)}">10:00</span>
+              </li>
+            </ul>
+          </th:block>
+        </div>
+
+        <div class="tv-qr">
+          <div th:utext="${qrSvg}"></div>
+          <div>
+            <strong>Toma tu turno con el QR</strong>
+            <p>Escanéalo con tu celular, elige el servicio y espera donde quieras. Te avisamos por WhatsApp.</p>
+            <small th:text="${#strings.replace(#strings.replace(urlLocal, 'https://', ''), 'http://', '')}">turnoya.pe/l/local</small>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="tv-cinta">
+      <p class="cinta-texto"
+         th:text="${snap.local.mensajeTv != null ? snap.local.mensajeTv : 'Bienvenido. Por favor espere su llamado.'} + '   •   Hoy: ' + ${snap.stats.atendidos} + ' atendidos · ' + ${snap.stats.enEspera} + ' en espera · espera promedio ' + ${snap.stats.esperaPromedioMin} + ' min   •   Fila virtual por TurnoYa'">
+        Bienvenido.
+      </p>
+    </footer>
+  </div>
+</div>
+
+<script defer th:src="@{/js/tv.js}"></script>
+</body>
+</html>

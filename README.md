@@ -4,25 +4,28 @@ SaaS multi-local que reemplaza la fila física por una **fila virtual**: el clie
 
 > Proyecto de Perfil de Egreso — Universidad Peruana Unión, Filial Juliaca.
 
+> **Migración en curso a Java (Spring Boot + Thymeleaf + htmx).** El núcleo (colas, ventanillas, turnos, panel, TV, "mi turno", ticket) ya está en `backend/` y `frontend/`. Los módulos M1–M8, pagos y el resto de la administración siguen en `legacy/` (Next.js) hasta migrarse. Ver [`docs/ARQUITECTURA_JAVA.md`](docs/ARQUITECTURA_JAVA.md) y [`docs/MIGRACION_SPRING.md`](docs/MIGRACION_SPRING.md).
+
 ---
 
 ## 1. Inicio rápido (desarrollo)
 
-Requisitos: **Node.js 22+**, **Docker Desktop** (para PostgreSQL) y npm.
+Requisitos: **JDK 21**, **Docker Desktop** (PostgreSQL) y, para sembrar datos de demostración y usar los módulos aún no migrados, **Node.js 22+**.
 
 ```bash
-# 1) Dependencias
-npm install
-
-# 2) Variables de entorno
+# 1) Variables de entorno (las leen el proyecto Java y legacy/)
 copy .env.example .env        # (Linux/macOS: cp .env.example .env)
 
-# 3) Base de datos + migraciones + datos de demostración
-npm run setup                 # = docker compose up -d db && prisma migrate deploy && prisma db seed
+# 2) Base de datos + migraciones + datos de demostración (con legacy/, una sola vez)
+cd legacy && npm install && npm run setup && cd ..
 
-# 4) Servidor de desarrollo
-npm run dev                   # http://localhost:3000
+# 3) Aplicación Java (Flyway toma la BD existente como base y aplica lo nuevo)
+gradlew :backend:bootRun      # http://localhost:8080   (Linux/macOS: ./gradlew)
 ```
+
+`bootRun` usa el perfil `dev`: las plantillas y los estilos se leen directo de `frontend/src/main/resources`, así que los cambios se ven al recargar la página, sin reiniciar.
+
+Para usar los módulos que todavía no están migrados, levanta también legacy/ (`cd legacy && npm run dev`, puerto 3000). Ambos comparten la base de datos y la sesión.
 
 ### Credenciales de demostración
 
@@ -34,69 +37,81 @@ npm run dev                   # http://localhost:3000
 | Admin local  | `admin@transportes.pe`       | `admin123`    | Transportes Altiplano     |
 | Operador     | `operador@transportes.pe`    | `operador123` | Transportes Altiplano     |
 
-### Recorrido sugerido para la demo
+### Recorrido sugerido para la demo (aplicación Java)
 
-1. **Cliente** — `http://localhost:3000/l/policlinico-san-roman` → elige cola → ingresa nombre y celular → recibe código (`A-023`) y página de seguimiento `/t/<token>` con posición, tiempo estimado y burbujas WhatsApp.
-2. **Pantalla TV** — `http://localhost:3000/l/policlinico-san-roman/tv` (pantalla completa, sonido y voz).
-3. **Operador** — `/login` → `operador@policlinico.pe` → *Panel de ventanilla*: **Llamar siguiente**, Atendido, Rellamar, No se presentó, emitir ticket impreso.
-4. **Admin** — `/login` → `admin@policlinico.pe` → dashboard con KPIs y gráficos, colas, ventanillas, usuarios, reportes (CSV), notificaciones, pantalla/QR y configuración.
-5. **Super admin** — `superadmin@turnoya.pe` → *Locales y planes*: alta de locales, cambio de plan, límites por plan.
+1. **Cliente** — `http://localhost:8080/l/policlinico-san-roman` → elige cola → nombre y celular → código (`A-023`) y seguimiento en `/t/<token>` con posición, espera estimada y avisos de WhatsApp.
+2. **Pantalla TV** — `http://localhost:8080/l/policlinico-san-roman/tv` (pantalla completa, sonido y voz).
+3. **Operador** — `/login` → `operador@policlinico.pe` → *Panel de ventanilla*: **Llamar siguiente**, Atendido, Rellamar, No se presentó, ticket impreso.
+4. **Admin** — `/login` → `admin@policlinico.pe` → *Colas* y *Ventanillas*.
 
-Todo se actualiza en **tiempo real** entre pestañas (SSE): abre la TV, el panel y la página del cliente en paralelo.
+Todo se actualiza en **tiempo real** (SSE + htmx): abre la TV, el panel y la página del cliente en paralelo.
 
 ---
 
 ## 2. Arquitectura
 
+**Monolito modular** (Spring Modulith) con **arquitectura hexagonal dentro de cada módulo** y **eventos entre módulos** (con registro de publicaciones como outbox). Frontend **dirigido por hipermedia**: HTML generado en el servidor con Thymeleaf y actualizado con htmx; JavaScript mínimo solo donde el navegador es indispensable (sonido, voz, impresión). Detalle y receta para migrar módulos: [`docs/ARQUITECTURA_JAVA.md`](docs/ARQUITECTURA_JAVA.md).
+
 ```
-┌─────────────┐   HTTPS    ┌──────────────────────────────────────────┐    ┌──────────────┐
-│ Celular     │──QR/PWA──▶ │  Next.js 16 (App Router, React 19)       │    │ PostgreSQL 16│
-│ Pantalla TV │◀──SSE────  │  · UI (Tailwind v4 + shadcn/ui)          │◀──▶│ · emitir_turno│
-│ Panel/Admin │──REST────▶ │  · API REST /api/v1 (zod, JWT, rate-limit)│    │ · tiempo_est. │
-└─────────────┘            │  · Dominio: turnos, estados, avisos       │    │ · auditoría   │
-                           │  · Bus de eventos → Server-Sent Events    │    └──────────────┘
-                           │  · WhatsApp (mock | Meta Cloud API)       │
-                           └──────────────────────────────────────────┘
+Navegador (celular, TV, panel, admin)
+   │  HTML + htmx           SSE /api/v1/realtime/:slug         API REST /api/v1 (mismo contrato que legacy/)
+   ▼
+Spring Boot 4 (Java 21, hilos virtuales)
+   compartido   errores, tiempo, cifrado (compatible con legacy/), web, tareas programadas
+   plataforma   locales, planes, módulos, horario, sesión JWT, auditoría
+   nucleo       colas, ventanillas, turnos  ── eventos ──▶ notificaciones (WhatsApp)
+                                            ── eventos ──▶ tiemporeal (SSE; bus en memoria o Redis)
+   ▼
+PostgreSQL 16 (Flyway; funciones SQL emitir_turno / siguiente_turno con FOR UPDATE SKIP LOCKED)
 ```
 
-| Capa          | Tecnología                                                                 |
-| ------------- | -------------------------------------------------------------------------- |
-| Front-end     | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Recharts, lucide-react, qrcode.react, PWA manifest |
-| Back-end      | Next.js Route Handlers (`/api/v1`), zod 4, jose (JWT HS256), bcryptjs      |
-| Datos         | PostgreSQL 16, Prisma ORM 7 (driver adapter `pg`), funciones SQL y triggers |
-| Tiempo real   | Server-Sent Events (`/api/v1/realtime/:slug`) + polling de respaldo       |
-| Mensajería    | Patrón *strategy*: `mock` (simulador) / `openwa` (gateway open source [OpenWA](https://github.com/rmyndharis/OpenWA), número propio por QR) / `meta` (WhatsApp Cloud API); webhook de estados firmado (HMAC) |
-| Despliegue    | Docker multi-stage (Next standalone) + docker compose                      |
+| Capa           | Tecnología |
+| -------------- | ---------- |
+| Back-end       | Java 21, Spring Boot 4.1, Spring Modulith 2.1, Spring Security (JWT HS256 en cookie, compatible con legacy/), Bean Validation |
+| Front-end      | Thymeleaf, htmx 2 + extensión SSE (WebJars), CSS propio con tokens de diseño, JavaScript mínimo sin dependencias |
+| Datos          | PostgreSQL 16, Flyway (migraciones de legacy/ + nuevas), JdbcClient con SQL explícito |
+| Tiempo real    | Server-Sent Events; bus en memoria (1 instancia) o Redis/Valkey pub/sub (varias réplicas) |
+| Mensajería     | Estrategia `mock` / `openwa` / `meta`; avisos después del commit vía eventos (reintentables) |
+| Observabilidad | Logs JSON con `request_id`, Actuator + Prometheus (`/actuator/prometheus`), `/api/health` |
+| Despliegue     | Docker multi-stage (jar en capas, JRE 21) + docker compose |
 
 ### Estructura de carpetas
 
-Monorepo con **npm workspaces**: `backend/` (`@turnoya/backend`) y `frontend/` (`@turnoya/frontend`). Los comandos se ejecutan desde la raíz y el `.env` vive en la raíz (lo leen ambos).
-
 ```
-backend/                 lógica de servidor (se importa como @backend/*)
-  ├─ src/                  dominio y servicios por módulo (turnos, auth, crypto, realtime, whatsapp, api, schemas,
-  │                        prioridades, prediccion, citas, bot, kiosco, balanceo, analitica, capacidad, pagos, jobs)
-  ├─ prisma/               schema.prisma, migraciones (incl. funciones SQL), seed.ts
-  ├─ tests/                unit (lógica pura) e integracion (BD turnoya_test)
-  └─ scripts/              bd-pruebas.mjs (prepara la BD de pruebas)
-frontend/                aplicación Next.js
-  ├─ src/app/              rutas App Router
-  │   ├─ page.tsx            landing
-  │   ├─ l/[slug]            tomar turno (QR) · l/[slug]/tv pantalla TV
-  │   ├─ t/[token]           seguimiento del turno (cliente)
-  │   ├─ ticket/[token]      ticket imprimible 80 mm
-  │   ├─ login, panel        autenticación y panel de ventanilla
-  │   ├─ admin/**            dashboard, colas, ventanillas, usuarios, reportes, notificaciones, pantalla, configuración, locales
-  │   └─ api/v1/**           API REST + SSE + webhooks (rutas delgadas que llaman a @backend/*)
-  ├─ src/lib/              solo navegador: utils (cn), format, fetcher, kiosco/almacen (IndexedDB), worker del simulador
-  ├─ src/components/       ui (shadcn), app (header, stat cards, diálogos), brand (logo)
-  ├─ src/hooks/            useRealtime (SSE), useSonido (timbre + voz)
-  └─ public/               estáticos y service worker del kiosco
-docs/                    arquitectura, módulos, plan de migración y manual de usuario
-video-promo/             video promocional (Remotion), proyecto independiente
+backend/                       aplicación Spring Boot (Gradle)
+  src/main/java/pe/turnoya/
+    compartido/                  shared kernel (módulo abierto)
+    plataforma/                  tenants, planes, módulos, sesión, auditoría
+    nucleo/                      colas, ventanillas, turnos
+      (paquete raíz)               API pública: ConsultaTurnos, ContactoTurnos, TurnoPublico…
+      eventos/                     eventos que publica (interfaz nombrada)
+      puertos/                     extensiones para M1/M2/M3 (interfaz nombrada)
+      dominio/ aplicacion/ infraestructura/ web/{api,vistas}   internos
+    notificaciones/              avisos por WhatsApp
+    tiemporeal/                  canal SSE
+  src/main/resources/
+    application*.yml             configuración (lee el .env de la raíz)
+    db/migration/                Flyway: V1–V10 (de legacy/) y nuevas
+  src/test/                      unitarias, modularidad, compatibilidad con legacy/ e integración (Testcontainers)
+frontend/                      recursos web (se empaquetan dentro del jar)
+  src/main/resources/templates/  Thymeleaf: fragmentos/, cliente/, tv/, panel/, admin/, auth/, error/
+  src/main/resources/static/     css/ (tokens, base, componentes, pantallas/), js/, img/
+legacy/                        sistema anterior (Next.js + Prisma), hasta terminar la migración
+docs/                          arquitectura, módulos, plan de migración y manual de usuario
+video-promo/                   video promocional (Remotion), proyecto independiente
 ```
 
-> El backend todavía depende de `next/server` y `next/headers` (capa HTTP en `api.ts`, `auth.ts`, `admin.ts`, `rutas.ts`). Esa dependencia desaparece al migrar a Spring Boot (ver [`docs/MIGRACION_SPRING.md`](docs/MIGRACION_SPRING.md)).
+### Comandos
+
+| Comando | Qué hace |
+| --- | --- |
+| `gradlew :backend:bootRun` | Aplicación en modo desarrollo (http://localhost:8080) |
+| `gradlew build` | Compila y ejecuta todas las pruebas (las de integración necesitan Docker) |
+| `gradlew :backend:test` | Solo pruebas |
+| `docker compose up -d db` | Solo PostgreSQL |
+| `docker compose --profile prod up -d --build` | Aplicación Java + PostgreSQL + Redis + OpenWA |
+| `docker compose --profile legacy up -d --build` | Sistema anterior (Next.js) en el puerto 3000 |
+| `cd legacy && npm run …` | Comandos de legacy/ (ver `legacy/package.json`) |
 
 ### Modelo de datos (resumen)
 
@@ -168,7 +183,7 @@ Códigos de error: `VALIDACION`, `RATE_LIMIT`, `NO_AUTENTICADO`, `PROHIBIDO`, `C
 
 ---
 
-## 5. Despliegue en producción (Docker)
+## 5. Despliegue en producción (Docker, legacy/)
 
 ```bash
 # Variables (opcional: .env en la raíz con JWT_SECRET, DATA_ENCRYPTION_KEY, NEXT_PUBLIC_APP_URL, WHATSAPP_*)
@@ -219,7 +234,7 @@ Recomendaciones de OpenWA (es un cliente no oficial): usa un **número dedicado*
 
 ---
 
-## 6. Scripts
+## 6. Scripts de legacy/ (ejecutar dentro de `legacy/`)
 
 | Script | Acción |
 | --- | --- |

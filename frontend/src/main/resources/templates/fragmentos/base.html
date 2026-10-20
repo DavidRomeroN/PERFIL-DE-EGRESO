@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!--/*
+  Fragmentos compartidos por todas las páginas. Uso:
+    <head th:replace="~{fragmentos/base :: cabeza('Título')}"></head>
+    <span th:replace="~{fragmentos/base :: insignia(${turno.estado})}"></span>
+  Ninguna plantilla define <head> ni carga scripts por su cuenta: todo pasa por aquí.
+*/-->
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+
+<head th:fragment="cabeza(titulo)">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title th:text="${titulo} + ' · TurnoYa'">TurnoYa</title>
+  <meta name="description" content="Fila virtual: toma tu turno con un QR y recibe un aviso cuando falte poco.">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+  <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
+  <!-- htmx sin eval (la política CSP no lo permite) y sin estilos en línea -->
+  <meta name="htmx-config" content='{"allowEval":false,"includeIndicatorStyles":false,"historyCacheSize":0}'>
+  <link rel="icon" type="image/svg+xml" th:href="@{/img/icono.svg}">
+  <link rel="manifest" th:href="@{/manifest.webmanifest}">
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <script defer th:src="@{/webjars/htmx.org/dist/htmx.min.js}"></script>
+  <script defer th:src="@{/webjars/htmx-ext-sse/dist/sse.min.js}"></script>
+  <script defer th:src="@{/js/app.js}"></script>
+  <script defer th:src="@{/js/sonido.js}"></script>
+</head>
+
+<body>
+
+<!--/* Respuesta vacía (acciones htmx que fallan: el mensaje va en la cabecera HX-Trigger) */-->
+<th:block th:fragment="vacio"></th:block>
+
+<!--/* Logo de TurnoYa. claro = sobre fondo oscuro */-->
+<a th:fragment="logo(destino, claro)" class="logo" th:classappend="${claro} ? 'logo-claro'" th:href="@{${destino}}">
+  <span class="logo-marca" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M7 9h5M7 13h9"/><path d="M8 17v3l3-3"/>
+    </svg>
+  </span>
+  <span>Turno<span class="logo-ya">Ya</span></span>
+</a>
+
+<!--/* Estado del turno con su color */-->
+<span th:fragment="insignia(estado)" class="insignia" th:classappend="'estado-' + ${estado}" th:text="${estado.etiqueta()}">En espera</span>
+
+<!--/* Indicador de conexión en vivo (js/app.js lo actualiza con los eventos de htmx-sse) */-->
+<span th:fragment="enVivo" class="en-vivo" role="status">
+  <span class="en-vivo-punto" aria-hidden="true"></span><span class="en-vivo-texto">Conectando…</span>
+</span>
+
+<!--/* Cabecera con la marca del local para las pantallas del cliente */-->
+<header th:fragment="cabeceraLocal(nombre, sobretitulo, direccion, logoUrl)" class="cabecera-local">
+  <div class="cabecera-local-contenido entrar">
+    <img th:if="${logoUrl}" class="cabecera-local-logo" th:src="${logoUrl}" alt="">
+    <span th:unless="${logoUrl}" class="logo-marca" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M7 9h5M7 13h9"/><path d="M8 17v3l3-3"/>
+      </svg>
+    </span>
+    <div class="cabecera-local-texto">
+      <p class="cabecera-local-sobre" th:text="${sobretitulo}">Salud</p>
+      <h1 th:text="${nombre}">Local</h1>
+      <p th:if="${direccion}" class="cabecera-local-direccion" th:text="${direccion}">Dirección</p>
+    </div>
+  </div>
+</header>
+
+<!--/* Menú del usuario: nombre, rol y salir */-->
+<div th:fragment="menuUsuario" class="menu-usuario" th:if="${sesion}">
+  <span><strong th:text="${sesion.nombre}">Nombre</strong> <span class="texto-apagado" th:text="${sesion.rol.etiqueta()}">Rol</span></span>
+  <form method="post" th:action="@{/salir}">
+    <button class="boton boton-contorno boton-pequeno" type="submit">Salir</button>
+  </form>
+</div>
+
+<!--/* Contenedor de avisos flotantes */-->
+<div th:fragment="avisos" id="avisos" class="avisos" aria-live="polite"></div>
+
+</body>
+</html>

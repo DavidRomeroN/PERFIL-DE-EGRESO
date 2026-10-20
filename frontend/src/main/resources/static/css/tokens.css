@@ -1,0 +1,48 @@
+/* Tokens de diseño: mismos valores que el sistema anterior (legacy/frontend/src/app/globals.css). */
+:root {
+  --fondo: oklch(0.985 0.003 200);
+  --texto: oklch(0.18 0.02 220);
+  --tarjeta: oklch(1 0 0);
+  --primario: oklch(0.52 0.1 180);
+  --primario-texto: oklch(0.99 0 0);
+  --secundario: oklch(0.955 0.012 190);
+  --apagado: oklch(0.96 0.006 200);
+  --apagado-texto: oklch(0.5 0.02 220);
+  --acento: oklch(0.95 0.03 180);
+  --peligro: oklch(0.577 0.245 27.325);
+  --borde: oklch(0.91 0.01 200);
+  --anillo: oklch(0.6 0.1 180);
+
+  --exito: #059669;
+  --exito-suave: #d1fae5;
+  --aviso: #b45309;
+  --aviso-suave: #fef3c7;
+  --error: #be123c;
+  --error-suave: #ffe4e6;
+  --info: #0369a1;
+  --info-suave: #e0f2fe;
+
+  /* Color del local: cada pantalla del local lo redefine con style="--local: #…" */
+  --local: #0f766e;
+  --local-oscuro: color-mix(in oklch, var(--local) 62%, black);
+  --local-suave: color-mix(in oklch, var(--local) 8%, transparent);
+
+  --radio: 0.75rem;
+  --radio-sm: 0.5rem;
+  --radio-lg: 1rem;
+  --radio-xl: 1.5rem;
+
+  --sombra-suave: 0 1px 2px oklch(0.25 0.03 215 / 0.05), 0 2px 8px -2px oklch(0.25 0.03 215 / 0.06);
+  --sombra-elevada: 0 1px 2px oklch(0.25 0.03 215 / 0.05), 0 12px 32px -12px oklch(0.25 0.03 215 / 0.18);
+  --sombra-flotante: 0 2px 4px oklch(0.25 0.03 215 / 0.04), 0 24px 56px -20px oklch(0.25 0.04 200 / 0.28);
+
+  /* Curvas fuertes: las de CSS (ease) son demasiado blandas */
+  --curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
+  --curva-movimiento: cubic-bezier(0.77, 0, 0.175, 1);
+
+  --fuente: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fuente-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+
+  --ancho-cliente: 32rem;
+  --ancho-app: 80rem;
+}

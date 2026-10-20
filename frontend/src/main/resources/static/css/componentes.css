@@ -1,0 +1,456 @@
+/* Componentes reutilizables. Cada uno se usa con su fragmento en templates/fragmentos/base.html. */
+
+/* --- Logo ---------------------------------------------------------------- */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+.logo-marca {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radio);
+  background: linear-gradient(135deg, #2dd4bf, #0f766e);
+  color: white;
+  box-shadow: var(--sombra-suave);
+}
+.logo-marca svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.logo-ya {
+  color: #0d9488;
+}
+.logo-claro {
+  color: white;
+}
+
+/* --- Botón --------------------------------------------------------------- */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--radio);
+  background: var(--primario);
+  color: var(--primario-texto);
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 160ms var(--curva-salida), background-color 160ms, border-color 160ms, box-shadow 160ms, opacity 160ms;
+}
+.boton:hover {
+  filter: brightness(1.05);
+}
+.boton:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.boton:disabled,
+.boton[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.boton svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+.boton-local {
+  background: var(--local);
+}
+.boton-contorno {
+  background: var(--tarjeta);
+  color: var(--texto);
+  border-color: var(--borde);
+}
+.boton-contorno:hover {
+  background: var(--apagado);
+  filter: none;
+}
+.boton-fantasma {
+  background: transparent;
+  color: var(--texto);
+}
+.boton-fantasma:hover {
+  background: var(--apagado);
+  filter: none;
+}
+.boton-exito {
+  background: var(--exito);
+}
+.boton-peligro {
+  background: var(--error);
+}
+.boton-texto-peligro {
+  color: var(--error);
+}
+.boton-aviso {
+  background: var(--aviso);
+}
+.boton-pequeno {
+  min-height: 2rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+.boton-icono {
+  min-height: 2.25rem;
+  width: 2.25rem;
+  padding: 0;
+}
+.boton-grande {
+  min-height: 3.25rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1.1rem;
+  border-radius: var(--radio-lg);
+}
+.boton-bloque {
+  width: 100%;
+}
+
+/* --- Tarjeta ------------------------------------------------------------- */
+.tarjeta {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-xl);
+  background: var(--tarjeta);
+  padding: 1.25rem;
+  box-shadow: var(--sombra-suave);
+}
+.tarjeta-flotante {
+  box-shadow: var(--sombra-flotante);
+}
+.tarjeta-titulo {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.tarjeta-sub {
+  font-size: 0.8rem;
+  color: var(--apagado-texto);
+}
+
+/* --- Insignias (estado del turno) -------------------------------------- */
+.insignia {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.estado-EMITIDO { background: #f1f5f9; color: #334155; border-color: #e2e8f0; }
+.estado-AVISADO { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.estado-LLAMADO { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
+.estado-ATENDIDO { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+.estado-NO_SE_PRESENTO { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
+.estado-CANCELADO { background: #f4f4f5; color: #52525b; border-color: #e4e4e7; }
+.estado-TRANSFERIDO { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+.insignia-categoria { background: #fef3c7; color: #78350f; border-radius: 0.3rem; font-size: 0.65rem; }
+
+/* --- Formularios --------------------------------------------------------- */
+.formulario {
+  display: grid;
+  gap: 1rem;
+}
+.campo {
+  display: grid;
+  gap: 0.35rem;
+}
+.etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.entrada,
+.selector,
+.area-texto {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--tarjeta);
+  transition: border-color 200ms, box-shadow 200ms;
+}
+.entrada:hover,
+.selector:hover {
+  border-color: color-mix(in oklch, var(--texto) 20%, var(--borde));
+}
+.entrada:focus-visible,
+.selector:focus-visible,
+.area-texto:focus-visible {
+  outline: none;
+  border-color: var(--anillo);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--anillo) 30%, transparent);
+}
+.entrada-grande {
+  min-height: 3rem;
+  font-size: 1.1rem;
+}
+.ayuda {
+  font-size: 0.78rem;
+  color: var(--apagado-texto);
+}
+.casilla {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 200ms, border-color 200ms;
+}
+.casilla:has(input:checked) {
+  border-color: var(--local);
+  background: var(--local-suave);
+}
+.casilla input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+  accent-color: var(--local);
+}
+
+/* --- Alertas ------------------------------------------------------------- */
+.alerta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid;
+  border-radius: var(--radio-lg);
+  font-size: 0.9rem;
+}
+.alerta-aviso { background: var(--aviso-suave); border-color: #fde68a; color: #78350f; }
+.alerta-error { background: var(--error-suave); border-color: #fecdd3; color: #881337; }
+.alerta-exito { background: var(--exito-suave); border-color: #a7f3d0; color: #064e3b; }
+.alerta-info { background: var(--info-suave); border-color: #bae6fd; color: #0c4a6e; }
+
+/* --- Diálogo nativo ---------------------------------------------------- */
+.dialogo {
+  width: min(28rem, calc(100vw - 2rem));
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-xl);
+  padding: 1.5rem;
+  background: var(--tarjeta);
+  box-shadow: var(--sombra-flotante);
+}
+.dialogo::backdrop {
+  background: oklch(0.2 0.02 220 / 0.45);
+  backdrop-filter: blur(2px);
+}
+.dialogo[open] {
+  animation: aparecer 220ms var(--curva-salida);
+}
+.dialogo h2 {
+  font-size: 1.15rem;
+}
+.dialogo-pie {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+/* --- Avisos flotantes (los muestra js/app.js) ------------------------ */
+.avisos {
+  position: fixed;
+  z-index: 50;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  width: min(22rem, calc(100vw - 2rem));
+}
+.aviso-flotante {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radio-lg);
+  background: var(--texto);
+  color: white;
+  font-size: 0.9rem;
+  box-shadow: var(--sombra-flotante);
+  animation: entrar 300ms var(--curva-salida);
+}
+.aviso-flotante.exito { background: #065f46; }
+.aviso-flotante.error { background: #9f1239; }
+.aviso-flotante.info { background: #0c4a6e; }
+.aviso-flotante.saliendo {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms, transform 200ms;
+}
+
+/* --- Indicador "en vivo" (conexión SSE) ------------------------------ */
+.en-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--apagado-texto);
+}
+.en-vivo-punto {
+  position: relative;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #a1a1aa;
+}
+.en-vivo.conectado .en-vivo-punto {
+  background: #10b981;
+}
+.en-vivo.conectado .en-vivo-punto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: latido 2s var(--curva-salida) infinite;
+}
+.en-vivo.desconectado .en-vivo-punto {
+  background: #f43f5e;
+}
+
+/* --- Tabla --------------------------------------------------------------- */
+.tabla-contenedor {
+  overflow-x: auto;
+}
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.tabla th {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--apagado-texto);
+  border-bottom: 1px solid var(--borde);
+}
+.tabla td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--borde);
+  vertical-align: middle;
+}
+.tabla tr:last-child td {
+  border-bottom: 0;
+}
+.tabla-acciones {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+/* --- Varios -------------------------------------------------------------- */
+.prefijo {
+  display: inline-flex;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0 0.4rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radio);
+  background: var(--local);
+  color: white;
+  font-family: var(--fuente-mono);
+  font-weight: 700;
+}
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 40rem) {
+  .metricas {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.metrica {
+  padding: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  background: var(--tarjeta);
+  box-shadow: var(--sombra-suave);
+}
+.metrica-etiqueta {
+  font-size: 0.75rem;
+  color: var(--apagado-texto);
+}
+.metrica-valor {
+  margin-top: 0.15rem;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.vacio {
+  padding: 2rem 1rem;
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio-lg);
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--apagado-texto);
+}
+.barra-progreso {
+  height: 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--apagado);
+}
+.barra-progreso > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in oklch, var(--local) 70%, white), var(--local));
+  transform-origin: left;
+  transition: width 700ms var(--curva-salida);
+}
+.esqueleto {
+  border-radius: var(--radio-lg);
+  background: linear-gradient(90deg, var(--apagado) 0%, color-mix(in oklch, var(--apagado) 55%, white) 50%, var(--apagado) 100%);
+  background-size: 200% 100%;
+  animation: brillo 1.6s linear infinite;
+}
+.pie-marca {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--apagado-texto);
+}
+.pie-marca a {
+  font-weight: 500;
+  text-decoration: none;
+}
+.menu-usuario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.menu-usuario form {
+  display: inline;
+}
+.pulso {
+  animation: pulso-anillo 2s var(--curva-salida) infinite;
+}
+.destello {
+  animation: destello 0.9s var(--curva-movimiento) 4;
+}

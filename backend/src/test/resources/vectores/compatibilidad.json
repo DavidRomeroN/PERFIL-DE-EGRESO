@@ -1,0 +1,137 @@
+{
+  "telefonos": [
+    {
+      "entrada": "951234567",
+      "e164": "+51951234567",
+      "hash": "24449c43cf59901d1b66d57d3158bbc5ca97487a8da643cb862323b55d01c7b1",
+      "mascara": "+51 9** *** 567"
+    },
+    {
+      "entrada": "951 234 567",
+      "e164": "+51951234567",
+      "hash": "24449c43cf59901d1b66d57d3158bbc5ca97487a8da643cb862323b55d01c7b1",
+      "mascara": "+51 9** *** 567"
+    },
+    {
+      "entrada": "+51 951-234-567",
+      "e164": "+51951234567",
+      "hash": "24449c43cf59901d1b66d57d3158bbc5ca97487a8da643cb862323b55d01c7b1",
+      "mascara": "+51 9** *** 567"
+    },
+    {
+      "entrada": "51951234567",
+      "e164": "+51951234567",
+      "hash": "24449c43cf59901d1b66d57d3158bbc5ca97487a8da643cb862323b55d01c7b1",
+      "mascara": "+51 9** *** 567"
+    },
+    {
+      "entrada": "0051951234567",
+      "e164": "+0051951234567",
+      "hash": "c58d002ee46d0ae500ccd59548330e5cfb00a2be69e79267d9d4b557dbfd809d",
+      "mascara": "+0051 9** *** 567"
+    },
+    {
+      "entrada": "12345",
+      "e164": null,
+      "hash": null,
+      "mascara": null
+    },
+    {
+      "entrada": "",
+      "e164": null,
+      "hash": null,
+      "mascara": null
+    },
+    {
+      "entrada": "abc",
+      "e164": null,
+      "hash": null,
+      "mascara": null
+    },
+    {
+      "entrada": "987654321",
+      "e164": "+51987654321",
+      "hash": "7a6dbaa8cec8cccf347f58e9fc3866ef2b8a1a8a917ba5ec894812494b36a854",
+      "mascara": "+51 9** *** 321"
+    },
+    {
+      "entrada": "+1 415 555 0101",
+      "e164": "+14155550101",
+      "hash": "54a97a4595350c4cc6399b01b572a4614416acfec53a508dfa2a36ed3da25817",
+      "mascara": "+14 1** *** 101"
+    }
+  ],
+  "cifrado": [
+    {
+      "clave": "3f1c9a7b5e2d4c6a8b0e1f2a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e",
+      "texto": "+51951234567",
+      "cifrado": "UhPWfY566uyYZefI.zcX4ayPk2PxOyA3MIarp8g==.zs4K6aP6KkP+hKSO"
+    },
+    {
+      "clave": "3f1c9a7b5e2d4c6a8b0e1f2a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e",
+      "texto": "+51987654321",
+      "cifrado": "XZciQY1wHBESBtGZ.4pvnBP+DynS39d0flsGDlQ==.BNdmZCTNnOgSP/8G"
+    },
+    {
+      "clave": "3f1c9a7b5e2d4c6a8b0e1f2a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e",
+      "texto": "Ñandú — prueba UTF-8 ✓",
+      "cifrado": "NH23NlfB2SPR0IEz.R452z80vsntkf8MVi8ingA==.pzOYjO8xPPQZP4NjLjx/XlH5++9XtG3sT4vOzQ=="
+    },
+    {
+      "clave": "clave-de-pruebas-turnoya-0123456789abcdef",
+      "texto": "+51951234567",
+      "cifrado": "l+RxCy0KU8rWZEwZ.LWWaXaHmO+CFB3XD2GaVcA==.GAGvlBr7YWcDGmzW"
+    },
+    {
+      "clave": "clave-de-pruebas-turnoya-0123456789abcdef",
+      "texto": "+51987654321",
+      "cifrado": "P6j8tOa9hdd1Qi6e.WeOH++EcWEJmoWeSFanYVA==.0LBRRMN9B4b0ZlAU"
+    },
+    {
+      "clave": "clave-de-pruebas-turnoya-0123456789abcdef",
+      "texto": "Ñandú — prueba UTF-8 ✓",
+      "cifrado": "HAYk2tPe64csk57A.PblXdGdxKS0sVw9bdt7Ktg==.t3F/SFli5FBjqNUa97ihwf0ElYq6jXwO/+jO/A=="
+    }
+  ],
+  "bcrypt": [
+    {
+      "clave": "admin123",
+      "hash": "$2b$10$2TWBCu4tyTMe1eWoG5zt/.KbdQhghXGaz/H9OtgPi9pPIkcqecol2"
+    },
+    {
+      "clave": "operador123",
+      "hash": "$2b$10$K0vUQ.V.oVDFRCGpKmnKWu6uIyUMsyce74.KOSYCv/ZeD3Bzn9556"
+    }
+  ],
+  "jwt": {
+    "secreto": "secreto-de-pruebas-turnoya-0123456789abcdef",
+    "sesiones": [
+      {
+        "token": "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6Im9wZXJhZG9yQHBvbGljbGluaWNvLnBlIiwibm9tYnJlIjoiT3BlcmFkb3IgRGVtbyIsInJvbCI6Ik9QRVJBRE9SIiwibG9jYWxJZCI6MSwibG9jYWxTbHVnIjoicG9saWNsaW5pY28iLCJsb2NhbE5vbWJyZSI6IlBvbGljbMOtbmljbyIsInN1YiI6IjciLCJpYXQiOjE3OTI1MzM1MzAsImV4cCI6MTc5MjU3NjczMH0.tnu4-qFjH8jsty7uKcZBre_d7Hmg3AhGtx8a0vTNTV4",
+        "emitidoMs": 1792533530157,
+        "sesion": {
+          "sub": 7,
+          "email": "operador@policlinico.pe",
+          "nombre": "Operador Demo",
+          "rol": "OPERADOR",
+          "localId": 1,
+          "localSlug": "policlinico",
+          "localNombre": "Policlínico"
+        }
+      },
+      {
+        "token": "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6InN1cGVyYWRtaW5AdHVybm95YS5wZSIsIm5vbWJyZSI6IlN1cGVyIEFkbWluIiwicm9sIjoiU1VQRVJfQURNSU4iLCJsb2NhbElkIjpudWxsLCJsb2NhbFNsdWciOm51bGwsImxvY2FsTm9tYnJlIjpudWxsLCJzdWIiOiIxIiwiaWF0IjoxNzkyNTMzNTMwLCJleHAiOjE3OTI1NzY3MzB9.51G7NJRhZa6DuKf5U8D_iKtBJtqqKghHGtf-tmCOubU",
+        "emitidoMs": 1792533530161,
+        "sesion": {
+          "sub": 1,
+          "email": "superadmin@turnoya.pe",
+          "nombre": "Super Admin",
+          "rol": "SUPER_ADMIN",
+          "localId": null,
+          "localSlug": null,
+          "localNombre": null
+        }
+      }
+    ]
+  }
+}

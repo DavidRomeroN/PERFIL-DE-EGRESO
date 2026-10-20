@@ -1,7 +1,26 @@
 # TurnoYa — Plan de migración del backend a Java Spring Boot
 
-> Complementa [`ARQUITECTURA.md`](ARQUITECTURA.md) (estado actual del código).
-> Aquí: **cómo pasar el backend de Next.js/Node a Spring Boot por fases**, sin congelar el producto y con vuelta atrás en cada paso.
+> Complementa [`ARQUITECTURA.md`](ARQUITECTURA.md) (sistema anterior) y [`ARQUITECTURA_JAVA.md`](ARQUITECTURA_JAVA.md) (sistema nuevo).
+> Aquí: **cómo pasar el sistema de Next.js/Node a Spring Boot por fases**, sin congelar el producto y con vuelta atrás en cada paso.
+
+## Estado (octubre 2026)
+
+| Fase | Estado | Notas |
+|---|---|---|
+| 0. Preparación | ✅ Hecha en parte | Vectores dorados de cifrado, celulares, bcrypt y JWT (`legacy/backend/scripts/generar-vectores.ts`). Falta la batería de contrato HTTP completa. |
+| 1. Esqueleto y compatibilidad | ✅ Hecha | Proyecto Gradle (`backend/`, `frontend/`), Spring Modulith, Flyway sobre las migraciones de Prisma, sesión JWT compartida, cifrado compatible. |
+| 2. Infraestructura distribuida | ✅ Hecha | SSE con hilos virtuales y bus en memoria o Redis; tareas reclamadas en `job_estado`; registro de eventos (outbox). Falta la prueba de carga. |
+| 3. Núcleo | ✅ Migrado | Colas, ventanillas, turnos, panel, TV, "mi turno", ticket, login, admin de colas y ventanillas. API `/api/v1` del núcleo con el mismo contrato. |
+| 4. Módulos | ⏳ Pendiente | M1–M8, pagos, usuarios, configuración del local, super-admin. Receta en `ARQUITECTURA_JAVA.md` §6. |
+| 5. Corte final | ⏳ Pendiente | |
+
+**Cambios respecto de este plan**, decididos al implementar (detalle en `ARQUITECTURA_JAVA.md` §1):
+
+- El **frontend también pasa a Java**: Thymeleaf + htmx en `frontend/` (antes se pensaba mantener Next.js como frontend).
+- El sistema anterior vive en **`legacy/`**; `backend/` y `frontend/` son el proyecto Java.
+- Acceso a datos con **JdbcClient y SQL explícito** en lugar de jOOQ + JPA.
+- Las rutas de esta guía que dicen `backend/src/…` o `frontend/src/…` se refieren al código Node, que ahora está en
+  `legacy/backend/src/…` y `legacy/frontend/src/…`.
 
 ## 1. Estrategia
 

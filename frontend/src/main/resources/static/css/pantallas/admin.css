@@ -1,0 +1,145 @@
+/* Administración del local */
+.pagina-admin {
+  display: grid;
+  min-height: 100dvh;
+}
+@media (min-width: 56rem) {
+  .pagina-admin {
+    grid-template-columns: 16rem 1fr;
+  }
+}
+.menu-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.25rem;
+  background: oklch(0.2 0.03 215);
+  color: oklch(0.93 0.01 200);
+}
+.menu-admin nav {
+  display: grid;
+  gap: 0.25rem;
+}
+.menu-admin-grupo {
+  margin-top: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: oklch(0.7 0.02 200);
+}
+.menu-admin nav a,
+.menu-admin .pendiente {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radio);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.menu-admin nav a:hover {
+  background: oklch(0.27 0.03 215);
+}
+.menu-admin nav a[aria-current="page"] {
+  background: oklch(0.27 0.03 215);
+  color: white;
+  font-weight: 600;
+}
+.menu-admin .pendiente {
+  opacity: 0.5;
+  cursor: default;
+}
+.menu-admin .pendiente small {
+  font-size: 0.65rem;
+}
+.menu-admin-pie {
+  margin-top: auto;
+  font-size: 0.8rem;
+}
+/* Pantallas angostas: el menú pasa a ser una barra compacta arriba del contenido */
+@media (max-width: 55.99rem) {
+  .menu-admin {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+  }
+  .menu-admin nav {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .menu-admin-grupo,
+  .menu-admin .pendiente {
+    display: none;
+  }
+  .menu-admin-pie {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0;
+  }
+  .menu-admin-pie p br,
+  .menu-admin-pie p span {
+    display: none;
+  }
+  .menu-admin .menu-admin-pie button {
+    margin-top: 0;
+  }
+}
+.menu-admin-pie button {
+  margin-top: 0.5rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.contenido-admin {
+  min-width: 0;
+  padding: 1.5rem;
+}
+@media (min-width: 56rem) {
+  .contenido-admin {
+    padding: 2rem 2.5rem;
+  }
+}
+.cabecera-pagina {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.cabecera-pagina h1 {
+  font-size: 1.75rem;
+}
+.cabecera-pagina p {
+  color: var(--apagado-texto);
+}
+.formulario-en-linea {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+@media (min-width: 48rem) {
+  .formulario-en-linea {
+    grid-template-columns: 6rem 1fr 1.5fr 9rem auto;
+    align-items: end;
+  }
+  .formulario-en-linea.ventanillas {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+.estado-activo {
+  color: var(--exito);
+  font-weight: 500;
+}
+.estado-inactivo {
+  color: var(--apagado-texto);
+}

@@ -2,11 +2,11 @@ import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
 
-// Monorepo (npm workspaces): la raíz contiene backend/ y frontend/
+// Monorepo (npm workspaces): legacy/ contiene backend/ y frontend/
 const raiz = path.resolve(__dirname, "..");
 
-// El .env vive en la raíz y lo comparten frontend y backend (Prisma, seeds, pruebas)
-loadEnvConfig(raiz);
+// El .env vive en la raíz del repositorio y lo comparten legacy/ y el proyecto Java
+loadEnvConfig(path.resolve(raiz, ".."));
 
 const nextConfig: NextConfig = {
   // Imagen Docker mínima (copia solo lo necesario a .next/standalone)

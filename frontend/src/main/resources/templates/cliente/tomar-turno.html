@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Tomar turno · ' + ${local.nombreComercial})}"></head>
+<body class="pagina-cliente" th:style="'--local:' + ${local.colorPrimario}">
+
+<header th:replace="~{fragmentos/base :: cabeceraLocal(${local.nombreComercial}, ${local.rubro}, ${local.direccion}, ${local.logoUrl})}"></header>
+
+<main class="cliente-main" hx-ext="sse" th:attr="sse-connect=@{/api/v1/realtime/{s}(s=${local.slug})}">
+  <div class="tarjeta tarjeta-flotante entrar">
+
+    <p th:unless="${local.abierto}" class="alerta alerta-aviso" role="status"
+       th:text="${local.mensajeCerrado != null ? local.mensajeCerrado : 'Esta cola está cerrada ahora.'}">Cerrado</p>
+
+    <ol class="pasos" th:aria-label="${cola == null} ? 'Paso 1 de 2' : 'Paso 2 de 2'">
+      <li th:classappend="${cola == null} ? 'paso-activo' : 'paso-hecho'"><span class="paso-numero" th:text="${cola == null} ? '1' : '✓'">1</span></li>
+      <li th:classappend="${cola == null} ? 'paso-activo'">Servicio</li>
+      <li class="paso-linea" th:classappend="${cola != null} ? 'llena'"></li>
+      <li th:classappend="${cola != null} ? 'paso-activo'"><span class="paso-numero">2</span></li>
+      <li th:classappend="${cola != null} ? 'paso-activo'">Tus datos</li>
+    </ol>
+
+    <!--/* Paso 1: elegir el servicio. La lista se refresca sola con cada cambio en las colas */-->
+    <section th:if="${cola == null}">
+      <h2 class="titulo-paso">¿Qué servicio necesitas?</h2>
+      <p class="texto-apagado" th:text="${local.mensajeBienvenida != null ? local.mensajeBienvenida : 'Elige una cola para tomar tu turno.'}">Elige una cola.</p>
+
+      <div id="colas" class="lista-colas" th:fragment="colas"
+           th:attr="hx-get=@{/l/{s}/colas(s=${local.slug})}" hx-trigger="sse:cola:actualizada delay:500ms" hx-swap="outerHTML">
+        <a th:each="c : ${local.colas}" class="opcion-cola" th:href="@{/l/{s}(s=${local.slug},cola=${c.id})}">
+          <span class="prefijo" th:text="${c.prefijo}">A</span>
+          <span class="opcion-cola-texto">
+            <span class="opcion-cola-nombre" th:text="${c.nombre}">Caja</span>
+            <span th:if="${c.descripcion}" class="texto-apagado" th:text="${c.descripcion}">Descripción</span>
+            <span class="opcion-cola-datos">
+              <span th:text="${c.enEspera} + ' en espera'">3 en espera</span>
+              <span th:text="'~ ' + ${@fmt.duracion(c.tiempoEstimadoSeg)}">~ 12 min</span>
+            </span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </a>
+        <p th:if="${#lists.isEmpty(local.colas)}" class="vacio">Este local no tiene colas activas por el momento.</p>
+      </div>
+    </section>
+
+    <!--/* Paso 2: datos opcionales y consentimiento (Ley N.° 29733) */-->
+    <section th:if="${cola != null}">
+      <a th:if="${#lists.size(local.colas) > 1}" class="boton boton-fantasma boton-pequeno" th:href="@{/l/{s}(s=${local.slug})}">← Cambiar servicio</a>
+
+      <div class="cola-elegida">
+        <span class="prefijo" th:text="${cola.prefijo}">A</span>
+        <div>
+          <strong th:text="${cola.nombre}">Caja</strong>
+          <p class="ayuda" th:text="${cola.enEspera} + ' en espera · espera aprox. ' + ${@fmt.duracion(cola.tiempoEstimadoSeg)}">3 en espera</p>
+        </div>
+      </div>
+
+      <h2 class="titulo-paso" style="margin-top: 1.25rem">Tus datos</h2>
+      <p class="texto-apagado" th:text="'Son opcionales. Con tu celular te avisamos por WhatsApp cuando falten ' + ${local.avisarFaltando} + ' personas.'">Son opcionales.</p>
+
+      <div th:if="${error}" class="alerta alerta-error sacudir" role="alert" style="margin-top: 1rem" th:text="${error}">Error</div>
+      <div th:if="${duplicado}" class="alerta alerta-aviso" style="margin-top: 1rem; display: grid">
+        <strong th:text="'Este celular ya tiene el turno ' + ${duplicado.codigo} + ' activo en esta cola.'">Ya tienes turno</strong>
+        <a class="boton boton-aviso" th:href="@{/t/{t}(t=${duplicado.token})}" th:text="'Ver mi turno ' + ${duplicado.codigo}">Ver mi turno</a>
+      </div>
+
+      <form class="formulario" style="margin-top: 1.25rem" method="post" th:action="@{/l/{s}/turno(s=${local.slug})}">
+        <input type="hidden" name="colaId" th:value="${cola.id}">
+
+        <div class="campo" th:unless="${#lists.isEmpty(local.categorias)}">
+          <label class="etiqueta" for="categoria">Atención preferente (opcional)</label>
+          <select id="categoria" name="categoria" class="selector entrada-grande">
+            <option value="">Turno general</option>
+            <option th:each="cat : ${local.categorias}" th:value="${cat.codigo}" th:text="${cat.nombre}"
+                    th:selected="${datos != null and datos.categoria == cat.codigo}">Categoría</option>
+          </select>
+          <p class="ayuda">El personal puede pedir un documento. En la pantalla pública solo se ve tu número.</p>
+        </div>
+
+        <div class="campo">
+          <label class="etiqueta" for="nombre">Nombre (opcional)</label>
+          <input id="nombre" name="nombre" class="entrada entrada-grande" placeholder="Ej. María" autocomplete="given-name" maxlength="60"
+                 th:value="${datos?.nombre}">
+        </div>
+
+        <div class="campo">
+          <label class="etiqueta" for="telefono">Celular para WhatsApp (opcional)</label>
+          <input id="telefono" name="telefono" type="tel" inputmode="numeric" class="entrada entrada-grande" placeholder="9XX XXX XXX"
+                 autocomplete="tel" maxlength="15" pattern="[0-9+ ]*" th:value="${datos?.telefono}">
+          <p th:unless="${local.plan.whatsappHabilitado}" class="ayuda" style="color: var(--aviso)">
+            Este local está en el plan Gratis: el aviso llegará solo por esta página web.
+          </p>
+        </div>
+
+        <label class="casilla">
+          <input type="checkbox" name="consentimiento" value="true" th:checked="${datos != null and datos.consentimiento}">
+          <span>
+            <strong>Acepto la política de datos</strong>
+            <span class="ayuda" style="display: block">
+              Usaremos tu nombre y celular solo para avisarte de tu turno. Se eliminan a los 90 días (Ley N.° 29733).
+              Puedes cancelar tu turno cuando quieras.
+            </span>
+          </span>
+        </label>
+
+        <button type="submit" class="boton boton-local boton-grande boton-bloque">✓ Tomar mi turno</button>
+        <p class="ayuda" style="text-align: center">Sin app, sin registro. En menos de 3 segundos.</p>
+      </form>
+    </section>
+  </div>
+
+  <a th:if="${local.conCitas}" class="enlace-tarjeta entrar" th:href="@{/l/{s}/citas(s=${local.slug})}">
+    <span style="flex: 1"><strong>¿Prefieres reservar un horario?</strong><br><span class="ayuda">Agenda una cita y llega a tu hora</span></span>
+    <span aria-hidden="true">→</span>
+  </a>
+
+  <p class="pie-marca">Fila virtual por <a th:href="@{/}">TurnoYa</a></p>
+</main>
+
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Fila virtual y turnos')}"></head>
+<body>
+<div class="inicio">
+  <header class="inicio-barra">
+    <a th:replace="~{fragmentos/base :: logo('/', false)}"></a>
+    <a class="boton boton-contorno" th:href="${sesion != null} ? (${sesion.esAdmin()} ? @{/admin/colas} : @{/panel}) : @{/login}"
+       th:text="${sesion != null} ? 'Ir a mi panel' : 'Ingresar'">Ingresar</a>
+  </header>
+
+  <section class="inicio-heroe entrar">
+    <h1>Tu cliente espera <span>donde quiera</span>, no en la sala.</h1>
+    <p>Escanea un QR, toma un turno en segundos y recibe un aviso por WhatsApp cuando falte poco. Sin app ni registro.</p>
+    <div class="inicio-acciones">
+      <a class="boton boton-grande" th:href="@{/login}">Entrar al panel</a>
+      <a th:unless="${#lists.isEmpty(locales)}" class="boton boton-grande boton-contorno" th:href="@{/l/{s}(s=${locales[0].slug})}">Probar como cliente</a>
+    </div>
+  </section>
+
+  <section class="inicio-pasos">
+    <div class="tarjeta inicio-paso"><span class="inicio-numero">01</span><h3>Escanea</h3><p>El QR en la puerta o en la pantalla abre la página del local.</p></div>
+    <div class="tarjeta inicio-paso"><span class="inicio-numero">02</span><h3>Espera donde quieras</h3><p>Ves tu posición y la espera estimada en vivo.</p></div>
+    <div class="tarjeta inicio-paso"><span class="inicio-numero">03</span><h3>Te avisamos</h3><p>Por WhatsApp cuando falten pocos y en la TV cuando te llamen.</p></div>
+  </section>
+
+  <section th:unless="${#lists.isEmpty(locales)}" class="inicio-locales">
+    <h2>Locales de demostración</h2>
+    <ul>
+      <li th:each="l : ${locales}" class="tarjeta">
+        <strong th:text="${l.nombreComercial}">Local</strong>
+        <div>
+          <a class="boton boton-contorno boton-pequeno" th:href="@{/l/{s}(s=${l.slug})}">Tomar turno</a>
+          <a class="boton boton-contorno boton-pequeno" target="_blank" th:href="@{/l/{s}/tv(s=${l.slug})}">Pantalla TV</a>
+        </div>
+      </li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

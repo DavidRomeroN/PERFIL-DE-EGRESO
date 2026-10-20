@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Panel de ventanilla')}"></head>
+<body class="pagina-panel" th:style="'--local:' + ${p.snap.local.colorPrimario}">
+
+<header class="barra-app">
+  <div class="barra-app-contenido">
+    <div class="barra-app-titulo">
+      <a th:replace="~{fragmentos/base :: logo(${sesion.esAdmin()} ? '/admin/colas' : '/panel', false)}"></a>
+      <div class="barra-app-local">
+        <strong th:text="${p.snap.local.nombreComercial}">Local</strong>
+        <span>Panel de ventanilla</span>
+      </div>
+    </div>
+    <div class="barra-app-acciones">
+      <!--/* El super admin elige el local */-->
+      <form th:unless="${#lists.isEmpty(p.locales)}" method="get" th:action="@{/panel}">
+        <label class="solo-lectores" for="slug">Local</label>
+        <select id="slug" name="slug" class="selector" data-autoenviar>
+          <option th:each="l : ${p.locales}" th:value="${l.slug}" th:text="${l.nombre}" th:selected="${l.slug == p.snap.local.slug}">Local</option>
+        </select>
+      </form>
+      <!--/* La ventanilla se recuerda en una cookie del dispositivo */-->
+      <form method="get" th:action="@{/panel}">
+        <input type="hidden" name="slug" th:value="${p.snap.local.slug}">
+        <label class="solo-lectores" for="ventanilla">Ventanilla</label>
+        <select id="ventanilla" name="ventanilla" class="selector" data-autoenviar>
+          <option th:each="v : ${p.snap.ventanillas}" th:value="${v.id}" th:selected="${p.ventanilla != null and v.id == p.ventanilla.id}"
+                  th:text="${v.nombre} + ${v.cola != null ? ' · ' + v.cola.prefijo : ''}">Ventanilla 1</option>
+        </select>
+      </form>
+      <a class="boton boton-contorno boton-pequeno" target="_blank" th:href="@{/l/{s}/tv(s=${p.snap.local.slug})}">Pantalla TV</a>
+      <a th:if="${sesion.esAdmin()}" class="boton boton-contorno boton-pequeno" th:href="@{/admin/colas}">Administración</a>
+      <span th:replace="~{fragmentos/base :: enVivo}"></span>
+      <div th:replace="~{fragmentos/base :: menuUsuario}"></div>
+    </div>
+  </div>
+</header>
+
+<div hx-ext="sse" th:attr="sse-connect=@{/api/v1/realtime/{s}(s=${p.snap.local.slug})}">
+  <!--/*
+    Contenido del panel: cada acción (llamar, atender, rellamar, ticket) devuelve este fragmento actualizado y
+    además se refresca con los eventos del local (otra ventanilla llamó, un cliente tomó turno…).
+  */-->
+  <main id="contenido" class="panel-main" th:fragment="contenido"
+        th:attr="hx-get=@{/panel/contenido(slug=${p.snap.local.slug},ventanilla=${p.ventanilla?.id})}"
+        hx-trigger="sse:cola:actualizada delay:300ms, sse:turno:estado delay:300ms, sse:turno:llamado delay:300ms, every 20s"
+        hx-swap="outerHTML">
+
+    <section class="panel-columna">
+      <!--/* Turno en atención en esta ventanilla */-->
+      <div class="tarjeta turno-actual" th:classappend="${p.actual != null} ? 'con-turno'">
+        <div class="turno-actual-cabecera">
+          <span th:text="${p.ventanilla != null ? p.ventanilla.nombre : 'Ventanilla'} + ' · turno actual'">Ventanilla 1 · turno actual</span>
+          <span th:if="${p.actual != null}" class="cronometro" th:attr="data-desde=${p.actual.llamado.llamadoAt},data-limite=${p.limiteAusenciaSeg}">0:00</span>
+        </div>
+
+        <div th:if="${p.actual != null}" class="turno-actual-cuerpo entrar">
+          <div>
+            <p class="codigo-grande" th:text="${p.actual.llamado.codigo}">A-001</p>
+            <p style="margin-top: 0.5rem; font-size: 1.1rem; font-weight: 500"
+               th:text="${p.actual.llamado.nombre != null ? p.actual.llamado.nombre : 'Cliente sin nombre'}">Cliente</p>
+            <p class="ayuda" th:text="${p.actual.cola} + ' · llamado ' + ${@fmt.hora(p.actual.llamado.llamadoAt)} + ${p.actual.llamado.rellamadas > 0 ? ' · ' + p.actual.llamado.rellamadas + ' rellamada(s)' : ''}">Caja · llamado 10:00</p>
+            <p class="aviso-ausencia" th:text="'Más de ' + ${p.limiteAusenciaSeg / 60} + ' min sin presentarse (RN04). Puedes marcarlo como no se presentó.'">Excedido</p>
+          </div>
+          <div class="acciones-turno">
+            <form th:each="accion : ${ {'ATENDIDO', 'LLAMADO', 'NO_SE_PRESENTO'} }" method="post"
+                  th:action="@{/panel/turnos/{id}/estado(id=${p.actual.llamado.id})}"
+                  th:attr="hx-post=@{/panel/turnos/{id}/estado(id=${p.actual.llamado.id})}" hx-target="#contenido" hx-swap="outerHTML">
+              <input type="hidden" name="estado" th:value="${accion}">
+              <input type="hidden" name="slug" th:value="${p.snap.local.slug}">
+              <input type="hidden" name="ventanilla" th:value="${p.ventanilla?.id}">
+              <button type="submit" class="boton"
+                      th:classappend="${accion == 'ATENDIDO'} ? 'boton-exito' : (${accion == 'LLAMADO'} ? 'boton-contorno' : 'boton-contorno boton-texto-peligro')">
+                <span th:text="${accion == 'ATENDIDO'} ? '✓' : (${accion == 'LLAMADO'} ? '↻' : '✕')" aria-hidden="true">✓</span>
+                <small th:text="${accion == 'ATENDIDO'} ? 'Atendido' : (${accion == 'LLAMADO'} ? 'Rellamar' : 'No se presentó')">Atendido</small>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <p th:if="${p.actual == null}" class="vacio" style="margin-top: 1rem">
+          Ventanilla libre. Pulsa <strong>Llamar siguiente</strong> para atender al próximo turno.
+        </p>
+      </div>
+
+      <!--/* Acción principal */-->
+      <form th:if="${p.ventanilla != null}" method="post" th:action="@{/panel/llamar}" th:attr="hx-post=@{/panel/llamar}"
+            hx-target="#contenido" hx-swap="outerHTML" hx-disabled-elt="find button">
+        <input type="hidden" name="slug" th:value="${p.snap.local.slug}">
+        <input type="hidden" name="ventanilla" th:value="${p.ventanilla.id}">
+        <button type="submit" class="boton boton-llamar" th:classappend="${!#lists.isEmpty(p.espera)} ? 'pulso'">
+          🔔 Llamar siguiente
+          <span th:unless="${#lists.isEmpty(p.espera)}" class="siguiente" th:text="${p.espera[0].turno.codigo}">A-002</span>
+        </button>
+      </form>
+      <p th:if="${p.ventanilla == null}" class="alerta alerta-aviso">Este local no tiene ventanillas activas. Créalas en Administración → Ventanillas.</p>
+      <p class="ayuda" style="text-align: center; margin-top: -0.5rem"
+         th:text="${p.actual != null} ? 'Al llamar al siguiente, el turno actual se marca como atendido automáticamente.' : (${#lists.isEmpty(p.espera)} ? 'No hay nadie en espera' : ${#lists.size(p.espera)} + ' en espera en ' + ${p.descripcionCola()})">
+        Ayuda
+      </p>
+
+      <!--/* Métricas del día */-->
+      <div class="metricas">
+        <div class="metrica"><p class="metrica-etiqueta">En espera</p><p class="metrica-valor" th:text="${p.snap.stats.enEspera}">0</p></div>
+        <div class="metrica"><p class="metrica-etiqueta">Atendidos hoy</p><p class="metrica-valor" th:text="${p.snap.stats.atendidos}">0</p></div>
+        <div class="metrica"><p class="metrica-etiqueta">Espera prom.</p><p class="metrica-valor" th:text="${p.snap.stats.esperaPromedioMin} + ' min'">0 min</p></div>
+        <div class="metrica"><p class="metrica-etiqueta">Abandono</p><p class="metrica-valor" th:text="${p.snap.stats.tasaAbandono} + '%'">0%</p></div>
+      </div>
+    </section>
+
+    <section class="panel-columna">
+      <!--/* Cola de espera */-->
+      <div class="tarjeta tarjeta-sin-relleno">
+        <div class="encabezado-lista">
+          <div>
+            <h2 class="tarjeta-titulo">Cola de espera</h2>
+            <p class="tarjeta-sub" th:text="${p.descripcionCola()} + ' · ' + ${#lists.size(p.espera)} + ' turno(s)'">Todas las colas · 0 turnos</p>
+          </div>
+          <button type="button" class="boton boton-contorno boton-pequeno" data-abrir="dialogo-ticket">🖨 Ticket impreso</button>
+        </div>
+        <ul class="lista-espera">
+          <li th:if="${#lists.isEmpty(p.espera)}" class="vacio" style="margin: 1rem; border: 0">✓ Nadie en espera. Buen trabajo.</li>
+          <li th:each="f, i : ${p.espera}" class="fila-espera" th:classappend="${i.first} ? 'primera'">
+            <span class="posicion" th:text="${i.count}">1</span>
+            <span class="fila-codigo">
+              <span th:text="${f.turno.codigo}">A-001</span>
+              <small th:if="${f.turno.codigoProvisional}" class="ayuda" style="display: block; font-size: 0.65rem" th:text="'(' + ${f.turno.codigoProvisional} + ')'"></small>
+            </span>
+            <span class="fila-detalle">
+              <span th:text="${f.turno.nombre != null ? f.turno.nombre : 'Sin nombre'}">Nombre</span>
+              <span th:if="${f.turno.categoria}" class="insignia insignia-categoria" th:text="${f.turno.categoria}">Gestante</span>
+              <small th:text="${(p.ventanilla == null or p.ventanilla.cola == null) ? f.cola + ' · ' : ''} + ${f.turno.canal.name() == 'QR' ? 'QR' : 'Ticket'} + ' · ' + ${@fmt.hora(f.turno.emitidoAt)}">QR · 10:00</small>
+            </span>
+            <span class="fila-estado">
+              <span th:replace="~{fragmentos/base :: insignia(${f.turno.estado})}"></span>
+              <span class="numeros" th:attr="data-espera-desde=${f.turno.emitidoAt}" th:text="${@fmt.duracion(@fmt.segundosDesde(f.turno.emitidoAt))}">3 min</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <!--/* Otras ventanillas */-->
+      <div class="tarjeta">
+        <h2 class="tarjeta-titulo">Ventanillas del local</h2>
+        <ul class="lista-ventanillas">
+          <li th:each="v : ${p.snap.ventanillas}" th:classappend="${p.ventanilla != null and v.id == p.ventanilla.id} ? 'propia'"
+              th:with="en=${p.atendiendo(v.id)}">
+            <span><strong th:text="${v.nombre}">V1</strong> <span class="ayuda" th:text="${v.cola != null ? '· ' + v.cola.nombre : '· todas'}">· todas</span></span>
+            <span th:if="${en != null}"><span class="codigo" th:text="${en.codigo}">A-001</span> <span class="ayuda" th:text="${@fmt.haceCuanto(en.llamadoAt)}">hace 2 min</span></span>
+            <span th:if="${en == null}" class="ayuda">libre</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!--/* Diálogo del ticket: fuera del contenido para que no se cierre cuando el panel se refresca */-->
+<dialog id="dialogo-ticket" class="dialogo">
+  <form class="formulario" method="post" th:action="@{/panel/ticket}" th:attr="hx-post=@{/panel/ticket}" hx-target="#contenido" hx-swap="outerHTML">
+    <h2>Emitir ticket impreso</h2>
+    <p class="ayuda">Para clientes sin celular (RF07). El ticket incluye el número y un QR de seguimiento.</p>
+    <input type="hidden" name="slug" th:value="${p.snap.local.slug}">
+    <input type="hidden" name="ventanilla" th:value="${p.ventanilla?.id}">
+    <div class="campo">
+      <label class="etiqueta" for="ticket-cola">Cola</label>
+      <select id="ticket-cola" name="colaId" class="selector">
+        <option th:each="c : ${p.snap.colas}" th:value="${c.id}"
+                th:selected="${p.ventanilla != null and p.ventanilla.cola != null and p.ventanilla.cola.id == c.id}"
+                th:text="${c.prefijo} + ' · ' + ${c.nombre} + ' (' + ${c.enEspera} + ' en espera)'">A · Caja</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label class="etiqueta" for="ticket-nombre">Nombre (opcional)</label>
+      <input id="ticket-nombre" name="nombre" class="entrada" placeholder="Ej. Juan Pérez" maxlength="60">
+    </div>
+    <div class="dialogo-pie">
+      <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+      <button type="submit" class="boton">Emitir e imprimir</button>
+    </div>
+  </form>
+</dialog>
+
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+<script defer th:src="@{/js/panel.js}"></script>
+</body>
+</html>

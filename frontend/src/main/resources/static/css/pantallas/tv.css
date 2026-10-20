@@ -1,0 +1,317 @@
+/* Pantalla TV de la sala de espera (fondo oscuro, letras grandes, sin interacción) */
+.pagina-tv {
+  height: 100dvh;
+  overflow: hidden;
+  background: #020617;
+  color: white;
+}
+.tv {
+  position: relative;
+  display: flex;
+  height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tv::before {
+  content: "";
+  position: absolute;
+  top: -33%;
+  left: -25%;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 999px;
+  background: radial-gradient(circle, color-mix(in oklch, var(--local) 60%, transparent), transparent 65%);
+  opacity: 0.4;
+  filter: blur(48px);
+  pointer-events: none;
+}
+.tv-cabecera {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.1);
+}
+.tv-local {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.tv-local-logo {
+  display: inline-flex;
+  width: 3.5rem;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radio);
+  background: var(--local);
+  font-size: 1.5rem;
+  font-weight: 700;
+  object-fit: contain;
+}
+img.tv-local-logo {
+  background: white;
+  padding: 0.25rem;
+}
+.tv-local h1 {
+  font-size: 1.9rem;
+  font-weight: 600;
+}
+.tv-local p {
+  font-size: 0.9rem;
+  color: rgb(255 255 255 / 0.6);
+}
+.tv-herramientas {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.tv-reloj {
+  font-size: 3rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tv-boton {
+  display: inline-flex;
+  padding: 0.6rem;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: var(--radio);
+  background: transparent;
+  color: white;
+  cursor: pointer;
+}
+.tv-boton[aria-pressed="true"] {
+  background: rgb(255 255 255 / 0.15);
+}
+.tv-boton svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.tv .en-vivo {
+  color: rgb(255 255 255 / 0.6);
+}
+
+.tv-contenido {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.tv-cuerpo {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  overflow: hidden;
+}
+.tv-columna {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow: hidden;
+}
+.tv-llamado {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--radio-xl);
+  background: radial-gradient(ellipse at top, color-mix(in oklch, var(--local) 55%, transparent), transparent 70%), rgb(15 23 42);
+  text-align: center;
+}
+.tv-llamado.destello {
+  border-color: rgb(255 255 255 / 0.3);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--local) 60%, transparent), 0 0 120px -20px var(--local);
+}
+.tv-llamado-rotulo {
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.7);
+}
+.tv-llamado-codigo {
+  margin-top: 1rem;
+  font-family: var(--fuente-mono);
+  font-size: clamp(6rem, 13vw, 12rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 8px 30px rgb(0 0 0 / 0.6);
+}
+.tv-llamado-ventanilla {
+  margin-top: 1.5rem;
+  padding: 1rem 2.5rem;
+  border-radius: var(--radio-lg);
+  background: var(--local);
+  font-size: clamp(2rem, 3vw, 3rem);
+  font-weight: 600;
+  box-shadow: 0 20px 40px -10px rgb(0 0 0 / 0.5);
+}
+.tv-esperando {
+  color: rgb(255 255 255 / 0.6);
+  font-size: 1.5rem;
+}
+
+.tv-colas {
+  display: grid;
+  gap: 1rem;
+}
+.tv-colas.cols-1 { grid-template-columns: minmax(0, 1fr); }
+.tv-colas.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tv-colas.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tv-cola {
+  padding: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--radio-lg);
+  background: rgb(255 255 255 / 0.05);
+}
+.tv-cola-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+.tv-cola-titulo .prefijo {
+  width: 2.5rem;
+}
+.tv-cola-datos {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+}
+.tv-cola-numero {
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+.tv-rotulo-pequeno {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.5);
+}
+.tv-cola-siguientes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+.tv-cola-siguientes span {
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.35rem;
+  background: rgb(255 255 255 / 0.1);
+  font-family: var(--fuente-mono);
+  font-size: 0.9rem;
+}
+
+.tv-panel {
+  flex: 1;
+  overflow: hidden;
+  padding: 1.5rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--radio-xl);
+  background: rgb(255 255 255 / 0.05);
+}
+.tv-panel-titulo {
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.6);
+}
+.tv-atencion {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.tv-atencion-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radio-lg);
+  background: rgb(255 255 255 / 0.1);
+}
+.tv-atencion-fila .mono {
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+.tv-atencion-fila strong {
+  display: block;
+  font-size: 1.25rem;
+  text-align: right;
+}
+.tv-atencion-fila small {
+  display: block;
+  font-size: 0.75rem;
+  text-align: right;
+  color: rgb(255 255 255 / 0.5);
+}
+.tv-recientes {
+  margin-top: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+.tv-recientes li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.1);
+  color: rgb(255 255 255 / 0.8);
+}
+.tv-recientes li:last-child {
+  border-bottom: 0;
+}
+.tv-recientes .mono {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.tv-qr {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border-radius: var(--radio-xl);
+  background: white;
+  color: #0f172a;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+}
+.tv-qr strong {
+  display: block;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+.tv-qr p {
+  margin-top: 0.25rem;
+  color: #475569;
+}
+.tv-qr small {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--fuente-mono);
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.tv-cinta {
+  position: relative;
+  overflow: hidden;
+  padding: 0.75rem 0;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+  background: color-mix(in oklch, var(--local) 35%, rgb(2 6 23));
+}
+.cinta-texto {
+  white-space: nowrap;
+  font-size: 1.25rem;
+  color: rgb(255 255 255 / 0.9);
+  animation: cinta 28s linear infinite;
+}

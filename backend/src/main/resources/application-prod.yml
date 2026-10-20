@@ -1,0 +1,9 @@
+# Producción: secretos obligatorios (ValidadorSecretos), cookie segura detrás de HTTPS
+turnoya:
+  seguridad:
+    cookie-segura: ${COOKIE_SEGURA:true}
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never

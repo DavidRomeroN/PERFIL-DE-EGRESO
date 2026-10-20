@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Colas')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Colas</h1>
+        <p>Cada cola es un servicio con su propio prefijo (A-001, LAB-002) y tiempo base de atención.</p>
+      </div>
+    </div>
+
+    <!--/* Nueva cola: la respuesta es la lista actualizada */-->
+    <form class="tarjeta formulario-en-linea" method="post" th:action="@{/admin/colas}" th:attr="hx-post=@{/admin/colas}" hx-target="#lista" hx-swap="outerHTML" data-limpiar-al-enviar>
+      <div class="campo">
+        <label class="etiqueta" for="prefijo">Prefijo</label>
+        <input id="prefijo" name="prefijo" class="entrada mono" required maxlength="3" pattern="[A-Za-z0-9]{1,3}" placeholder="A">
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="nombre">Nombre</label>
+        <input id="nombre" name="nombre" class="entrada" required minlength="2" maxlength="60" placeholder="Caja">
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="descripcion">Descripción</label>
+        <input id="descripcion" name="descripcion" class="entrada" maxlength="160" placeholder="Pagos y consultas">
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="tiempo">Atención (s)</label>
+        <input id="tiempo" name="tiempoAtencionBase" type="number" class="entrada" min="30" max="3600" value="300">
+      </div>
+      <button type="submit" class="boton">Agregar</button>
+    </form>
+
+    <div id="lista" th:fragment="lista" class="tarjeta tarjeta-sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+          <tr><th>Cola</th><th>Atención base</th><th>Ventanillas</th><th>Turnos</th><th>Estado</th><th><span class="solo-lectores">Acciones</span></th></tr>
+          </thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(colas)}"><td colspan="6" class="vacio">Todavía no hay colas. Crea la primera arriba.</td></tr>
+          <tr th:each="c : ${colas}">
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.75rem">
+                <span class="prefijo" th:text="${c.prefijo}">A</span>
+                <span><strong th:text="${c.nombre}">Caja</strong><br><span class="ayuda" th:text="${c.descripcion}"></span></span>
+              </div>
+            </td>
+            <td th:text="${@fmt.duracion(c.tiempoAtencionBase)}">5 min</td>
+            <td th:text="${#lists.size(c.ventanillas)}">1</td>
+            <td th:text="${c.conteo['turnos']}">0</td>
+            <td><span th:class="${c.activa} ? 'estado-activo' : 'estado-inactivo'" th:text="${c.activa} ? 'Activa' : 'Inactiva'">Activa</span></td>
+            <td>
+              <div class="tabla-acciones">
+                <button type="button" class="boton boton-contorno boton-pequeno" th:attr="data-abrir='editar-cola-' + ${c.id}">Editar</button>
+                <form method="post" th:action="@{/admin/colas/{id}/eliminar(id=${c.id})}" th:attr="hx-post=@{/admin/colas/{id}/eliminar(id=${c.id})},hx-confirm='¿Eliminar la cola ' + ${c.nombre} + '? Si tiene historial solo se desactiva.'"
+                      hx-target="#lista" hx-swap="outerHTML">
+                  <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Eliminar</button>
+                </form>
+              </div>
+
+              <dialog class="dialogo" th:id="'editar-cola-' + ${c.id}">
+                <form class="formulario" method="post" th:action="@{/admin/colas/{id}(id=${c.id})}" th:attr="hx-post=@{/admin/colas/{id}(id=${c.id})}" hx-target="#lista" hx-swap="outerHTML">
+                  <h2 th:text="'Editar ' + ${c.nombre}">Editar</h2>
+                  <div class="campo"><label class="etiqueta">Prefijo <input name="prefijo" class="entrada mono" required maxlength="3" th:value="${c.prefijo}"></label></div>
+                  <div class="campo"><label class="etiqueta">Nombre <input name="nombre" class="entrada" required maxlength="60" th:value="${c.nombre}"></label></div>
+                  <div class="campo"><label class="etiqueta">Descripción <input name="descripcion" class="entrada" maxlength="160" th:value="${c.descripcion}"></label></div>
+                  <div class="campo"><label class="etiqueta">Atención base (segundos) <input name="tiempoAtencionBase" type="number" min="30" max="3600" class="entrada" th:value="${c.tiempoAtencionBase}"></label></div>
+                  <div class="campo"><label class="etiqueta">Orden <input name="orden" type="number" min="0" class="entrada" th:value="${c.orden}"></label></div>
+                  <label class="casilla"><input type="checkbox" name="activa" value="true" th:checked="${c.activa}"> <span>Cola activa (los clientes pueden tomar turno)</span></label>
+                  <div class="dialogo-pie">
+                    <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+                    <button type="submit" class="boton">Guardar</button>
+                  </div>
+                </form>
+              </dialog>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

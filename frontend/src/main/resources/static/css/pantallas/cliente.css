@@ -1,0 +1,398 @@
+/* Pantallas del cliente en el celular: tomar turno y "mi turno" */
+.pagina-cliente {
+  background: color-mix(in oklch, var(--apagado) 60%, var(--fondo));
+}
+
+.cabecera-local {
+  position: relative;
+  overflow: hidden;
+  color: white;
+  background: linear-gradient(135deg, var(--local), var(--local-oscuro));
+}
+.cabecera-local-contenido {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: var(--ancho-cliente);
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+.cabecera-local-logo {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border-radius: var(--radio);
+  background: rgb(255 255 255 / 0.9);
+  object-fit: contain;
+  padding: 0.25rem;
+}
+.cabecera-local .logo-marca {
+  width: 3rem;
+  height: 3rem;
+  background: rgb(255 255 255 / 0.15);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+}
+.cabecera-local-texto {
+  min-width: 0;
+  flex: 1;
+}
+.cabecera-local-sobre {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.7);
+}
+.cabecera-local h1 {
+  overflow: hidden;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cabecera-local-direccion {
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 0.8);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cabecera-local .en-vivo {
+  color: rgb(255 255 255 / 0.8);
+}
+
+.cliente-main {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  max-width: var(--ancho-cliente);
+  margin: -1.5rem auto 0;
+  padding: 0 1rem 2.5rem;
+}
+
+/* Pasos */
+.pasos {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--apagado-texto);
+}
+.paso-numero {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--apagado);
+}
+.paso-activo .paso-numero,
+.paso-hecho .paso-numero {
+  background: var(--local);
+  color: white;
+}
+.paso-activo {
+  color: var(--texto);
+}
+.paso-linea {
+  height: 2px;
+  flex: 1;
+  border-radius: 999px;
+  background: var(--borde);
+}
+.paso-linea.llena {
+  background: var(--local);
+}
+
+.titulo-paso {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* Lista de colas */
+.lista-colas {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+.opcion-cola {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  background: var(--fondo);
+  text-decoration: none;
+  transition: transform 220ms var(--curva-salida), box-shadow 220ms, border-color 220ms;
+}
+.opcion-cola:hover {
+  border-color: color-mix(in oklch, var(--local) 60%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .opcion-cola:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-elevada);
+  }
+}
+.opcion-cola .prefijo {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.25rem;
+}
+.opcion-cola-texto {
+  min-width: 0;
+  flex: 1;
+}
+.opcion-cola-nombre {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.opcion-cola-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--apagado-texto);
+}
+.cola-elegida {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radio-lg);
+  background: var(--apagado);
+}
+
+/* Ticket "mi turno" */
+.ticket-cliente {
+  overflow: hidden;
+  border-radius: var(--radio-xl);
+  background: var(--tarjeta);
+  text-align: center;
+  box-shadow: var(--sombra-flotante);
+  outline: 1px solid color-mix(in oklch, var(--texto) 5%, transparent);
+}
+.ticket-cliente.llamado {
+  outline: 4px solid var(--local);
+}
+.ticket-arriba {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+.ticket-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+.ticket-rotulo {
+  margin-top: 1.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--apagado-texto);
+}
+.ticket-codigo {
+  margin-top: 0.25rem;
+  font-family: var(--fuente-mono);
+  font-size: clamp(3.5rem, 18vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--local);
+}
+.troquel {
+  position: relative;
+  border-top: 2px dashed var(--borde);
+}
+.troquel::before,
+.troquel::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--apagado) 60%, var(--fondo));
+  transform: translateY(-50%);
+}
+.troquel::before { left: -0.75rem; }
+.troquel::after { right: -0.75rem; }
+.ticket-abajo {
+  padding: 1.5rem 1.5rem 1.25rem;
+}
+.datos-espera {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.dato-espera {
+  padding: 0.75rem;
+  border-radius: var(--radio-lg);
+  background: var(--apagado);
+}
+.dato-espera-valor {
+  margin-top: 0.25rem;
+  font-size: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.es-tu-turno {
+  padding: 1.25rem;
+  border-radius: var(--radio-lg);
+  background: linear-gradient(135deg, var(--local), var(--local-oscuro));
+  color: white;
+  box-shadow: var(--sombra-elevada);
+}
+.es-tu-turno-rotulo {
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.es-tu-turno-ventanilla {
+  margin-top: 0.5rem;
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+.fin-turno {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 1.25rem;
+  border-radius: var(--radio-lg);
+  background: var(--apagado);
+}
+.fin-icono {
+  display: inline-flex;
+  width: 3.5rem;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 1.6rem;
+}
+.fin-icono.ok { background: var(--exito-suave); color: var(--exito); }
+.fin-icono.mal { background: var(--error-suave); color: var(--error); }
+.fin-icono.neutro { background: #f4f4f5; color: #71717a; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--apagado);
+  font-size: 0.85rem;
+}
+.chip b {
+  font-family: var(--fuente-mono);
+  color: var(--local);
+}
+
+/* Simulación visual del chat de WhatsApp */
+.chat-avisos {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radio-lg);
+  background: #ece5dd;
+}
+.burbuja {
+  justify-self: end;
+  max-width: 92%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem 0.3rem 1rem 1rem;
+  background: #d9fdd3;
+  color: #052e16;
+  font-size: 0.88rem;
+  text-align: left;
+  white-space: pre-wrap;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.08);
+}
+.burbuja .enlace {
+  color: #0369a1;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.burbuja-pie {
+  margin-top: 0.25rem;
+  text-align: right;
+  font-size: 0.65rem;
+  color: rgb(6 78 59 / 0.7);
+}
+
+.acciones-cliente {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.acciones-cliente .boton {
+  min-height: 3rem;
+  border-radius: var(--radio-lg);
+}
+.acciones-cliente .ancho-completo {
+  grid-column: 1 / -1;
+}
+.boton[aria-pressed="true"] {
+  border-color: var(--local);
+  color: var(--local);
+}
+
+/* Valoración con estrellas: radios accesibles, sin JavaScript */
+.estrellas {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  gap: 0.15rem;
+}
+.estrellas input {
+  position: absolute;
+  opacity: 0;
+}
+.estrellas label {
+  font-size: 2rem;
+  line-height: 1;
+  color: color-mix(in oklch, var(--apagado-texto) 40%, transparent);
+  cursor: pointer;
+  transition: color 150ms, transform 150ms;
+}
+.estrellas label:hover,
+.estrellas label:hover ~ label,
+.estrellas input:checked ~ label {
+  color: #fbbf24;
+}
+.estrellas input:focus-visible + label {
+  outline: 2px solid var(--anillo);
+  border-radius: 0.25rem;
+}
+.enlace-tarjeta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  background: var(--tarjeta);
+  font-size: 0.9rem;
+  text-decoration: none;
+  box-shadow: var(--sombra-suave);
+}

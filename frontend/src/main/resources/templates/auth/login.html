@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Ingresar')}"></head>
+<body>
+<div class="pagina-login">
+  <aside class="login-lateral">
+    <a th:replace="~{fragmentos/base :: logo('/', true)}"></a>
+    <blockquote class="login-cita entrar">
+      “Antes la gente preguntaba cada cinco minutos cuánto faltaba. Ahora espera afuera y vuelve justo cuando la llamamos.”
+      <footer>Recepción · Policlínico piloto, Juliaca</footer>
+    </blockquote>
+    <div class="login-cifras">
+      <div><strong>−40 %</strong><span>tiempo en sala</span></div>
+      <div><strong>&lt; 5 %</strong><span>abandono</span></div>
+      <div><strong>&lt; 1 s</strong><span>llamado en TV</span></div>
+    </div>
+  </aside>
+
+  <main class="login-formulario">
+    <div class="login-caja entrar">
+      <a th:replace="~{fragmentos/base :: logo('/', false)}"></a>
+      <h1>Ingresar</h1>
+      <p class="texto-apagado">Panel de ventanilla y administración del local.</p>
+
+      <form class="formulario" method="post" th:action="@{/login}" th:classappend="${error} ? 'sacudir'">
+        <input type="hidden" name="next" th:value="${next}">
+        <div th:if="${error}" class="alerta alerta-error" role="alert" th:text="${error}">Error</div>
+        <div class="campo">
+          <label class="etiqueta" for="email">Correo</label>
+          <input id="email" name="email" type="email" class="entrada" autocomplete="username" required placeholder="tu@local.pe" th:value="${email}">
+        </div>
+        <div class="campo">
+          <label class="etiqueta" for="password">Contraseña</label>
+          <input id="password" name="password" type="password" class="entrada" autocomplete="current-password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="boton boton-grande boton-bloque">Entrar</button>
+      </form>
+
+      <!--/* Cuentas del seed de demostración (backend/…/seed: mismas que legacy/) */-->
+      <div class="login-demo">
+        <p>Cuentas de demostración</p>
+        <ul>
+          <li>Super admin · <code>superadmin@turnoya.pe</code> / <code>admin123</code></li>
+          <li>Admin local · <code>admin@policlinico.pe</code> / <code>admin123</code></li>
+          <li>Operador · <code>operador@policlinico.pe</code> / <code>operador123</code></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

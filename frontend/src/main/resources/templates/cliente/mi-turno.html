@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Turno ' + ${turno.codigo})}"></head>
+<body class="pagina-cliente" th:style="'--local:' + ${turno.local.colorPrimario}">
+
+<header th:replace="~{fragmentos/base :: cabeceraLocal(${turno.local.nombreComercial}, 'Tu turno en', ${turno.local.direccion}, ${turno.local.logoUrl})}"></header>
+
+<main class="cliente-main" hx-ext="sse" th:attr="sse-connect=@{/api/v1/realtime/{s}(s=${turno.local.slug})}">
+
+  <!--/*
+    Tarjeta del turno: se vuelve a pedir al servidor con cada evento del local y cada 15 s (respaldo si se corta
+    la conexión). js/mi-turno.js compara data-estado para vibrar y sonar cuando lo llaman.
+  */-->
+  <div id="tarjeta" th:fragment="tarjeta"
+       th:attr="hx-get=@{/t/{t}/tarjeta(t=${turno.token})},data-estado=${turno.estado},data-codigo=${turno.codigo},data-ventanilla=${turno.ventanilla?.nombre},data-redirigir=${turno.redirigidoA != null ? '/t/' + turno.redirigidoA.token : null}"
+       hx-trigger="sse:turno:estado delay:200ms, sse:turno:llamado delay:200ms, sse:cola:actualizada delay:400ms, sse:notificacion:nueva delay:300ms, every 15s"
+       hx-swap="outerHTML" style="display: grid; gap: 1rem">
+
+    <section class="ticket-cliente entrar" th:classappend="${turno.llamado()} ? 'llamado destello'">
+      <div class="ticket-arriba">
+        <div class="ticket-fila">
+          <span class="texto-apagado" th:text="${turno.cola.nombre}">Caja</span>
+          <span th:replace="~{fragmentos/base :: insignia(${turno.estado})}"></span>
+        </div>
+        <p class="ticket-rotulo">Tu número</p>
+        <p class="ticket-codigo" th:text="${turno.codigo}">A-001</p>
+      </div>
+
+      <div class="troquel" aria-hidden="true"></div>
+
+      <div class="ticket-abajo">
+        <!--/* En espera */-->
+        <th:block th:if="${turno.enEspera()}">
+          <div class="datos-espera">
+            <div class="dato-espera">
+              <p class="ayuda">Delante de ti</p>
+              <p class="dato-espera-valor" th:text="${turno.personasDelante}">2</p>
+              <p class="ayuda" th:text="${turno.personasDelante == 1} ? 'persona' : 'personas'">personas</p>
+            </div>
+            <div class="dato-espera">
+              <p class="ayuda">Espera aprox.</p>
+              <p class="dato-espera-valor" th:text="${turno.minutosEstimados() == 0} ? '<1' : ${turno.minutosEstimados()}">5</p>
+              <p class="ayuda">minutos</p>
+              <p th:if="${turno.prediccion != null and !turno.prediccion.enfrio}" class="ayuda"
+                 th:text="'Entre ' + ${turno.prediccion.loSeg / 60} + ' y ' + ${turno.prediccion.hiSeg / 60} + ' min'">Entre 3 y 8 min</p>
+            </div>
+          </div>
+          <div style="margin-top: 1.25rem">
+            <div class="barra-progreso" role="progressbar" aria-label="Avance en la cola" aria-valuemin="0" aria-valuemax="100"
+                 th:aria-valuenow="${turno.progreso()}">
+              <span th:style="'width:' + ${turno.progreso()} + '%'"></span>
+            </div>
+            <p class="ayuda" style="margin-top: 0.5rem"
+               th:text="${turno.personasDelante == 0} ? 'Eres el siguiente. Acércate a la sala.' : 'Posición ' + ${turno.posicion} + ' en la cola · puedes salir, te avisamos cuando falten ' + ${turno.local.avisarFaltando} + '.'">
+              Posición 3 en la cola
+            </p>
+          </div>
+        </th:block>
+
+        <!--/* Llamado */-->
+        <div th:if="${turno.llamado()}" class="es-tu-turno pulso">
+          <p class="es-tu-turno-rotulo">🔔 Es tu turno</p>
+          <p class="es-tu-turno-ventanilla" th:text="${turno.ventanilla != null ? turno.ventanilla.nombre : 'Ventanilla'}">Ventanilla 1</p>
+          <p style="opacity: 0.85">Acércate ahora.
+            <span th:if="${turno.rellamadas > 0}" th:text="'Te llamaron ' + ${turno.rellamadas + 1} + ' veces.'"></span>
+          </p>
+        </div>
+
+        <!--/* Finalizado */-->
+        <div th:if="${turno.finalizado()}" class="fin-turno">
+          <th:block th:switch="${turno.estado.name()}">
+            <th:block th:case="'ATENDIDO'">
+              <span class="fin-icono ok aparecer" aria-hidden="true">✓</span>
+              <p><strong>Gracias por tu visita</strong></p>
+              <p class="ayuda" th:text="'Atendido en ' + ${turno.ventanilla?.nombre} + ' a las ' + ${@fmt.hora(turno.finalizadoAt)}">Atendido</p>
+
+              <form th:unless="${valorado}" th:fragment="valoracion" style="width: 100%; margin-top: 1rem; display: grid; gap: 0.5rem"
+                    method="post" th:action="@{/t/{t}/valoracion(t=${turno.token})}" th:attr="hx-post=@{/t/{t}/valoracion(t=${turno.token})}" hx-target="this" hx-swap="outerHTML">
+                <p><strong>¿Cómo fue la atención?</strong></p>
+                <div class="estrellas" role="radiogroup" aria-label="Valoración">
+                  <th:block th:each="n : ${#numbers.sequence(5, 1, -1)}">
+                    <input type="radio" name="estrellas" th:id="'estrella-' + ${n}" th:value="${n}" th:checked="${n == 5}">
+                    <label th:for="'estrella-' + ${n}" th:aria-label="${n} + ' de 5'">★</label>
+                  </th:block>
+                </div>
+                <button class="boton boton-contorno boton-bloque" type="submit">Enviar valoración</button>
+              </form>
+              <p th:if="${valorado}" class="ayuda" style="color: var(--exito)">Gracias por tu valoración.</p>
+            </th:block>
+            <th:block th:case="'CANCELADO'">
+              <span class="fin-icono neutro aparecer" aria-hidden="true">✕</span>
+              <p><strong>Turno cancelado</strong></p>
+              <p class="ayuda">Puedes tomar uno nuevo cuando quieras.</p>
+            </th:block>
+            <th:block th:case="'NO_SE_PRESENTO'">
+              <span class="fin-icono mal aparecer" aria-hidden="true">✕</span>
+              <p><strong>Tu turno venció</strong></p>
+              <p class="ayuda" th:text="'Te llamaron en ' + ${turno.ventanilla?.nombre} + ' y el tiempo de presentación terminó.'">Venció</p>
+            </th:block>
+          </th:block>
+          <a class="boton boton-contorno" style="margin-top: 1rem" th:href="@{/l/{s}(s=${turno.local.slug})}">Tomar otro turno</a>
+        </div>
+
+        <p class="ayuda" style="margin-top: 1.25rem"
+           th:text="'Emitido a las ' + ${@fmt.hora(turno.emitidoAt)} + ' · ' + ${turno.canal.etiqueta()}">Emitido a las 10:00</p>
+      </div>
+    </section>
+
+    <!--/* Llamando ahora en la misma cola */-->
+    <section th:if="${!turno.finalizado() and !#lists.isEmpty(turno.llamandoAhora)}" class="tarjeta">
+      <p class="ayuda" style="text-transform: uppercase; letter-spacing: 0.12em" th:text="'Llamando ahora en ' + ${turno.cola.nombre}">Llamando ahora</p>
+      <div class="chips">
+        <span th:each="l : ${turno.llamandoAhora}" class="chip"><b th:text="${l.codigo}">A-001</b> <span class="texto-apagado" th:text="'→ ' + ${l.ventanilla}">→ V1</span></span>
+      </div>
+    </section>
+
+    <!--/* Avisos enviados (simulación visual del chat de WhatsApp) */-->
+    <section th:unless="${#lists.isEmpty(turno.notificaciones)}" class="tarjeta">
+      <p class="ayuda" style="text-transform: uppercase; letter-spacing: 0.12em">
+        Avisos enviados <span th:if="${turno.cliente.telefonoMasc}" th:text="'· ' + ${turno.cliente.telefonoMasc}"></span>
+      </p>
+      <div class="chat-avisos">
+        <div th:each="n : ${turno.notificaciones}" class="burbuja">
+          <p th:utext="${avisosHtml[n.id]}">Mensaje</p>
+          <p class="burbuja-pie">
+            <span th:text="${n.tipo == 'WHATSAPP'} ? 'WhatsApp' : 'Aviso web'">WhatsApp</span> ·
+            <span th:text="${@fmt.hora(n.createdAt)}">10:00</span>
+            <span th:switch="${n.estado}">
+              <span th:case="'ENVIADO'">✓</span>
+              <span th:case="'ENTREGADO'">✓✓</span>
+              <span th:case="'LEIDO'" style="color: #0284c7">✓✓</span>
+              <span th:case="'FALLIDO'" style="color: var(--error)">✕</span>
+              <span th:case="*">…</span>
+            </span>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <form th:if="${turno.enEspera()}" method="post" th:action="@{/t/{t}/cancelar(t=${turno.token})}" th:attr="hx-post=@{/t/{t}/cancelar(t=${turno.token})}" hx-target="#tarjeta" hx-swap="outerHTML"
+          th:hx-confirm="'¿Cancelar el turno ' + ${turno.codigo} + '? Perderás tu lugar en la cola.'">
+      <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-bloque">✕ Cancelar mi turno</button>
+    </form>
+  </div>
+
+  <!--/* Acciones fuera de la tarjeta: no se reemplazan al refrescar */-->
+  <section class="acciones-cliente">
+    <button type="button" id="mi-turno-compartir" class="boton boton-contorno" th:data-titulo="'Mi turno ' + ${turno.codigo} + ' en ' + ${turno.local.nombreComercial}">Compartir</button>
+    <button type="button" id="mi-turno-sonido" class="boton boton-contorno" aria-pressed="false"><span data-texto-sonido>Activar sonido</span></button>
+  </section>
+
+  <p class="pie-marca">Guarda este enlace para seguir tu turno · <a th:href="@{/}">TurnoYa</a></p>
+  <p class="pie-marca"><span th:replace="~{fragmentos/base :: enVivo}"></span></p>
+</main>
+
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+
+<!--/* Respuesta al valorar (no se muestra en la página; el controlador la devuelve sola) */-->
+<th:block th:if="${false}">
+  <p th:fragment="gracias" class="ayuda aparecer" style="color: var(--exito); margin-top: 0.75rem">Gracias por tu valoración.</p>
+</th:block>
+
+<script defer th:src="@{/js/mi-turno.js}"></script>
+</body>
+</html>
