@@ -91,8 +91,9 @@ public class ReservaCitas {
         // RN-M3-01/06: bloqueo por reincidencia y límite de citas futuras
         Optional<Instant> bloqueo = repositorio.bloqueoVigente(local.id(), clienteId, ahora);
         if (bloqueo.isPresent()) {
-            String hasta = DateTimeFormatter.ofPattern("d/M/yyyy").format(bloqueo.get().atZone(local.zonaHoraria()));
-            throw new ErrorNegocio("M3_CLIENTE_BLOQUEADO", "Reservas bloqueadas hasta " + hasta + " por inasistencias", 403,
+            String hasta = DateTimeFormatter.ofPattern("d/M/yyyy 'a las' HH:mm").format(bloqueo.get().atZone(local.zonaHoraria()));
+            throw new ErrorNegocio("M3_CLIENTE_BLOQUEADO", "No puedes reservar citas en este local hasta el " + hasta
+                    + " porque no te presentaste a una cita", 403,
                     Map.of("hasta", bloqueo.get().toString()));
         }
         if (repositorio.citasFuturasActivas(clienteId, ahora) >= 3) {
@@ -179,6 +180,14 @@ public class ReservaCitas {
                 base.cola(), base.local(), base.urlQr(), turno,
                 new Checkin(v.tipo().name(), v.disponibleDesde(), cfg.checkinAntesMin(), cfg.checkinDespuesMin()),
                 ReglasCitas.ACTIVAS.contains(c.estado()) && c.inicio().isAfter(ahora));
+    }
+
+    /** Hasta cuándo no puede reservar en el local el dueño de esta cita (por no presentarse), con la hora del local. */
+    public Optional<String> sancionDe(String token) {
+        Cita c = exigirPorToken(token);
+        Local local = locales.exigir(c.localId());
+        return repositorio.bloqueoVigente(c.localId(), c.clienteId(), reloj.instant())
+                .map(h -> DateTimeFormatter.ofPattern("d/M/yyyy 'a las' HH:mm").format(h.atZone(local.zonaHoraria())));
     }
 
     public Cita exigirPorToken(String token) {

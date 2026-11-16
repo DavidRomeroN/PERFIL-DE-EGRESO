@@ -19,7 +19,7 @@ import pe.turnoya.plataforma.LocalDeTrabajo;
 import pe.turnoya.plataforma.Sesion;
 import pe.turnoya.plataforma.SoloAdmin;
 
-/** Administración de ventanillas y la cola que atiende cada una (vacía = todas las colas). */
+/** Administración de ventanillas y la cola que atiende cada una (una ventanilla por cola). */
 @Controller
 @SoloAdmin
 class AdminVentanillasVista {
@@ -81,8 +81,14 @@ class AdminVentanillasVista {
 
     private void cargar(Sesion sesion, HttpServletRequest peticion, Model modelo) {
         int localId = localDeTrabajo.resolver(sesion, peticion);
-        modelo.addAttribute("ventanillas", ventanillas.listar(localId));
-        modelo.addAttribute("colas", colas.listar(localId));
+        var lista = ventanillas.listar(localId);
+        modelo.addAttribute("ventanillas", lista);
+        // Colas que ya tienen una ventanilla activa: no se ofrecen para otra
+        var ocupadas = lista.stream().filter(v -> v.activa() && v.colaId() != null).map(v -> v.colaId()).toList();
+        var todasLasColas = colas.listar(localId);
+        modelo.addAttribute("ocupadas", ocupadas);
+        modelo.addAttribute("colas", todasLasColas);
+        modelo.addAttribute("hayColasLibres", todasLasColas.stream().anyMatch(c -> c.activa() && !ocupadas.contains(c.id())));
         modelo.addAttribute("seccion", "ventanillas");
     }
 

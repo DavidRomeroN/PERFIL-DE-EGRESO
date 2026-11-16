@@ -22,9 +22,25 @@
       <div class="cabecera-tarjeta">
         <div>
           <h2 class="tarjeta-titulo">Número de WhatsApp (OpenWA)</h2>
-          <p class="texto-apagado" style="font-size: .85rem">Vincula el número del local escaneando el QR desde WhatsApp → Dispositivos vinculados.</p>
+          <p class="texto-apagado" style="font-size: .85rem">Los avisos salen desde el WhatsApp de tu negocio. Guarda el número y vincúlalo con el código
+            (WhatsApp → Dispositivos vinculados → Vincular con número de teléfono) o escaneando el QR.</p>
         </div>
         <span class="insignia" th:classappend="${conexion.conectado()} ? 'pago-APROBADO' : 'pago-PENDIENTE'" th:text="${conexion.estado}">sin_sesion</span>
+      </div>
+
+      <form class="formulario-en-linea" method="post" th:action="@{/admin/notificaciones/conexion}" th:attr="hx-post=@{/admin/notificaciones/conexion}"
+            hx-target="#conexion" hx-swap="outerHTML" style="margin-bottom: 1rem">
+        <input type="hidden" name="accion" value="numero">
+        <label class="etiqueta" for="numero-whatsapp">Número del negocio</label>
+        <input id="numero-whatsapp" name="telefono" class="entrada numeros" inputmode="tel" placeholder="951234567" required style="width: 11rem"
+               th:value="${conexion.numeroLocal != null} ? ${#strings.substring(conexion.numeroLocal, conexion.numeroLocal.length() - 9)} : ''">
+        <button type="submit" class="boton boton-contorno">Guardar número</button>
+      </form>
+      <div th:if="${conexion.codigo != null}" class="alerta alerta-exito" role="status">
+        <div>
+          <p>Código para vincular tu WhatsApp: <strong class="numeros codigo-vinculacion" th:text="${conexion.codigo}">ABCD-1234</strong></p>
+          <p>En el celular del negocio abre WhatsApp → Dispositivos vinculados → Vincular un dispositivo → «Vincular con número de teléfono» y escríbelo.</p>
+        </div>
       </div>
 
       <div th:if="${!conexion.configurado}" class="alerta alerta-aviso">
@@ -43,7 +59,10 @@
         </div>
         <div class="acciones-cabecera" style="flex-wrap: wrap; margin-top: 1rem">
           <form th:unless="${conexion.conectado()}" method="post" th:action="@{/admin/notificaciones/conexion}" th:attr="hx-post=@{/admin/notificaciones/conexion}" hx-target="#conexion" hx-swap="outerHTML">
-            <input type="hidden" name="accion" value="iniciar"><button type="submit" class="boton">Vincular número</button></form>
+            <input type="hidden" name="accion" value="iniciar"><button type="submit" class="boton boton-contorno">Vincular con QR</button></form>
+          <form th:if="${!conexion.conectado() and conexion.numeroLocal != null}" method="post" th:action="@{/admin/notificaciones/conexion}"
+                th:attr="hx-post=@{/admin/notificaciones/conexion}" hx-target="#conexion" hx-swap="outerHTML" hx-disabled-elt="find button">
+            <input type="hidden" name="accion" value="codigo"><button type="submit" class="boton">Vincular con código</button></form>
           <form th:if="${conexion.conectado()}" class="formulario-en-linea" method="post" th:action="@{/admin/notificaciones/conexion}" th:attr="hx-post=@{/admin/notificaciones/conexion}" hx-target="#conexion" hx-swap="outerHTML">
             <input type="hidden" name="accion" value="prueba">
             <input name="telefono" class="entrada" inputmode="tel" placeholder="951234567" aria-label="Celular para la prueba" required style="width: 10rem">
@@ -56,7 +75,7 @@
     </section>
 
     <div th:unless="${datos.whatsappHabilitado}" class="alerta alerta-aviso" style="margin-bottom: 1.25rem">
-      Este local está en un plan sin WhatsApp: los avisos se muestran solo en la web del cliente (RN05). Mejora al plan Emprende o Pro para activarlo.
+      Este local está en un plan sin WhatsApp: los avisos se muestran solo en la web del cliente (RN05).
     </div>
 
     <div id="bandeja" th:fragment="bandeja" th:attr="hx-get=@{/admin/notificaciones/bandeja}" hx-trigger="sse:notificacion:nueva delay:500ms, every 60s" hx-swap="outerHTML">

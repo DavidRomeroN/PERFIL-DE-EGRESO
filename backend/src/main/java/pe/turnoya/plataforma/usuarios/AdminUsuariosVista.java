@@ -2,6 +2,7 @@ package pe.turnoya.plataforma.usuarios;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,7 +17,7 @@ import pe.turnoya.plataforma.RolUsuario;
 import pe.turnoya.plataforma.Sesion;
 import pe.turnoya.plataforma.SoloAdmin;
 
-/** Página de usuarios del local: crear, editar (con cambio de contraseña opcional) y eliminar. */
+/** Página de usuarios del local: crear, editar (con cambio de contraseña opcional y las ventanillas del operador) y eliminar. */
 @Controller
 @SoloAdmin
 class AdminUsuariosVista {
@@ -37,8 +38,10 @@ class AdminUsuariosVista {
 
     @PostMapping("/admin/usuarios")
     String crear(@AuthenticationPrincipal Sesion sesion, @RequestParam String nombre, @RequestParam String email, @RequestParam String password,
-                 @RequestParam RolUsuario rol, HttpServletRequest peticion, HttpServletResponse respuesta, Model modelo) {
-        var u = usuarios.crear(localDeTrabajo.resolver(sesion, peticion), new GestionUsuarios.DatosUsuario(nombre, email, password, rol, true),
+                 @RequestParam RolUsuario rol, @RequestParam(name = "ventanilla", required = false) List<Integer> ventanillas,
+                 HttpServletRequest peticion, HttpServletResponse respuesta, Model modelo) {
+        var u = usuarios.crear(localDeTrabajo.resolver(sesion, peticion),
+                new GestionUsuarios.DatosUsuario(nombre, email, password, rol, true, ventanillas == null ? List.of() : ventanillas),
                 Auditoria.Actor.de(sesion, peticion));
         Htmx.aviso(respuesta, Htmx.Tipo.EXITO, "Usuario " + u.email() + " creado");
         return lista(sesion, peticion, modelo);
@@ -47,8 +50,10 @@ class AdminUsuariosVista {
     @PostMapping("/admin/usuarios/{id}")
     String editar(@AuthenticationPrincipal Sesion sesion, @PathVariable int id, @RequestParam String nombre, @RequestParam String email,
                   @RequestParam(required = false) String password, @RequestParam RolUsuario rol,
-                  @RequestParam(defaultValue = "false") boolean activo, HttpServletRequest peticion, HttpServletResponse respuesta, Model modelo) {
-        usuarios.editar(localDeTrabajo.resolver(sesion, peticion), id, new GestionUsuarios.DatosUsuario(nombre, email, password, rol, activo),
+                  @RequestParam(defaultValue = "false") boolean activo, @RequestParam(name = "ventanilla", required = false) List<Integer> ventanillas,
+                  HttpServletRequest peticion, HttpServletResponse respuesta, Model modelo) {
+        usuarios.editar(localDeTrabajo.resolver(sesion, peticion), id,
+                new GestionUsuarios.DatosUsuario(nombre, email, password, rol, activo, ventanillas == null ? List.of() : ventanillas),
                 sesion.sub(), Auditoria.Actor.de(sesion, peticion));
         Htmx.aviso(respuesta, Htmx.Tipo.EXITO, "Cambios guardados");
         return lista(sesion, peticion, modelo);
@@ -72,6 +77,9 @@ class AdminUsuariosVista {
 
     private void cargar(Sesion sesion, HttpServletRequest peticion, Model modelo) {
         modelo.addAttribute("seccion", "usuarios");
-        modelo.addAttribute("usuarios", usuarios.listar(localDeTrabajo.resolver(sesion, peticion)));
+        int localId = localDeTrabajo.resolver(sesion, peticion);
+        modelo.addAttribute("usuarios", usuarios.listar(localId));
+        modelo.addAttribute("ventanillas", usuarios.ventanillas(localId));
+        modelo.addAttribute("asignaciones", usuarios.asignaciones(localId));
     }
 }

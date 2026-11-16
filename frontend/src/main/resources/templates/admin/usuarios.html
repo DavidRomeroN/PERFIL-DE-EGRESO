@@ -9,7 +9,7 @@
     <div class="cabecera-pagina">
       <div>
         <h1>Usuarios</h1>
-        <p>Administradores y operadores de ventanilla del local. Cada uno entra con su correo y contraseña.</p>
+        <p>Administradores y operadores del local. Cada uno entra con su correo y contraseña. Un operador solo ve y llama en las ventanillas que le asignes: por ejemplo, una cuenta solo para el odontólogo. El kiosco emite tickets para cualquier cola y transfiere clientes, pero no llama.</p>
       </div>
       <button type="button" class="boton" data-abrir="nuevo-usuario">Nuevo usuario</button>
     </div>
@@ -21,8 +21,18 @@
         <div class="campo"><label class="etiqueta">Correo <input name="email" type="email" class="entrada" required placeholder="ana@local.pe"></label></div>
         <div class="campo"><label class="etiqueta">Contraseña <input name="password" type="password" class="entrada" required minlength="6" maxlength="72" autocomplete="new-password" placeholder="Mínimo 6"></label></div>
         <div class="campo"><label class="etiqueta">Rol
-          <select name="rol" class="entrada"><option value="OPERADOR">Operador de ventanilla</option><option value="ADMIN_LOCAL">Administrador del local</option></select>
+          <select name="rol" class="entrada"><option value="OPERADOR">Operador de ventanilla</option><option value="KIOSCO">Kiosco (solo tickets)</option><option value="ADMIN_LOCAL">Administrador del local</option></select>
         </label></div>
+        <fieldset class="campo solo-operador">
+          <legend class="etiqueta">Ventanillas que atiende</legend>
+          <p class="ayuda">Solo podrá llamar y emitir tickets impresos en las que marques. Marca varias, o todas, si una misma persona atiende varias colas.</p>
+          <p th:if="${#lists.isEmpty(ventanillas)}" class="alerta alerta-aviso">No hay ventanillas activas: crea primero una cola (cada cola trae su ventanilla).</p>
+          <div th:unless="${#lists.isEmpty(ventanillas)}" class="ventanillas-operador">
+            <label class="casilla casilla-todas"><input type="checkbox" data-marcar-todas> <span><strong>Todas las ventanillas</strong></span></label>
+            <label th:each="vo : ${ventanillas}" class="casilla"><input type="checkbox" name="ventanilla" th:value="${vo.id}">
+              <span><strong th:text="${vo.nombre}">Consultorio 1</strong> <small th:text="${vo.cola != null ? vo.prefijo + ' · ' + vo.cola : ''}">A · Medicina</small></span></label>
+          </div>
+        </fieldset>
         <div class="dialogo-pie">
           <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
           <button type="submit" class="boton">Crear</button>
@@ -39,7 +49,14 @@
           <tr th:each="u : ${usuarios}">
             <td><strong th:text="${u.nombre}">Ana</strong> <span th:if="${u.id == sesion.sub}" class="texto-apagado">(tú)</span></td>
             <td th:text="${u.email}">ana@local.pe</td>
-            <td><span class="canal-etiqueta" th:text="${u.rol.etiqueta()}">Operador</span></td>
+            <td>
+              <span class="canal-etiqueta" th:text="${u.rol.etiqueta()}">Operador</span>
+              <span th:if="${u.rol.name() == 'OPERADOR'}" class="ventanillas-asignadas">
+                <small th:if="${asignaciones[u.id] == null}" class="texto-peligro">Sin ventanillas</small>
+                <small th:each="vo : ${ventanillas}" th:if="${asignaciones[u.id] != null and asignaciones[u.id].contains(vo.id)}"
+                       class="codigo" th:text="${vo.nombre}">Consultorio 1</small>
+              </span>
+            </td>
             <td><span th:class="${u.activo} ? 'estado-activo' : 'estado-inactivo'" th:text="${u.activo} ? 'Activo' : 'Inactivo'">Activo</span></td>
             <td class="numeros" th:text="${u.ultimoAcceso != null} ? ${@fmt.fechaHora(u.ultimoAcceso)} : 'Nunca'">—</td>
             <td>
@@ -60,9 +77,20 @@
                   <div class="campo"><label class="etiqueta">Rol
                     <select name="rol" class="entrada">
                       <option value="OPERADOR" th:selected="${u.rol.name() == 'OPERADOR'}">Operador de ventanilla</option>
+                      <option value="KIOSCO" th:selected="${u.rol.name() == 'KIOSCO'}">Kiosco (solo tickets)</option>
                       <option value="ADMIN_LOCAL" th:selected="${u.rol.name() == 'ADMIN_LOCAL'}">Administrador del local</option>
                     </select>
                   </label></div>
+                  <fieldset class="campo solo-operador">
+                    <legend class="etiqueta">Ventanillas que atiende</legend>
+                    <p class="ayuda">Solo podrá llamar y emitir tickets impresos en las que marques. Marca varias, o todas, si una misma persona atiende varias colas.</p>
+                    <p th:if="${#lists.isEmpty(ventanillas)}" class="alerta alerta-aviso">No hay ventanillas activas: crea primero una cola (cada cola trae su ventanilla).</p>
+                    <div th:unless="${#lists.isEmpty(ventanillas)}" class="ventanillas-operador">
+                      <label class="casilla casilla-todas"><input type="checkbox" data-marcar-todas> <span><strong>Todas las ventanillas</strong></span></label>
+                      <label th:each="vo : ${ventanillas}" class="casilla"><input type="checkbox" name="ventanilla" th:value="${vo.id}" th:checked="${asignaciones[u.id] != null and asignaciones[u.id].contains(vo.id)}">
+                        <span><strong th:text="${vo.nombre}">Consultorio 1</strong> <small th:text="${vo.cola != null ? vo.prefijo + ' · ' + vo.cola : ''}">A · Medicina</small></span></label>
+                    </div>
+                  </fieldset>
                   <label class="casilla"><input type="checkbox" name="activo" value="true" th:checked="${u.activo}" th:disabled="${u.id == sesion.sub}"> <span>Cuenta activa</span></label>
                   <input th:if="${u.id == sesion.sub}" type="hidden" name="activo" value="true">
                   <div class="dialogo-pie">

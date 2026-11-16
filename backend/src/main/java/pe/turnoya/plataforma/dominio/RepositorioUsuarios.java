@@ -24,6 +24,21 @@ public interface RepositorioUsuarios {
 
     void eliminar(int id);
 
+    /** Ventanillas que puede operar el usuario (solo aplica a operadores). */
+    java.util.List<Integer> ventanillasDe(int usuarioId);
+
+    /** Reemplaza las ventanillas del usuario por estas (lista vacía = ninguna). */
+    void asignarVentanillas(int usuarioId, java.util.Collection<Integer> ventanillaIds);
+
+    /** Ventanillas de cada usuario del local, para la lista del administrador. */
+    java.util.Map<Integer, java.util.List<Integer>> asignacionesDelLocal(int localId);
+
+    /** Ventanillas activas del local con la cola que atienden, para elegirlas al crear un operador. */
+    java.util.List<VentanillaOpcion> ventanillasDelLocal(int localId);
+
+    record VentanillaOpcion(int id, String nombre, String cola, String prefijo) {
+    }
+
     record UsuarioFila(int id, String nombre, String email, RolUsuario rol, boolean activo, Instant createdAt, Instant ultimoAcceso,
                        Integer localId) {
     }

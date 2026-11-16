@@ -44,7 +44,7 @@ class AdminNotificacionesVista {
         modelo.addAttribute("seccion", "notificaciones");
         modelo.addAttribute("slug", local.slug());
         cargarBandeja(datos, modelo);
-        modelo.addAttribute("conexion", "meta".equals(datos.proveedor()) ? null : bandeja.estadoConexion());
+        modelo.addAttribute("conexion", "meta".equals(datos.proveedor()) ? null : bandeja.estadoConexion(local.id()));
         return "admin/notificaciones";
     }
 
@@ -63,8 +63,8 @@ class AdminNotificacionesVista {
     }
 
     @GetMapping("/admin/notificaciones/conexion")
-    String conexion(Model modelo) {
-        modelo.addAttribute("conexion", bandeja.estadoConexion());
+    String conexion(@AuthenticationPrincipal Sesion sesion, HttpServletRequest peticion, Model modelo) {
+        modelo.addAttribute("conexion", bandeja.estadoConexion(localDeTrabajo.resolver(sesion, peticion)));
         return "admin/notificaciones :: conexion";
     }
 
@@ -80,6 +80,8 @@ class AdminNotificacionesVista {
         Htmx.aviso(respuesta, Htmx.Tipo.EXITO, switch (accion) {
             case "prueba" -> "Mensaje de prueba enviado";
             case "iniciar" -> "Sesión iniciada: escanea el QR";
+            case "numero" -> "Número guardado";
+            case "codigo" -> "Código listo: escríbelo en WhatsApp";
             default -> "Listo";
         });
         if (!Htmx.esPeticion(peticion)) {

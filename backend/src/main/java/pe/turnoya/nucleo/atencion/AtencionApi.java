@@ -41,12 +41,15 @@ class AtencionApi {
     private final OperacionVentanilla operacion;
     private final CatalogoLocales locales;
     private final LocalDeTrabajo localDeTrabajo;
+    private final AccesoVentanillas acceso;
 
-    AtencionApi(ConsultaTurnos consulta, OperacionVentanilla operacion, CatalogoLocales locales, LocalDeTrabajo localDeTrabajo) {
+    AtencionApi(ConsultaTurnos consulta, OperacionVentanilla operacion, CatalogoLocales locales, LocalDeTrabajo localDeTrabajo,
+                AccesoVentanillas acceso) {
         this.consulta = consulta;
         this.operacion = operacion;
         this.locales = locales;
         this.localDeTrabajo = localDeTrabajo;
+        this.acceso = acceso;
     }
 
     /** {@code GET /api/v1/panel/estado}: foto del local del operador (super admin: {@code ?slug=}). */
@@ -58,6 +61,7 @@ class AtencionApi {
 
     @PostMapping("/api/v1/ventanillas/{id}/llamar-siguiente")
     RespuestaApi<Map<String, Object>> llamarSiguiente(@PathVariable int id, @AuthenticationPrincipal Sesion sesion, HttpServletRequest peticion) {
+        acceso.exigirVentanilla(sesion, id);
         Optional<TurnoPublico> turno = operacion.llamarSiguiente(id, localDeTrabajo.resolver(sesion, peticion), Auditoria.Actor.de(sesion, peticion));
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("turno", turno.orElse(null));
@@ -71,7 +75,9 @@ class AtencionApi {
         if (cambio.estado() == EstadoTurno.EMITIDO || cambio.estado() == EstadoTurno.AVISADO || cambio.estado() == EstadoTurno.TRANSFERIDO) {
             throw new ErrorNegocio("VALIDACION", "estado: debe ser LLAMADO, ATENDIDO, NO_SE_PRESENTO o CANCELADO", 422);
         }
-        Turno t = operacion.cambiarEstado(id, localDeTrabajo.resolver(sesion, peticion), cambio.estado(), Auditoria.Actor.de(sesion, peticion));
+        int localId = localDeTrabajo.resolver(sesion, peticion);
+        acceso.exigirTurno(sesion, localId, id);
+        Turno t = operacion.cambiarEstado(id, localId, cambio.estado(), Auditoria.Actor.de(sesion, peticion));
         return RespuestaApi.ok(Map.of("id", t.id(), "estado", t.estado(), "rellamadas", t.rellamadas()));
     }
 

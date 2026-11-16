@@ -5,11 +5,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../dominio/modelos.dart';
+import '../dominio/personal.dart';
 import '../dominio/puertos.dart';
 
 /// Guarda el turno activo, el identificador del dispositivo y la sesión en el almacén cifrado del sistema
 /// (Keystore en Android, Keychain en iOS). Nada de esto queda en texto plano en el teléfono.
-class AlmacenSeguro implements AlmacenTurno, AlmacenCuenta {
+class AlmacenSeguro implements AlmacenTurno, AlmacenCuenta, AlmacenPersonal {
   AlmacenSeguro({FlutterSecureStorage? almacen}) : _almacen = almacen ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _almacen;
@@ -17,6 +18,7 @@ class AlmacenSeguro implements AlmacenTurno, AlmacenCuenta {
   static const _turno = 'turno_token';
   static const _dispositivo = 'dispositivo_id';
   static const _sesion = 'sesion';
+  static const _personal = 'sesion_personal';
   static const _letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
   // ── Turno activo ──
@@ -82,4 +84,26 @@ class AlmacenSeguro implements AlmacenTurno, AlmacenCuenta {
 
   @override
   Future<void> borrarSesion() => _almacen.delete(key: _sesion);
+
+  // ── Personal del negocio ──
+
+  @override
+  Future<SesionPersonal?> leerPersonal() async {
+    final texto = await _almacen.read(key: _personal);
+    if (texto == null) return null;
+    try {
+      final d = jsonDecode(texto) as Map<String, dynamic>;
+      return SesionPersonal(token: d['token'] as String, nombre: d['nombre'] as String, rol: d['rol'] as String, local: d['local'] as String);
+    } on Object {
+      await borrarPersonal();
+      return null;
+    }
+  }
+
+  @override
+  Future<void> guardarPersonal(SesionPersonal s) =>
+      _almacen.write(key: _personal, value: jsonEncode({'token': s.token, 'nombre': s.nombre, 'rol': s.rol, 'local': s.local}));
+
+  @override
+  Future<void> borrarPersonal() => _almacen.delete(key: _personal);
 }

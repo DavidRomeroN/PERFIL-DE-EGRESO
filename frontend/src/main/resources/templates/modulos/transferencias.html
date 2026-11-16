@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Transferencias')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Transferencias</h1>
+        <p>Clientes que se pasaron de una cola a otra. Conservan su hora de llegada y su prioridad, y reciben un aviso con su nuevo código.
+          Las hacen los operadores desde su panel y el usuario de kiosco desde el suyo.</p>
+      </div>
+    </div>
+
+    <section class="tarjeta tarjeta-sin-relleno">
+      <p th:if="${#lists.isEmpty(transferencias)}" class="vacio">Aún no hay transferencias.</p>
+      <div class="tabla-contenedor" th:unless="${#lists.isEmpty(transferencias)}">
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Turno</th><th>De</th><th>A</th><th>Motivo</th><th>Lo hizo</th></tr></thead>
+          <tbody>
+          <tr th:each="t : ${transferencias}">
+            <td class="numeros" th:text="${@fmt.fechaHora(t.createdAt)}">—</td>
+            <td class="numeros" th:text="${t.codigoOrigen} + ' → ' + ${t.codigoDestino}">A-001 → B-001</td>
+            <td th:text="${t.deCola}">Caja</td>
+            <td th:text="${t.aCola}">Lab</td>
+            <td th:text="${nombresMotivo.get(t.motivo) ?: t.motivo} + (${t.detalle != null} ? ' · ' + ${t.detalle} : '')">Motivo</td>
+            <td th:text="${t.usuario != null} ? ${t.usuario} : (${t.origen == 'REGLA'} ? 'Regla automática (retirada)' : '—')">Ana</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

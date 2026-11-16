@@ -21,14 +21,15 @@
           <option th:each="l : ${p.locales}" th:value="${l.slug}" th:text="${l.nombre}" th:selected="${l.slug == p.snap.local.slug}">Local</option>
         </select>
       </form>
-      <!--/* La ventanilla se recuerda en una cookie del dispositivo */-->
-      <form method="get" th:action="@{/panel}">
+      <!--/* La ventanilla se recuerda en una cookie del dispositivo. Con una sola ventanilla no hay nada que elegir */-->
+      <span th:if="${#lists.size(p.ventanillas) == 1}" class="ventanilla-unica" th:text="${p.ventanillas[0].nombre}">Odontología 1</span>
+      <form th:if="${#lists.size(p.ventanillas) > 1}" method="get" th:action="@{/panel}">
         <input type="hidden" name="slug" th:value="${p.snap.local.slug}">
         <label class="solo-lectores" for="ventanilla">Ventanilla</label>
         <select id="ventanilla" name="ventanilla" class="selector" data-autoenviar>
-          <!--/* Una sola persona opera el local: todas las ventanillas en una pantalla */-->
-          <option th:if="${#lists.size(p.snap.ventanillas) > 1}" value="0" th:selected="${p.todas}">Todas las ventanillas</option>
-          <option th:each="v : ${p.snap.ventanillas}" th:value="${v.id}" th:selected="${!p.todas and p.ventanilla != null and v.id == p.ventanilla.id}"
+          <!--/* Una sola persona opera varias ventanillas: todas en una pantalla */-->
+          <option value="0" th:selected="${p.todas}" th:text="${p.restringido} ? 'Mis ventanillas (todas)' : 'Todas las ventanillas'">Todas las ventanillas</option>
+          <option th:each="v : ${p.ventanillas}" th:value="${v.id}" th:selected="${!p.todas and p.ventanilla != null and v.id == p.ventanilla.id}"
                   th:text="${v.nombre} + ${v.cola != null ? ' · ' + v.cola.prefijo : ''}">Ventanilla 1</option>
         </select>
       </form>
@@ -57,7 +58,7 @@
           <div class="puesto-cabecera">
             <div>
               <strong th:text="${u.ventanilla.nombre}">Consultorio 1</strong>
-              <span class="ayuda" th:text="${u.ventanilla.cola != null ? u.ventanilla.cola.nombre : 'Todas las colas'}">Medicina General</span>
+              <span class="ayuda" th:text="${u.ventanilla.cola != null ? u.ventanilla.cola.nombre : ''}">Medicina General</span>
             </div>
             <div class="puesto-cabecera-acciones">
               <span th:if="${u.actual != null}" class="cronometro" th:attr="data-desde=${u.actual.llamado.llamadoAt},data-limite=${p.limiteAusenciaSeg}">0:00</span>
@@ -108,7 +109,7 @@
       </div>
 
       <div class="metricas">
-        <div class="metrica"><p class="metrica-etiqueta">En espera</p><p class="metrica-valor" th:text="${p.snap.stats.enEspera}">0</p></div>
+        <div class="metrica"><p class="metrica-etiqueta">En espera</p><p class="metrica-valor" th:text="${p.enEspera()}">0</p></div>
         <div class="metrica"><p class="metrica-etiqueta">Atendidos hoy</p><p class="metrica-valor" th:text="${p.snap.stats.atendidos}">0</p></div>
         <div class="metrica"><p class="metrica-etiqueta">Espera prom.</p><p class="metrica-valor" th:text="${p.snap.stats.esperaPromedioMin} + ' min'">0 min</p></div>
         <div class="metrica"><p class="metrica-etiqueta">Abandono</p><p class="metrica-valor" th:text="${p.snap.stats.tasaAbandono} + '%'">0%</p></div>
@@ -162,7 +163,8 @@
           <span th:unless="${#lists.isEmpty(p.espera)}" class="siguiente" th:text="${p.espera[0].turno.codigo}">A-002</span>
         </button>
       </form>
-      <p th:if="${p.ventanilla == null}" class="alerta alerta-aviso">Este local no tiene ventanillas activas. Créalas en Administración → Ventanillas.</p>
+      <p th:if="${p.ventanilla == null and p.restringido}" class="alerta alerta-aviso">No tienes ventanillas asignadas. Pide al administrador que te asigne una en Usuarios.</p>
+      <p th:if="${p.ventanilla == null and !p.restringido}" class="alerta alerta-aviso">Este local no tiene ventanillas activas. Créalas en Administración → Ventanillas.</p>
       <p class="ayuda" style="text-align: center; margin-top: -0.5rem"
          th:text="${p.actual != null} ? 'Al llamar al siguiente, el turno actual se marca como atendido automáticamente.' : (${#lists.isEmpty(p.espera)} ? 'No hay nadie en espera' : ${#lists.size(p.espera)} + ' en espera en ' + ${p.descripcionCola()})">
         Ayuda
@@ -170,7 +172,7 @@
 
       <!--/* Métricas del día */-->
       <div class="metricas">
-        <div class="metrica"><p class="metrica-etiqueta">En espera</p><p class="metrica-valor" th:text="${p.snap.stats.enEspera}">0</p></div>
+        <div class="metrica"><p class="metrica-etiqueta">En espera</p><p class="metrica-valor" th:text="${p.enEspera()}">0</p></div>
         <div class="metrica"><p class="metrica-etiqueta">Atendidos hoy</p><p class="metrica-valor" th:text="${p.snap.stats.atendidos}">0</p></div>
         <div class="metrica"><p class="metrica-etiqueta">Espera prom.</p><p class="metrica-valor" th:text="${p.snap.stats.esperaPromedioMin} + ' min'">0 min</p></div>
         <div class="metrica"><p class="metrica-etiqueta">Abandono</p><p class="metrica-valor" th:text="${p.snap.stats.tasaAbandono} + '%'">0%</p></div>
@@ -185,7 +187,7 @@
             <h2 class="tarjeta-titulo">Cola de espera</h2>
             <p class="tarjeta-sub" th:text="${p.descripcionCola()} + ' · ' + ${#lists.size(p.espera)} + ' turno(s)'">Todas las colas · 0 turnos</p>
           </div>
-          <button type="button" class="boton boton-contorno boton-pequeno" data-abrir="dialogo-ticket">🖨 Ticket impreso</button>
+          <button th:unless="${#lists.isEmpty(p.colasTicket)}" type="button" class="boton boton-contorno boton-pequeno" data-abrir="dialogo-ticket">🖨 Ticket impreso</button>
         </div>
         <ul class="lista-espera">
           <li th:if="${#lists.isEmpty(p.espera)}" class="vacio" style="margin: 1rem; border: 0">✓ Nadie en espera. Buen trabajo.</li>
@@ -208,13 +210,13 @@
         </ul>
       </div>
 
-      <!--/* Otras ventanillas */-->
-      <div class="tarjeta" th:unless="${p.todas}">
-        <h2 class="tarjeta-titulo">Ventanillas del local</h2>
+      <!--/* Otras ventanillas (el operador solo ve las suyas; con una sola no hace falta) */-->
+      <div class="tarjeta" th:unless="${p.todas or #lists.size(p.ventanillas) < 2}">
+        <h2 class="tarjeta-titulo" th:text="${p.restringido} ? 'Mis ventanillas' : 'Ventanillas del local'">Ventanillas del local</h2>
         <ul class="lista-ventanillas">
-          <li th:each="v : ${p.snap.ventanillas}" th:classappend="${p.ventanilla != null and v.id == p.ventanilla.id} ? 'propia'"
+          <li th:each="v : ${p.ventanillas}" th:classappend="${p.ventanilla != null and v.id == p.ventanilla.id} ? 'propia'"
               th:with="en=${p.atendiendo(v.id)}">
-            <span><strong th:text="${v.nombre}">V1</strong> <span class="ayuda" th:text="${v.cola != null ? '· ' + v.cola.nombre : '· todas'}">· todas</span></span>
+            <span><strong th:text="${v.nombre}">V1</strong> <span class="ayuda" th:text="${v.cola != null ? '· ' + v.cola.nombre : ''}">· Caja</span></span>
             <span th:if="${en != null}"><span class="codigo" th:text="${en.codigo}">A-001</span> <span class="ayuda" th:text="${@fmt.haceCuanto(en.llamadoAt)}">hace 2 min</span></span>
             <span th:if="${en == null}" class="ayuda">libre</span>
           </li>
@@ -233,13 +235,13 @@
 <dialog id="dialogo-ticket" class="dialogo">
   <form class="formulario" method="post" th:action="@{/panel/ticket}" th:attr="hx-post=@{/panel/ticket}" hx-target="#contenido" hx-swap="outerHTML">
     <h2>Emitir ticket impreso</h2>
-    <p class="ayuda">Para clientes sin celular (RF07). El ticket incluye el número y un QR de seguimiento.</p>
+    <p class="ayuda">Para clientes sin la app. Con su celular, le llegan por WhatsApp su turno y el aviso cuando lo llamen.</p>
     <input type="hidden" name="slug" th:value="${p.snap.local.slug}">
     <input type="hidden" name="ventanilla" th:value="${p.idVista()}">
     <div class="campo">
       <label class="etiqueta" for="ticket-cola">Cola</label>
       <select id="ticket-cola" name="colaId" class="selector">
-        <option th:each="c : ${p.snap.colas}" th:value="${c.id}"
+        <option th:each="c : ${p.colasTicket}" th:value="${c.id}"
                 th:selected="${p.ventanilla != null and p.ventanilla.cola != null and p.ventanilla.cola.id == c.id}"
                 th:text="${c.prefijo} + ' · ' + ${c.nombre} + ' (' + ${c.enEspera} + ' en espera)'">A · Caja</option>
       </select>
@@ -248,6 +250,14 @@
       <label class="etiqueta" for="ticket-nombre">Nombre (opcional)</label>
       <input id="ticket-nombre" name="nombre" class="entrada" placeholder="Ej. Juan Pérez" maxlength="60">
     </div>
+    <div class="campo">
+      <label class="etiqueta" for="ticket-telefono">Celular para avisarle por WhatsApp (opcional)</label>
+      <input id="ticket-telefono" name="telefono" type="tel" inputmode="numeric" class="entrada numeros" placeholder="951234567" maxlength="15" autocomplete="off">
+    </div>
+    <label class="casilla">
+      <input type="checkbox" name="consentimiento" value="true">
+      <span class="ayuda">El cliente acepta que le escribamos por WhatsApp solo por este turno (Ley N.° 29733).</span>
+    </label>
     <div class="dialogo-pie">
       <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
       <button type="submit" class="boton">Emitir e imprimir</button>

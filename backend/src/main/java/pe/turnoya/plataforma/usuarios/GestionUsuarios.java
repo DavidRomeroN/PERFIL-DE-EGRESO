@@ -1,6 +1,7 @@
 package pe.turnoya.plataforma.usuarios;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -12,10 +13,15 @@ import pe.turnoya.plataforma.Auditoria;
 import pe.turnoya.plataforma.RolUsuario;
 import pe.turnoya.plataforma.dominio.RepositorioUsuarios;
 import pe.turnoya.plataforma.dominio.RepositorioUsuarios.UsuarioFila;
+import pe.turnoya.plataforma.dominio.RepositorioUsuarios.VentanillaOpcion;
 
 /**
  * Personal del local (RF10): administradores y operadores. Mismas reglas que el sistema anterior: correo único,
  * contraseña de 6 a 72 caracteres (bcrypt), nadie se desactiva ni se elimina a sí mismo.
+ *
+ * <p>Cada operador tiene una o varias ventanillas asignadas y solo puede llamar e imprimir tickets en ellas (por ejemplo,
+ * una cuenta solo para el odontólogo). Los administradores no llevan ventanillas: pueden operar todas. El usuario de
+ * kiosco tampoco: emite tickets para cualquier cola y transfiere clientes, pero no llama.
  */
 @Service
 public class GestionUsuarios {
@@ -34,6 +40,16 @@ public class GestionUsuarios {
         return usuarios.delLocal(localId);
     }
 
+    /** Ventanillas activas del local, para elegir las de cada operador. */
+    public List<VentanillaOpcion> ventanillas(int localId) {
+        return usuarios.ventanillasDelLocal(localId);
+    }
+
+    /** Ventanillas asignadas a cada usuario del local (clave: id del usuario). */
+    public Map<Integer, List<Integer>> asignaciones(int localId) {
+        return usuarios.asignacionesDelLocal(localId);
+    }
+
     @Transactional
     public UsuarioFila crear(int localId, DatosUsuario d, Auditoria.Actor actor) {
         DatosUsuario v = d.validado(true);
@@ -41,8 +57,13 @@ public class GestionUsuarios {
             throw ErrorNegocio.conflicto("DUPLICADO", "Ya existe un usuario con ese correo");
         }
         auditoria.fijarActor(actor);
+        // Por la API, un operador sin ventanillas indicadas recibe todas (como antes de existir la asignación)
+        List<Integer> asignadas = ventanillasValidas(localId, v.rol(),
+                v.ventanillaIds() != null ? v.ventanillaIds() : usuarios.ventanillasDelLocal(localId).stream().map(VentanillaOpcion::id).toList());
         UsuarioFila u = usuarios.crear(localId, v.nombre(), v.email(), v.rol(), v.activo(), claves.encode(v.password()));
-        auditoria.registrar(actor, localId, "CREAR", "usuario", u.id(), "Creó el usuario " + u.email(), Map.of("email", u.email(), "rol", u.rol()));
+        usuarios.asignarVentanillas(u.id(), asignadas);
+        auditoria.registrar(actor, localId, "CREAR", "usuario", u.id(), "Creó el usuario " + u.email(),
+                Map.of("email", u.email(), "rol", u.rol(), "ventanillas", asignadas));
         return u;
     }
 
@@ -58,12 +79,17 @@ public class GestionUsuarios {
         }
         auditoria.fijarActor(actor);
         String hash = v.password() == null ? null : claves.encode(v.password());
+        // Sin ventanillas en la petición se conservan las que tenía (la API del sistema anterior no las envía)
+        List<Integer> asignadas = ventanillasValidas(localId, v.rol(),
+                v.ventanillaIds() != null ? v.ventanillaIds() : usuarios.ventanillasDe(id));
         UsuarioFila u = usuarios.actualizar(id, v.nombre(), v.email(), v.rol(), v.activo(), hash);
+        usuarios.asignarVentanillas(id, asignadas);
         Map<String, Object> datos = new LinkedHashMap<>();
         datos.put("nombre", v.nombre());
         datos.put("email", v.email());
         datos.put("rol", v.rol());
         datos.put("activo", v.activo());
+        datos.put("ventanillas", asignadas);
         if (hash != null) {
             datos.put("password", "***");
         }
@@ -82,12 +108,43 @@ public class GestionUsuarios {
         auditoria.registrar(actor, localId, "ELIMINAR", "usuario", id, "Eliminó el usuario " + actual.email(), Map.of("email", actual.email()));
     }
 
+    /** Un operador necesita al menos una ventanilla activa de su local; un administrador no lleva ninguna. */
+    private List<Integer> ventanillasValidas(int localId, RolUsuario rol, List<Integer> pedidas) {
+        if (rol != RolUsuario.OPERADOR) {
+            return List.of();
+        }
+        List<Integer> delLocal = usuarios.ventanillasDelLocal(localId).stream().map(VentanillaOpcion::id).toList();
+        LinkedHashSet<Integer> validas = new LinkedHashSet<>();
+        for (Integer id : pedidas) {
+            if (id == null) {
+                continue;
+            }
+            if (!delLocal.contains(id)) {
+                throw new ErrorNegocio("VALIDACION", "Una de las ventanillas elegidas no existe o está inactiva", 422);
+            }
+            validas.add(id);
+        }
+        if (validas.isEmpty()) {
+            throw new ErrorNegocio("VALIDACION", delLocal.isEmpty()
+                    ? "Primero crea una cola: cada cola trae su ventanilla y el operador necesita al menos una"
+                    : "Elige al menos una ventanilla para el operador", 422);
+        }
+        return List.copyOf(validas);
+    }
+
     private UsuarioFila exigir(int localId, int id) {
         return usuarios.porIdEnLocal(id, localId).orElseThrow(() -> ErrorNegocio.noEncontrado("NO_ENCONTRADO", "Usuario no encontrado"));
     }
 
-    /** Datos del formulario o del cuerpo JSON. La contraseña es obligatoria solo al crear. */
-    public record DatosUsuario(String nombre, String email, String password, RolUsuario rol, Boolean activo) {
+    /**
+     * Datos del formulario o del cuerpo JSON. La contraseña es obligatoria solo al crear. {@code ventanillaIds}: las
+     * ventanillas del operador ({@code null} = al crear, todas; al editar, sin cambios).
+     */
+    public record DatosUsuario(String nombre, String email, String password, RolUsuario rol, Boolean activo, List<Integer> ventanillaIds) {
+
+        public DatosUsuario(String nombre, String email, String password, RolUsuario rol, Boolean activo) {
+            this(nombre, email, password, rol, activo, null);
+        }
 
         DatosUsuario validado(boolean creando) {
             String n = nombre == null ? "" : nombre.trim();
@@ -105,10 +162,10 @@ public class GestionUsuarios {
             if (p != null && (p.length() < 6 || p.length() > 72)) {
                 throw new ErrorNegocio("VALIDACION", "Contraseña: entre 6 y 72 caracteres", 422);
             }
-            if (rol != RolUsuario.ADMIN_LOCAL && rol != RolUsuario.OPERADOR) {
-                throw new ErrorNegocio("VALIDACION", "Rol: administrador del local u operador", 422);
+            if (rol != RolUsuario.ADMIN_LOCAL && rol != RolUsuario.OPERADOR && rol != RolUsuario.KIOSCO) {
+                throw new ErrorNegocio("VALIDACION", "Rol: administrador del local, operador o kiosco", 422);
             }
-            return new DatosUsuario(n, e, p, rol, activo == null || activo);
+            return new DatosUsuario(n, e, p, rol, activo == null || activo, ventanillaIds);
         }
     }
 }

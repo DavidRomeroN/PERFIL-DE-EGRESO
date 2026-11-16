@@ -121,9 +121,9 @@
           <label class="etiqueta">Check-in desde (min antes) <input type="number" name="checkinAntesMin" class="entrada numeros" min="0" max="120" required th:value="${k.checkinAntesMin}"></label>
           <label class="etiqueta">Check-in hasta (min después) <input type="number" name="checkinDespuesMin" class="entrada numeros" min="0" max="120" required th:value="${k.checkinDespuesMin}"></label>
           <label class="etiqueta">Gracia no-show (min) <input type="number" name="graciaNoShowMin" class="entrada numeros" min="0" max="120" required th:value="${k.graciaNoShowMin}"></label>
-          <label class="etiqueta">Inasistencias para bloquear <input type="number" name="maxNoShow" class="entrada numeros" min="0" max="20" required th:value="${k.maxNoShow}"></label>
-          <label class="etiqueta">Días de bloqueo <input type="number" name="bloqueoDias" class="entrada numeros" min="0" max="365" required th:value="${k.bloqueoDias}"></label>
         </div>
+        <p class="ayuda">Si el cliente no se presenta, no podrá reservar en tu local por 1 día; si vuelve a faltar, 3 días, luego 7, 15 y 30.
+          Al asistir a una cita las faltas vuelven a cero.</p>
         <div class="acciones-cabecera" style="justify-content: flex-end"><button type="submit" class="boton">Guardar</button></div>
       </form>
       <p th:if="${#lists.isEmpty(configs)}" class="vacio">No hay colas activas.</p>

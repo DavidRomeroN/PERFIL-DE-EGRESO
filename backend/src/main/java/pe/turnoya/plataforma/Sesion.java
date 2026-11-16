@@ -20,4 +20,13 @@ public record Sesion(
     public boolean esAdmin() {
         return rol.esAdmin();
     }
+
+    public boolean esKiosco() {
+        return rol == RolUsuario.KIOSCO;
+    }
+
+    /** Página de inicio según el rol. */
+    public String inicio() {
+        return rol.inicio();
+    }
 }

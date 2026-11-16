@@ -18,8 +18,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import pe.turnoya.plataforma.Sesion;
 
 /**
- * Lee la cookie de sesión en cada petición y, si el JWT es válido, autentica al usuario con su rol
- * ({@code ROLE_OPERADOR}, {@code ROLE_ADMIN_LOCAL}, {@code ROLE_SUPER_ADMIN}). El principal es {@link Sesion}:
+ * Lee la cookie de sesión (o, desde la app móvil del personal, {@code Authorization: Bearer} en {@code /api/v1}) y, si el JWT es válido, autentica al usuario con su rol
+ * ({@code ROLE_OPERADOR}, {@code ROLE_KIOSCO}, {@code ROLE_ADMIN_LOCAL}, {@code ROLE_SUPER_ADMIN}). El principal es {@link Sesion}:
  * los controladores lo reciben con {@code @AuthenticationPrincipal Sesion sesion}.
  *
  * <p>No es un bean: lo crea {@link SeguridadConfig} para que no se registre dos veces como filtro del servlet.
@@ -38,7 +38,9 @@ class FiltroSesion extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest peticion, HttpServletResponse respuesta, FilterChain cadena)
             throws ServletException, IOException {
-        CookiesSesion.leer(peticion)
+        // Un Bearer explícito (app del personal) manda sobre la cookie que pudiera quedar en el mismo cliente
+        bearer(peticion)
+                .or(() -> CookiesSesion.leer(peticion))
                 .flatMap(token -> firma.verificar(token, reloj.instant()))
                 .ifPresent(sesion -> autenticar(sesion, peticion, respuesta));
         try {
@@ -47,6 +49,19 @@ class FiltroSesion extends OncePerRequestFilter {
             MDC.remove("usuario_id");
             MDC.remove("local_id");
         }
+    }
+
+    /**
+     * Token de la app móvil del personal. Las otras rutas con Bearer (cliente de la app, kiosco) usan tokens que no son
+     * JWT de sesión: {@code verificar} los descarta.
+     */
+    private static java.util.Optional<String> bearer(HttpServletRequest peticion) {
+        String h = peticion.getHeader("Authorization");
+        if (h == null || !h.startsWith("Bearer ") || !peticion.getRequestURI().startsWith("/api/v1/")) {
+            return java.util.Optional.empty();
+        }
+        String token = h.substring(7).trim();
+        return token.chars().filter(c -> c == '.').count() == 2 ? java.util.Optional.of(token) : java.util.Optional.empty();
     }
 
     private void autenticar(Sesion sesion, HttpServletRequest peticion, HttpServletResponse respuesta) {

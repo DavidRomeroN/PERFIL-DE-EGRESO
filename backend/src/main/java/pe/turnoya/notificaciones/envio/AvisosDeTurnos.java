@@ -8,6 +8,7 @@ import pe.turnoya.compartido.config.PropiedadesTurnoYa;
 import pe.turnoya.notificaciones.dominio.Plantillas;
 import pe.turnoya.nucleo.ContactoTurnos;
 import pe.turnoya.nucleo.eventos.TurnoAvisado;
+import pe.turnoya.nucleo.eventos.TurnoEmitido;
 import pe.turnoya.nucleo.eventos.TurnoLlamado;
 import pe.turnoya.nucleo.eventos.TurnoVencido;
 
@@ -27,6 +28,21 @@ class AvisosDeTurnos {
         this.contactos = contactos;
         this.envio = envio;
         this.propiedades = propiedades;
+    }
+
+    /**
+     * Ticket que el personal emitió con el celular del cliente (sin app): le confirma su número por WhatsApp. Los demás
+     * canales ya muestran el turno en pantalla.
+     */
+    @ApplicationModuleListener(propagation = Propagation.NOT_SUPPORTED)
+    void alEmitir(TurnoEmitido evento) {
+        if (!"TICKET".equals(evento.canal())) {
+            return;
+        }
+        contactos.de(evento.turnoId()).filter(c -> c.telefonoE164() != null)
+                .ifPresent(c -> envio.enviar(EnvioAvisos.Aviso.deTurno(c.localId(), c.turnoId(), c.telefonoE164(),
+                        Plantillas.TURNO_EMITIDO, List.of(c.codigo(), c.localNombre()),
+                        Plantillas.turnoEmitido(c.nombre(), c.codigo(), c.localNombre(), propiedades.urlPublica() + "/t/" + c.token()))));
     }
 
     /** RF03: "faltan N personas". Sin celular el aviso igual queda en la web de seguimiento. */

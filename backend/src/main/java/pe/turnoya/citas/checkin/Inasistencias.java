@@ -21,7 +21,8 @@ import pe.turnoya.plataforma.Modulo;
 import pe.turnoya.plataforma.ModulosLocal;
 
 /**
- * Inasistencias y recordatorios: RN-M3-04 no-show pasada la ventana y la gracia, RN-M3-06 bloqueo de reincidentes,
+ * Inasistencias y recordatorios: RN-M3-04 no-show pasada la ventana y la gracia, sanción escalonada por cada falta
+ * (1 día, luego 3, 7, 15 y 30 sin poder reservar en ese local; ver {@link ReglasCitas#diasDeSancion}),
  * RN-M3-07 la cita sigue al turno que generó, RN-M3-08 recordatorios T−24 h y T−2 h (una vez cada uno).
  */
 @Service
@@ -39,15 +40,26 @@ public class Inasistencias {
         this.reloj = reloj;
     }
 
-    /** @return {@code true} si quedó bloqueado ahora. */
+    /**
+     * Cada falta sanciona: cuantas más faltas seguidas, más días sin poder reservar en el local.
+     *
+     * @return {@code true} si quedó sancionado (o se alargó su sanción) ahora.
+     */
     public boolean aplicarBloqueo(int localId, int clienteId, int colaId) {
-        var cfg = repositorio.config(colaId);
         Instant ahora = reloj.instant();
-        int n = repositorio.noShowsDesde(localId, clienteId, ahora.minus(Duration.ofDays(90)));
-        if (!ReglasCitas.debeBloquear(n, cfg.maxNoShow()) || repositorio.hayBloqueoVigente(localId, clienteId, ahora)) {
+        int faltas = repositorio.faltasSeguidas(localId, clienteId, ahora.minus(Duration.ofDays(ReglasCitas.MEMORIA_FALTAS_DIAS)));
+        int dias = ReglasCitas.diasDeSancion(faltas);
+        if (dias == 0) {
             return false;
         }
-        repositorio.crearBloqueoCliente(localId, clienteId, ahora.plus(Duration.ofDays(cfg.bloqueoDias())), n + " inasistencias en 90 días");
+        Instant hasta = ahora.plus(Duration.ofDays(dias));
+        var vigente = repositorio.bloqueoVigente(localId, clienteId, ahora);
+        if (vigente.isPresent() && !vigente.get().isBefore(hasta)) {
+            return false;
+        }
+        String motivo = "No se presentó a su cita" + (faltas > 1 ? " (" + faltas + " faltas seguidas)" : "") + ": sin citas por "
+                + ReglasCitas.textoDias(dias);
+        repositorio.crearBloqueoCliente(localId, clienteId, hasta, motivo);
         return true;
     }
 
@@ -117,7 +129,7 @@ public class Inasistencias {
 
         @Bean
         TareaProgramada citasNoShow(Inasistencias i) {
-            return TareaProgramada.cada("citas-no-show", Duration.ofMinutes(5), "M3: marca inasistencias y bloquea reincidentes", i::jobNoShow);
+            return TareaProgramada.cada("citas-no-show", Duration.ofMinutes(5), "M3: marca inasistencias y aplica la sanción escalonada", i::jobNoShow);
         }
 
         @Bean

@@ -34,6 +34,8 @@ Future<SesionApp> montar(WidgetTester tester, CuentaFalsa cuenta) async {
     registrarCuenta: RegistrarCuenta(servicio, cuenta),
     ingresarConCorreo: IngresarConCorreo(servicio, cuenta),
     verPerfil: VerPerfil(servicio, cuenta),
+    citas: CitasDelCliente(CitasFalsas(), cuenta),
+    personal: PersonalDelNegocio(PersonalFalso(), PersonalEnMemoria()),
     sesion: sesion,
     child: const AppTurnoYa(),
   ));

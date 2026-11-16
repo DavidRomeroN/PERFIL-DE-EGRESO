@@ -120,11 +120,6 @@ class LocalesJdbc implements RepositorioLocales {
     }
 
     @Override
-    public long turnosRegistrados() {
-        return jdbc.sql("SELECT count(*) FROM turno").query(Long.class).single();
-    }
-
-    @Override
     public boolean existeSlug(String slug) {
         return jdbc.sql("SELECT EXISTS (SELECT 1 FROM local WHERE slug = :slug)").param("slug", slug).query(Boolean.class).single();
     }

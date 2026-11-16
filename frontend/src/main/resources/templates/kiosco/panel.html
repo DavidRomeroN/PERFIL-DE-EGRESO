@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Panel de kiosco')}"></head>
+<body class="pagina-panel" th:style="'--local:' + ${snap.local.colorPrimario}">
+
+<header class="barra-app">
+  <div class="barra-app-contenido">
+    <div class="barra-app-titulo">
+      <a th:replace="~{fragmentos/base :: logo('/panel-kiosco', false)}"></a>
+      <div class="barra-app-local">
+        <strong th:text="${snap.local.nombreComercial}">Local</strong>
+        <span>Panel de kiosco</span>
+      </div>
+    </div>
+    <div class="barra-app-acciones">
+      <a class="boton boton-contorno boton-pequeno" target="_blank" th:href="@{/l/{s}/tv(s=${snap.local.slug})}">Pantalla TV</a>
+      <a th:if="${sesion.esAdmin()}" class="boton boton-contorno boton-pequeno" th:href="@{/admin}">Administración</a>
+      <span th:replace="~{fragmentos/base :: enVivo}"></span>
+      <div th:replace="~{fragmentos/base :: menuUsuario}"></div>
+    </div>
+  </div>
+</header>
+
+<div hx-ext="sse" th:attr="sse-connect=@{/api/v1/realtime/{s}(s=${snap.local.slug})}">
+  <!--/*
+    Contenido: cada acción (ticket, transferir) devuelve este fragmento actualizado y además se refresca con los eventos
+    del local (alguien tomó turno, un operador llamó…). Los diálogos quedan fuera para que el refresco no los cierre.
+  */-->
+  <main id="contenido" class="panel-main panel-kiosco" th:fragment="contenido"
+        th:attr="hx-get=@{/panel-kiosco/contenido}"
+        hx-trigger="sse:cola:actualizada delay:300ms, sse:turno:estado delay:300ms, sse:turno:llamado delay:300ms, every 20s"
+        hx-swap="outerHTML">
+
+    <section>
+      <div class="encabezado-seccion">
+        <h1 class="titulo-seccion">Emitir ticket</h1>
+        <p class="ayuda">Toca la cola del cliente: el ticket se imprime con su número y un QR para seguir su turno.</p>
+      </div>
+      <p th:if="${#lists.isEmpty(snap.colas)}" class="alerta alerta-aviso">El local no tiene colas activas.</p>
+      <div class="colas-kiosco">
+        <button th:each="c : ${snap.colas}" type="button" class="cola-kiosco" data-ticket-cola
+                th:attr="data-cola-id=${c.id},data-cola-nombre=${c.prefijo + ' · ' + c.nombre}">
+          <span class="cola-kiosco-prefijo" th:text="${c.prefijo}">A</span>
+          <span class="cola-kiosco-texto">
+            <strong th:text="${c.nombre}">Medicina General</strong>
+            <span th:text="${c.enEspera == 0} ? 'Nadie en espera' : ${c.enEspera} + ' en espera · ~' + ${(c.tiempoEstimadoSeg + 59) / 60} + ' min'">2 en espera</span>
+            <span class="ayuda" th:each="l : ${c.llamados}" th:text="'Atendiendo ' + ${l.codigo} + (${l.ventanilla != null} ? ' en ' + ${l.ventanilla} : '')">Atendiendo A-012</span>
+          </span>
+          <span class="cola-kiosco-accion" aria-hidden="true">🖨</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="tarjeta tarjeta-sin-relleno">
+      <div class="encabezado-lista">
+        <div>
+          <h2 class="tarjeta-titulo">Clientes en espera</h2>
+          <p class="tarjeta-sub" th:text="${#lists.size(espera)} + ' en todas las colas'">0 en todas las colas</p>
+        </div>
+      </div>
+      <p th:if="${#lists.isEmpty(espera)}" class="vacio" style="margin: 1rem; border: 0">✓ Nadie en espera.</p>
+      <div class="tabla-contenedor" th:unless="${#lists.isEmpty(espera)}">
+        <table class="tabla">
+          <thead><tr><th>Turno</th><th>Cliente</th><th>Cola</th><th>Llegó</th><th>Espera</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:each="f : ${espera}">
+            <td class="numeros"><strong th:text="${f.turno.codigo}">A-001</strong></td>
+            <td>
+              <span th:text="${f.turno.nombre != null ? f.turno.nombre : 'Sin nombre'}">Ana</span>
+              <span th:if="${f.turno.categoria}" class="insignia insignia-categoria" th:text="${f.turno.categoria}">Gestante</span>
+            </td>
+            <td th:text="${f.prefijo} + ' · ' + ${f.cola}">A · Caja</td>
+            <td class="numeros" th:text="${f.turno.canal.corto()} + ' · ' + ${@fmt.hora(f.turno.emitidoAt)}">QR · 10:00</td>
+            <td class="numeros" th:attr="data-espera-desde=${f.turno.emitidoAt}" th:text="${@fmt.duracion(@fmt.segundosDesde(f.turno.emitidoAt))}">3 min</td>
+            <td>
+              <button th:if="${puedeTransferir}" type="button" class="boton boton-contorno boton-pequeno" data-transferir
+                      th:attr="data-turno-id=${f.turno.id},data-turno-codigo=${f.turno.codigo},data-cola-id=${f.colaId}">Transferir</button>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!--/* Ticket: la cola la pone js/panel-kiosco.js según el botón tocado */-->
+<dialog id="dialogo-ticket" class="dialogo">
+  <form class="formulario" method="post" th:action="@{/panel-kiosco/ticket}" th:attr="hx-post=@{/panel-kiosco/ticket}"
+        hx-target="#contenido" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]" data-limpiar-al-enviar>
+    <h2>Ticket para <span data-cola-elegida>la cola</span></h2>
+    <input type="hidden" name="colaId" data-campo-cola>
+    <div class="campo">
+      <label class="etiqueta" for="ticket-nombre">Nombre (opcional)</label>
+      <input id="ticket-nombre" name="nombre" class="entrada" placeholder="Ej. Juan Pérez" maxlength="60" autocomplete="off">
+    </div>
+    <div class="campo">
+      <label class="etiqueta" for="ticket-telefono">Celular para avisarle por WhatsApp (opcional)</label>
+      <input id="ticket-telefono" name="telefono" type="tel" inputmode="numeric" class="entrada numeros" placeholder="951234567" maxlength="15" autocomplete="off">
+    </div>
+    <label class="casilla">
+      <input type="checkbox" name="consentimiento" value="true">
+      <span class="ayuda">El cliente acepta que le escribamos por WhatsApp solo por este turno (Ley N.° 29733).</span>
+    </label>
+    <div class="campo" th:unless="${#lists.isEmpty(categorias)}">
+      <label class="etiqueta" for="ticket-categoria">Atención preferente</label>
+      <select id="ticket-categoria" name="categoria" class="selector">
+        <option value="">Sin preferencia</option>
+        <option th:each="c : ${categorias}" th:value="${c.codigo}" th:text="${c.nombre}">Gestante</option>
+      </select>
+    </div>
+    <div class="dialogo-pie">
+      <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+      <button type="submit" class="boton">Emitir e imprimir</button>
+    </div>
+  </form>
+</dialog>
+
+<!--/* Transferir: el turno lo pone js/panel-kiosco.js según la fila elegida */-->
+<dialog id="dialogo-transferir" class="dialogo">
+  <form class="formulario" method="post" th:action="@{/panel-kiosco/transferir}" th:attr="hx-post=@{/panel-kiosco/transferir}"
+        hx-target="#contenido" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]">
+    <h2>Transferir <span data-turno-elegido>el turno</span></h2>
+    <p class="ayuda">El cliente pasa a otra cola sin perder su lugar: conserva su hora de llegada y su prioridad, y recibe un aviso con su nuevo número.</p>
+    <input type="hidden" name="turnoId" data-campo-turno>
+    <div class="campo">
+      <label class="etiqueta" for="tr-cola">Pasar a</label>
+      <select id="tr-cola" name="aColaId" class="selector" required data-campo-destino>
+        <option th:each="c : ${snap.colas}" th:value="${c.id}" th:text="${c.prefijo} + ' · ' + ${c.nombre}">B · Laboratorio</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label class="etiqueta" for="tr-motivo">Motivo</label>
+      <select id="tr-motivo" name="motivo" class="selector">
+        <option th:each="m : ${motivos}" th:value="${m}" th:text="${nombresMotivo.get(m)}" th:selected="${m == 'ERROR_DE_COLA'}">Motivo</option>
+      </select>
+    </div>
+    <div class="dialogo-pie">
+      <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+      <button type="submit" class="boton">Transferir</button>
+    </div>
+  </form>
+</dialog>
+
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+<script defer th:src="@{/js/panel-kiosco.js}"></script>
+</body>
+</html>

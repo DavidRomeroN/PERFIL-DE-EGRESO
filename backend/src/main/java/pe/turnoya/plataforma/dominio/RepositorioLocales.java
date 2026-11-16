@@ -44,9 +44,6 @@ public interface RepositorioLocales {
 
     boolean existeSlug(String slug);
 
-    /** Turnos emitidos en toda la plataforma (contador de la página de inicio). */
-    long turnosRegistrados();
-
     int crear(AltaLocal alta);
 
     void editar(int id, AltaLocal datos);

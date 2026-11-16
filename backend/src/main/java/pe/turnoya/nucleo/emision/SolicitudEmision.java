@@ -42,8 +42,9 @@ public record SolicitudEmision(
                 null, null, null, null, false, false);
     }
 
-    public static SolicitudEmision ticket(int colaId, String nombre, String categoria) {
-        return new SolicitudEmision(colaId, CanalTurno.TICKET, nombre, null, false, categoria, OrigenCategoria.PERSONAL,
+    /** Ticket del personal; con celular (y el permiso del cliente) le llegan los avisos por WhatsApp. */
+    public static SolicitudEmision ticket(int colaId, String nombre, String categoria, String telefono, boolean consentimiento) {
+        return new SolicitudEmision(colaId, CanalTurno.TICKET, nombre, telefono, consentimiento, categoria, OrigenCategoria.PERSONAL,
                 null, null, null, null, null, null, false, false);
     }
 

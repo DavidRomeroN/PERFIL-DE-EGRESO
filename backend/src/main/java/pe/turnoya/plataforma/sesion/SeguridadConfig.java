@@ -45,7 +45,7 @@ class SeguridadConfig {
             "/api/v1/public/**", "/api/v1/realtime/**",
             // M5: el kiosco se autentica con su token Bearer (no tiene sesión)
             "/api/v1/kiosco/emparejar", "/api/v1/kiosco/config", "/api/v1/kiosco/heartbeat", "/api/v1/kiosco/turnos", "/api/v1/kiosco/sync",
-            "/api/v1/kiosco/mantenimiento", "/api/v1/kiosco/citas/checkin", "/api/v1/kiosco/qr", "/api/v1/webhooks/**", "/api/v1/auth/login", "/api/v1/auth/logout",
+            "/api/v1/kiosco/mantenimiento", "/api/v1/kiosco/citas/checkin", "/api/v1/kiosco/qr", "/api/v1/webhooks/**", "/api/v1/auth/login", "/api/v1/auth/movil", "/api/v1/auth/logout",
             "/api/health", "/actuator/health/**", "/kiosco-sw.js",
     };
 

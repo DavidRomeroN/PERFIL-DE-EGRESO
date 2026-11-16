@@ -132,6 +132,11 @@
 
   document.addEventListener("change", function (e) {
     if (e.target.matches("[data-autoenviar]") && e.target.form) e.target.form.requestSubmit();
+    // "Todas las ventanillas": marca o desmarca las casillas del mismo grupo
+    if (e.target.matches("[data-marcar-todas]")) {
+      var grupo = e.target.closest(".ventanillas-operador");
+      if (grupo) grupo.querySelectorAll('input[name="ventanilla"]').forEach(function (c) { c.checked = e.target.checked; });
+    }
   });
 
   // Muestra el valor de un control deslizante: <output data-valor-de="alfa" data-cero="sin tope" data-decimales="1">

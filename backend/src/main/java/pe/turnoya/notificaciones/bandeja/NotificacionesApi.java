@@ -38,8 +38,8 @@ class NotificacionesApi {
 
     @SoloAdmin
     @GetMapping("/api/v1/whatsapp/conexion")
-    RespuestaApi<GatewayOpenWa.Estado> conexion() {
-        return RespuestaApi.ok(bandeja.estadoConexion());
+    RespuestaApi<GatewayOpenWa.Estado> conexion(@AuthenticationPrincipal Sesion sesion, HttpServletRequest peticion) {
+        return RespuestaApi.ok(bandeja.estadoConexion(localDeTrabajo.resolver(sesion, peticion)));
     }
 
     @SoloAdmin

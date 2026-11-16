@@ -55,6 +55,12 @@ class CitasPublicasApi {
         this.limitador = limitador;
     }
 
+    /** Directorio de la app: todos los locales donde se puede reservar, no solo los que el cliente ya visitó. */
+    @GetMapping("/api/v1/public/locales-con-citas")
+    RespuestaApi<List<DisponibilidadCitas.LocalConCitas>> localesConCitas() {
+        return RespuestaApi.ok(disponibilidad.localesConCitas());
+    }
+
     @GetMapping("/api/v1/public/locales/{slug}/citas")
     RespuestaApi<DisponibilidadCitas.Servicios> servicios(@PathVariable String slug) {
         return RespuestaApi.ok(disponibilidad.servicios(slug));
@@ -107,8 +113,9 @@ class CitasPublicasApi {
             throw new ErrorNegocio("VALIDACION", "El nombre debe tener de 2 a 60 caracteres", 422);
         }
         String telefono = b.telefono() == null || b.telefono().isBlank() ? null : b.telefono().trim();
-        if (telefono != null && telefono.length() > 20) {
-            throw new ErrorNegocio("VALIDACION", "Celular inválido", 422);
+        // El celular identifica al cliente: sin él, la sanción por no presentarse no lo alcanzaría en la próxima reserva
+        if (telefono == null || telefono.length() > 20) {
+            throw new ErrorNegocio("VALIDACION", "Indica un celular válido", 422);
         }
         var s = new ReservaCitas.Solicitud(b.colaId(), b.slotId(), nombre, telefono, Boolean.TRUE.equals(b.consentimiento()), "WEB", null);
         return idempotencia.ejecutar(clave, "POST /public/citas", 201, () -> reservas.reservarPublica(b.slug(), s));

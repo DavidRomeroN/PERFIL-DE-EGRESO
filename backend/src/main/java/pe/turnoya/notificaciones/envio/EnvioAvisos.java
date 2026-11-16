@@ -37,10 +37,12 @@ public class EnvioAvisos {
     private final MeterRegistry metricas;
     private final Clock reloj;
     /** Solo para el simulador: emula los acuses de "entregado" y "leído" que en producción llegan por webhook. */
+    private final SesionesWhatsApp sesiones;
     private final ScheduledExecutorService acusesSimulados = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory());
 
     EnvioAvisos(RepositorioNotificaciones notificaciones, ProveedorWhatsApp proveedor, CatalogoLocales locales, ApplicationEventPublisher eventos,
-                MeterRegistry metricas, Clock reloj) {
+                MeterRegistry metricas, Clock reloj, SesionesWhatsApp sesiones) {
+        this.sesiones = sesiones;
         this.notificaciones = notificaciones;
         this.proveedor = proveedor;
         this.locales = locales;
@@ -74,7 +76,8 @@ public class EnvioAvisos {
             anunciar(aviso, id, destino);
             return "WEB";
         }
-        ProveedorWhatsApp.Resultado r = proveedor.enviar(aviso.telefonoE164(), aviso.plantilla(), aviso.parametros(), aviso.texto());
+        ProveedorWhatsApp.Resultado r = proveedor.enviarDesde(sesiones.de(local.id()), aviso.telefonoE164(), aviso.plantilla(), aviso.parametros(),
+                aviso.texto());
         if (r.ok()) {
             notificaciones.marcarEnviado(id, r.proveedorMsgId(), reloj.instant());
         } else {
@@ -99,7 +102,7 @@ public class EnvioAvisos {
         int id = notificaciones.registrar(local.id(), null, null, "WHATSAPP", destino, "Código de verificación de la app (no se guarda)",
                 "codigo_app", "PENDIENTE", null, null);
         String texto = "Tu código de TurnoYa es " + codigo + ". Vence en 10 minutos. No lo compartas con nadie.";
-        ProveedorWhatsApp.Resultado r = proveedor.enviar(telefonoE164, "codigo_app", List.of(codigo), texto);
+        ProveedorWhatsApp.Resultado r = proveedor.enviarDesde(sesiones.de(local.id()), telefonoE164, "codigo_app", List.of(codigo), texto);
         if (r.ok()) {
             notificaciones.marcarEnviado(id, r.proveedorMsgId(), reloj.instant());
             if ("mock".equals(proveedor.nombre())) {

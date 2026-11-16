@@ -82,9 +82,28 @@ public interface RepositorioCitas {
 
     int noShowsDesde(int localId, int clienteId, Instant desde);
 
+    /** Inasistencias desde {@code desde} posteriores a la última cita atendida del cliente en el local. */
+    int faltasSeguidas(int localId, int clienteId, Instant desde);
+
     boolean hayBloqueoVigente(int localId, int clienteId, Instant ahora);
 
     void crearBloqueoCliente(int localId, int clienteId, Instant hasta, String motivo);
+
+    // --- Cliente de la app ---
+
+    /** Citas del cliente en todos los locales: primero las próximas, luego las pasadas (más recientes primero). */
+    List<CitaDeCliente> citasDeCliente(int clienteId, Instant ahora, int limite);
+
+    /** Sanciones vigentes del cliente (una por local, la que dura más). */
+    List<SancionCliente> sancionesVigentes(int clienteId, Instant ahora);
+
+    record CitaDeCliente(int id, String token, EstadoCita estado, Instant inicio, Instant fin, String codigoCheckin, boolean tarde,
+                         int localId, String localSlug, String localNombre, String zonaHoraria, String servicio,
+                         String turnoToken, String turnoCodigo, String turnoEstado) {
+    }
+
+    record SancionCliente(int localId, String localNombre, String zonaHoraria, Instant hasta, String motivo) {
+    }
 
     // --- Jobs ---
 

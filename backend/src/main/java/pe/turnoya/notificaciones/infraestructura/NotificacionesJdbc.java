@@ -20,6 +20,24 @@ class NotificacionesJdbc implements RepositorioNotificaciones {
 
     /** Avisos por WhatsApp del mes que cuentan para el cupo del plan (los mensajes del antiguo chatbot no cuentan). */
     @Override
+    public java.util.Optional<String> numeroWhatsApp(int localId) {
+        return jdbc.sql("SELECT numero FROM whatsapp_local WHERE local_id = :local").param("local", localId).query(String.class).optional();
+    }
+
+    @Override
+    public void guardarNumeroWhatsApp(int localId, String numeroE164) {
+        jdbc.sql("""
+                        INSERT INTO whatsapp_local (local_id, numero) VALUES (:local, :numero)
+                        ON CONFLICT (local_id) DO UPDATE SET numero = EXCLUDED.numero, actualizado_at = CURRENT_TIMESTAMP""")
+                .param("local", localId).param("numero", numeroE164).update();
+    }
+
+    @Override
+    public void borrarNumeroWhatsApp(int localId) {
+        jdbc.sql("DELETE FROM whatsapp_local WHERE local_id = :local").param("local", localId).update();
+    }
+
+    @Override
     public int usadosDesde(int localId, Instant inicioMes) {
         return jdbc.sql("""
                         SELECT COUNT(*) FROM notificacion

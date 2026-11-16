@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'tema.dart';
 
 import '../dominio/modelos.dart';
 import 'dependencias.dart';
+import 'pantalla_reservar_cita.dart';
 import 'pantalla_acceso.dart';
 
 /// Servicios del local con su espera en vivo: el cliente elige uno y toma su turno (canal APP). Devuelve el turno
@@ -116,6 +118,12 @@ class _PantallaLocalState extends State<PantallaLocal> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            tooltip: 'Reservar cita',
+            icon: const Icon(Icons.event_available),
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute<void>(builder: (_) => PantallaReservarCita(slug: local.slug, nombreLocal: local.nombre))),
+          ),
+          IconButton(
             tooltip: _favorito ? 'Quitar de favoritos' : 'Agregar a favoritos',
             icon: Icon(_favorito ? Icons.star : Icons.star_border),
             onPressed: _alternarFavorito,
@@ -134,13 +142,10 @@ class _PantallaLocalState extends State<PantallaLocal> {
                 Expanded(child: Text(local.direccion!, style: tema.textTheme.bodyMedium)),
               ]),
             if (!local.abierto)
-              Card(
-                color: Colors.amber.shade100,
-                child: Padding(padding: const EdgeInsets.all(12), child: Text(local.mensajeCerrado ?? 'El local está cerrado ahora.')),
-              ),
+              AvisoTarjeta(tono: TonoAviso.alerta, icono: Icons.schedule, titulo: local.mensajeCerrado ?? 'El local está cerrado ahora.'),
             if (local.presencia == null)
               Card(
-                color: Colors.blue.shade50,
+                color: ColoresTurnoYa.infoFondo,
                 child: const ListTile(
                   leading: Icon(Icons.qr_code_2),
                   title: Text('Escanea el QR para tomar turno'),
@@ -263,9 +268,9 @@ class _MejoresHorasState extends State<_MejoresHoras> {
   }
 
   static Color _colorNivel(String nivel) => switch (nivel) {
-        'baja' => Colors.green.shade600,
-        'alta' => Colors.red.shade600,
-        _ => Colors.amber.shade700,
+        'baja' => ColoresTurnoYa.exito,
+        'alta' => ColoresTurnoYa.peligro,
+        _ => ColoresTurnoYa.alerta,
       };
 
   @override

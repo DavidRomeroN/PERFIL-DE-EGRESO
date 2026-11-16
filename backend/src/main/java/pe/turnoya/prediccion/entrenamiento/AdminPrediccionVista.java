@@ -81,6 +81,22 @@ class AdminPrediccionVista {
         return "modulos/prediccion";
     }
 
+    /**
+     * Versión parcial para los planes sin predicción (M2): solo cuánto esperan sus clientes, sin modelos ni avisos.
+     */
+    @GetMapping("/admin/esperas")
+    String esperas(@AuthenticationPrincipal Sesion sesion, HttpServletRequest peticion, Model modelo) {
+        int localId = localDeTrabajo.resolver(sesion, peticion);
+        if (modulos.activo(localId, Modulo.M2)) {
+            return "redirect:" + RUTA;
+        }
+        var hoy = Fechas.fechaLocal(locales.exigir(localId).zonaHoraria(), reloj.instant());
+        modelo.addAttribute("seccion", "esperas");
+        modelo.addAttribute("esperas", repositorio.esperasPorCola(localId, hoy, hoy.minusDays(DIAS_ESPERAS - 1)));
+        modelo.addAttribute("diasEsperas", DIAS_ESPERAS);
+        return "modulos/esperas";
+    }
+
     @PostMapping(RUTA + "/reentrenar")
     String reentrenar(@AuthenticationPrincipal Sesion sesion, @RequestParam int colaId, HttpServletRequest peticion, HttpServletResponse respuesta,
                       Model modelo) {

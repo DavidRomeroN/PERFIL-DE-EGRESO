@@ -1,4 +1,4 @@
-package pe.turnoya.balanceo.transferencias;
+package pe.turnoya.transferencias.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -20,6 +20,7 @@ import pe.turnoya.plataforma.LocalDeTrabajo;
 import pe.turnoya.plataforma.Sesion;
 import pe.turnoya.plataforma.SoloAdmin;
 import pe.turnoya.plataforma.SoloPersonal;
+import pe.turnoya.transferencias.Transferencias;
 
 /** {@code POST /api/v1/turnos/{id}/transferir} (personal) y {@code GET /api/v1/transferencias} (admin). */
 @RestController

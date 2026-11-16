@@ -9,6 +9,7 @@ import 'infraestructura/api_turnoya.dart';
 import 'infraestructura/notificador_local.dart';
 import 'presentacion/app_principal.dart';
 import 'presentacion/dependencias.dart';
+import 'presentacion/pantalla_negocio.dart';
 import 'presentacion/sesion_app.dart';
 import 'presentacion/tema.dart';
 
@@ -46,6 +47,8 @@ Future<void> main() async {
     registrarCuenta: RegistrarCuenta(servicio, almacen),
     ingresarConCorreo: IngresarConCorreo(servicio, almacen),
     verPerfil: VerPerfil(servicio, almacen),
+    citas: CitasDelCliente(servicio, almacen),
+    personal: PersonalDelNegocio(servicio, almacen),
     sesion: sesion,
     child: const AppTurnoYa(),
   ));
@@ -60,7 +63,36 @@ class AppTurnoYa extends StatelessWidget {
       title: 'TurnoYa',
       debugShowCheckedModeBanner: false,
       theme: temaTurnoYa(),
-      home: const PantallaPrincipal(),
+      home: const _Raiz(),
     );
   }
+}
+
+/// Si en este teléfono ingresó el personal de un negocio, abre directo su panel; si no, la app del cliente.
+class _Raiz extends StatefulWidget {
+  const _Raiz();
+
+  @override
+  State<_Raiz> createState() => _RaizState();
+}
+
+class _RaizState extends State<_Raiz> {
+  bool? _negocio;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_negocio == null) {
+      Dependencias.de(context).personal.sesion().then((s) {
+        if (mounted) setState(() => _negocio = s != null);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => switch (_negocio) {
+        null => const Scaffold(body: Center(child: CircularProgressIndicator())),
+        true => PantallaNegocio(alSalir: () => setState(() => _negocio = false)),
+        false => const PantallaPrincipal(),
+      };
 }

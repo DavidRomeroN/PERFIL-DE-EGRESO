@@ -3,8 +3,10 @@ library;
 
 import 'dart:async';
 
+import '../dominio/citas.dart';
 import '../dominio/codigo_qr.dart';
 import '../dominio/modelos.dart';
+import '../dominio/personal.dart';
 import '../dominio/puertos.dart';
 
 /// Escanear el QR de la TV y ver los servicios del local.
@@ -276,6 +278,9 @@ class SeguirTurno {
   final Notificador _notificador;
   final Duration respaldo;
 
+  /// Cada cambio del local (turno emitido, llamado…): lo usa el panel del personal para refrescarse al instante.
+  Stream<void> cambiosDe(String slug) => _servicio.cambiosDelLocal(slug);
+
   Stream<Turno> call(Turno inicial) {
     late StreamController<Turno> salida;
     StreamSubscription<void>? cambios;
@@ -393,6 +398,143 @@ class VerPerfil {
       return await _servicio.perfil(sesion.token, await _cuenta.dispositivo());
     } on ErrorTurno catch (e) {
       if (e.codigo == 'APP_SESION_INVALIDA') await _cuenta.borrarSesion();
+      rethrow;
+    }
+  }
+}
+
+/// Citas del cliente: reservar, ver las suyas (y sus sanciones), cancelar y hacer check-in al llegar al local.
+/// Todo exige la cuenta; si la sesión venció, la borra del teléfono.
+class CitasDelCliente {
+  CitasDelCliente(this._servicio, this._cuenta);
+
+  final ServicioCitas _servicio;
+  final AlmacenCuenta _cuenta;
+
+  Future<List<LocalConCitas>> locales() => _servicio.localesConCitas();
+
+  Future<OfertaCitas> oferta(String slug) => _servicio.ofertaCitas(slug);
+
+  Future<List<DiaCita>> dias(String slug, int servicioId) => _servicio.diasCita(slug, servicioId);
+
+  Future<List<HorarioCita>> horarios(String slug, int servicioId, String fecha) => _servicio.horariosCita(slug, servicioId, fecha);
+
+  Future<MisCitas> mias() => _conSesion(_servicio.misCitas);
+
+  Future<void> reservar({required String slug, required int servicioId, required int horarioId}) =>
+      _conSesion((s) => _servicio.reservarCita(s, slug: slug, servicioId: servicioId, horarioId: horarioId));
+
+  Future<void> cancelar(String token) => _conSesion((s) => _servicio.cancelarCita(s, token));
+
+  /// Check-in con el QR «App» escaneado en la TV: tiene que ser del mismo local de la cita y traer la marca de presencia.
+  Future<LlegadaCita> llegue(Cita cita, String contenidoQr) {
+    final qr = leerQr(contenidoQr);
+    if (qr == null || qr.presencia == null) {
+      return Future.error(const ErrorTurno('QR_INVALIDO', 'Escanea el QR azul «App» que aparece en la pantalla del local.'));
+    }
+    if (qr.slug != cita.localSlug) {
+      return Future.error(ErrorTurno('QR_OTRO_LOCAL', 'Ese QR es de otro local. Tu cita es en ${cita.local}.'));
+    }
+    return _conSesion((s) => _servicio.checkinCita(s, cita.token, qr.presencia!));
+  }
+
+  Future<T> _conSesion<T>(Future<T> Function(String sesion) hacer) async {
+    final sesion = await _cuenta.leerSesion();
+    if (sesion == null) throw const ErrorTurno('APP_SESION_INVALIDA', 'Ingresa a tu cuenta para reservar citas.');
+    try {
+      return await hacer(sesion.token);
+    } on ErrorTurno catch (e) {
+      if (e.codigo == 'APP_SESION_INVALIDA') await _cuenta.borrarSesion();
+      rethrow;
+    }
+  }
+}
+
+/// El negocio desde el celular (personal: admin u operador). Si el token venció, borra la sesión del teléfono y lanza
+/// `NO_AUTENTICADO` para volver a la pantalla de ingreso.
+class PersonalDelNegocio {
+  PersonalDelNegocio(this._servicio, this._almacen);
+
+  final ServicioPersonal _servicio;
+  final AlmacenPersonal _almacen;
+
+  Future<SesionPersonal?> sesion() => _almacen.leerPersonal();
+
+  Future<SesionPersonal> ingresar(String correo, String clave) async {
+    if (correo.trim().isEmpty || clave.isEmpty) throw const ErrorTurno('VALIDACION', 'Escribe tu correo y tu contraseña.');
+    final s = await _servicio.ingresarPersonal(correo, clave);
+    await _almacen.guardarPersonal(s);
+    return s;
+  }
+
+  Future<void> salir() => _almacen.borrarPersonal();
+
+  Future<PanelPersonal> panel() => _con(_servicio.panel);
+
+  Future<TurnoPersonal?> llamarSiguiente(int ventanillaId) => _con((t) => _servicio.llamarSiguiente(t, ventanillaId));
+
+  Future<void> atendido(int turnoId) => _con((t) => _servicio.marcarTurno(t, turnoId, 'ATENDIDO'));
+
+  Future<void> noSePresento(int turnoId) => _con((t) => _servicio.marcarTurno(t, turnoId, 'NO_SE_PRESENTO'));
+
+  Future<void> volverALlamar(int turnoId) => _con((t) => _servicio.marcarTurno(t, turnoId, 'LLAMADO'));
+
+  /// Con [telefono] el cliente recibe su turno y el llamado por WhatsApp (necesita su permiso: [consentimiento]).
+  /// [recepcion]: lo emite el kiosco (cualquier cola del local) en vez de un operador en sus colas.
+  Future<TicketEmitido> ticket({required int colaId, String? nombre, String? telefono, bool consentimiento = false, bool recepcion = false}) {
+    final n = nombre?.trim();
+    final tel = telefono?.replaceAll(RegExp(r'[\s-]'), '');
+    if (tel != null && tel.isNotEmpty && !consentimiento) {
+      return Future.error(const ErrorTurno('CONSENTIMIENTO_REQUERIDO', 'Marca que el cliente acepta los avisos por WhatsApp.'));
+    }
+    final nombreLimpio = n == null || n.isEmpty ? null : n;
+    final telLimpio = tel == null || tel.isEmpty ? null : tel;
+    return _con((t) => recepcion
+        ? _servicio.emitirTicketKiosco(t, colaId: colaId, nombre: nombreLimpio, telefono: telLimpio, consentimiento: consentimiento)
+        : _servicio.emitirTicket(t, colaId: colaId, nombre: nombreLimpio, telefono: telLimpio, consentimiento: consentimiento));
+  }
+
+  Future<PanelKiosco> panelKiosco() => _con(_servicio.panelKiosco);
+
+  Future<String> transferir(int turnoId, int aColaId) => _con((t) => _servicio.transferir(t, turnoId, aColaId));
+
+  Future<List<ColaNegocio>> colas() => _con(_servicio.colas);
+
+  Future<void> crearCola({required String prefijo, required String nombre}) =>
+      _con((t) => _servicio.crearCola(t, prefijo: prefijo.trim().toUpperCase(), nombre: nombre.trim()));
+
+  Future<void> activarCola(int id, bool activa) => _con((t) => _servicio.activarCola(t, id, activa));
+
+  Future<void> eliminarCola(int id) => _con((t) => _servicio.eliminarCola(t, id));
+
+  Future<List<VentanillaNegocio>> ventanillas() => _con(_servicio.ventanillas);
+
+  Future<void> crearVentanilla({required String nombre, required int colaId}) =>
+      _con((t) => _servicio.crearVentanilla(t, nombre: nombre.trim(), colaId: colaId));
+
+  Future<void> editarVentanilla(int id, {String? nombre, bool? activa}) =>
+      _con((t) => _servicio.editarVentanilla(t, id, nombre: nombre?.trim(), activa: activa));
+
+  Future<WhatsAppNegocio> whatsapp() => _con(_servicio.whatsapp);
+
+  Future<WhatsAppNegocio> guardarNumero(String telefono) => _con((t) => _servicio.accionWhatsapp(t, 'numero', telefono: telefono));
+
+  Future<WhatsAppNegocio> pedirCodigo() => _con((t) => _servicio.accionWhatsapp(t, 'codigo'));
+
+  Future<WhatsAppNegocio> probarWhatsapp(String telefono) => _con((t) => _servicio.accionWhatsapp(t, 'prueba', telefono: telefono));
+
+  Future<WhatsAppNegocio> desvincularWhatsapp() => _con((t) => _servicio.accionWhatsapp(t, 'desvincular'));
+
+  Future<T> _con<T>(Future<T> Function(String token) hacer) async {
+    final s = await _almacen.leerPersonal();
+    if (s == null) throw const ErrorTurno('NO_AUTENTICADO', 'Ingresa con tu cuenta del negocio.');
+    try {
+      return await hacer(s.token);
+    } on ErrorTurno catch (e) {
+      if (e.codigo == 'NO_AUTENTICADO') {
+        await _almacen.borrarPersonal();
+        throw const ErrorTurno('NO_AUTENTICADO', 'Tu sesión venció. Vuelve a ingresar.');
+      }
       rethrow;
     }
   }

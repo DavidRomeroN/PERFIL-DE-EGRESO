@@ -10,6 +10,13 @@ public interface RepositorioNotificaciones {
     /** Avisos por WhatsApp del mes que cuentan para el cupo del plan (los mensajes del antiguo chatbot no cuentan). */
     int usadosDesde(int localId, Instant inicioMes);
 
+    /** Número de WhatsApp con que el negocio envía sus avisos (si registró uno propio). */
+    java.util.Optional<String> numeroWhatsApp(int localId);
+
+    void guardarNumeroWhatsApp(int localId, String numeroE164);
+
+    void borrarNumeroWhatsApp(int localId);
+
     int registrar(int localId, Integer turnoId, Integer citaId, String tipo, String destino, String mensaje, String plantilla, String estado, Instant enviadoAt, String error);
 
     void marcarEnviado(int id, String proveedorMsgId, Instant ahora);

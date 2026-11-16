@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'tema.dart';
 
 import '../dominio/modelos.dart';
 import 'dependencias.dart';
@@ -90,7 +91,7 @@ class _PantallaMisLocalesState extends State<PantallaMisLocales> {
                         key: ValueKey(l.slug),
                         direction: DismissDirection.endToStart,
                         background: Container(
-                          color: Colors.red.shade400,
+                          color: ColoresTurnoYa.peligro,
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 20),
                           child: const Icon(Icons.delete_outline, color: Colors.white),

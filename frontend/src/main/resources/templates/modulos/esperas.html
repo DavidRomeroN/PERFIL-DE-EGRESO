@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Tiempo de espera')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Tiempo de espera</h1>
+        <p>Cuánto esperan tus clientes desde que sacan su turno hasta que los llamas.</p>
+      </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(esperas)}" class="vacio">Aún no hay turnos atendidos para calcular la espera.</p>
+    <section th:replace="~{modulos/prediccion :: tarjetaEsperas}"></section>
+
+    <div class="alerta alerta-info" style="margin-top: 1.25rem">
+      <div>
+        <p><strong>¿Quieres decirle a cada cliente cuánto le falta?</strong></p>
+        <p>Con el plan Pro, la predicción de espera aprende de tu local y le avisa a cada cliente «entre 14 y 22 min», además de
+          analítica, alertas, transferencias y el simulador de capacidad.</p>
+        <p><a th:href="@{/admin/plan}">Ver planes</a></p>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -283,6 +283,50 @@ class CitasJdbc implements RepositorioCitas {
     }
 
     @Override
+    public List<CitaDeCliente> citasDeCliente(int clienteId, Instant ahora, int limite) {
+        return jdbc.sql("""
+                        SELECT c.id, c.token, c.estado::text AS estado, c.inicio, c.fin, c.codigo_checkin, c.tarde, c.local_id,
+                               l.slug, l.nombre_comercial, l.zona_horaria, co.nombre AS servicio,
+                               t.token AS turno_token, t.codigo AS turno_codigo, t.estado::text AS turno_estado
+                          FROM cita c JOIN local l ON l.id = c.local_id JOIN cola co ON co.id = c.cola_id
+                          LEFT JOIN turno t ON t.id = c.turno_id
+                         WHERE c.cliente_id = :cliente
+                         ORDER BY (c.estado IN ('RESERVADA', 'CONFIRMADA', 'CHECKIN') AND c.fin > :ahora) DESC,
+                                  CASE WHEN c.estado IN ('RESERVADA', 'CONFIRMADA', 'CHECKIN') AND c.fin > :ahora THEN c.inicio END ASC,
+                                  c.inicio DESC
+                         LIMIT :limite""")
+                .param("cliente", clienteId).param("ahora", Sql.utc(ahora)).param("limite", limite)
+                .query((rs, n) -> new CitaDeCliente(rs.getInt("id"), rs.getString("token"), EstadoCita.valueOf(rs.getString("estado")),
+                        Sql.instante(rs, "inicio"), Sql.instante(rs, "fin"), rs.getString("codigo_checkin"), rs.getBoolean("tarde"),
+                        rs.getInt("local_id"), rs.getString("slug"), rs.getString("nombre_comercial"), rs.getString("zona_horaria"),
+                        rs.getString("servicio"), rs.getString("turno_token"), rs.getString("turno_codigo"), rs.getString("turno_estado")))
+                .list();
+    }
+
+    @Override
+    public List<SancionCliente> sancionesVigentes(int clienteId, Instant ahora) {
+        return jdbc.sql("""
+                        SELECT DISTINCT ON (b.local_id) b.local_id, l.nombre_comercial, l.zona_horaria, b.hasta, b.motivo
+                          FROM bloqueo_cliente b JOIN local l ON l.id = b.local_id
+                         WHERE b.cliente_id = :cliente AND b.hasta > :ahora AND b.liberado_por IS NULL
+                         ORDER BY b.local_id, b.hasta DESC""")
+                .param("cliente", clienteId).param("ahora", Sql.utc(ahora))
+                .query((rs, n) -> new SancionCliente(rs.getInt("local_id"), rs.getString("nombre_comercial"), rs.getString("zona_horaria"), Sql.instante(rs, "hasta"),
+                        rs.getString("motivo")))
+                .list();
+    }
+
+    @Override
+    public int faltasSeguidas(int localId, int clienteId, Instant desde) {
+        return jdbc.sql("""
+                        SELECT COUNT(*) FROM cita
+                         WHERE local_id = :local AND cliente_id = :cliente AND estado = 'NO_SHOW' AND inicio >= :desde
+                           AND inicio > COALESCE((SELECT max(inicio) FROM cita
+                                                   WHERE local_id = :local AND cliente_id = :cliente AND estado = 'ATENDIDA'), '-infinity')""")
+                .param("local", localId).param("cliente", clienteId).param("desde", Sql.utc(desde)).query(Integer.class).single();
+    }
+
+    @Override
     public boolean hayBloqueoVigente(int localId, int clienteId, Instant ahora) {
         return bloqueoVigente(localId, clienteId, ahora).isPresent();
     }

@@ -62,6 +62,21 @@ public class DisponibilidadCitas {
     public record Servicios(boolean disponible, LocalCitas local, List<ServicioPublico> colas) {
     }
 
+    /** Un local que hoy recibe reservas, para el directorio de la app. */
+    public record LocalConCitas(String slug, String nombre, String rubro, String ciudad, String direccion, String colorPrimario, int servicios) {
+    }
+
+    /** GET /public/locales-con-citas — todos los locales activos con citas (M3) y al menos un servicio que atiende con cita. */
+    public List<LocalConCitas> localesConCitas() {
+        return locales.activos().stream()
+                .filter(l -> modulos.activo(l.id(), Modulo.M3))
+                .map(l -> new LocalConCitas(l.slug(), l.nombreComercial(), l.rubro(), l.ciudad(), l.direccion(), l.colorPrimario(),
+                        (int) repositorio.colasDelLocal(l.id()).stream().filter(ColaCitas::conCitas).count()))
+                .filter(l -> l.servicios() > 0)
+                .sorted(java.util.Comparator.comparing(LocalConCitas::nombre, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
     /** GET /public/locales/:slug/citas — servicios que atienden con cita (vacío si el local no tiene M3). */
     public Servicios servicios(String slug) {
         Local local = locales.porSlug(slug).filter(Local::activo).orElse(null);

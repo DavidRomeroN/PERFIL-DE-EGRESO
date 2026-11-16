@@ -26,7 +26,7 @@ gradlew bootRun               # http://localhost:8080   (Linux/macOS: ./gradlew 
 
 `bootRun` usa el perfil `dev`: las plantillas y los estilos se leen directo de `frontend/src/main/resources`, así que los cambios se ven al recargar la página, sin reiniciar.
 
-> **Datos de demostración:** en una base vacía Flyway crea el esquema pero no siembra locales ni usuarios. Las cuentas de abajo existen si la base ya fue sembrada con el sistema anterior (`npm run setup` en la rama `main`).
+> **Datos de demostración:** en una base vacía Flyway crea el esquema pero no siembra locales ni usuarios. Las cuentas de abajo existen si la base ya fue sembrada con el sistema anterior (`npm run setup` en la rama `main`). Los negocios pequeños (Salón Bella y Dental Sonrisa) se crean con `python scripts/crear_demo_negocios.py http://localhost:8080`.
 
 ### Credenciales de demostración
 
@@ -35,7 +35,12 @@ gradlew bootRun               # http://localhost:8080   (Linux/macOS: ./gradlew 
 | Super admin  | `superadmin@turnoya.pe`      | `admin123`    | Todos                     |
 | Admin local  | `admin@policlinico.pe`       | `admin123`    | Policlínico San Román     |
 | Operador     | `operador@policlinico.pe`    | `operador123` | Policlínico San Román     |
+| Kiosco       | `kiosco@policlinico.pe`      | `kiosco123`   | Policlínico San Román     |
 | Admin local  | `admin@transportes.pe`       | `admin123`    | Transportes Altiplano     |
+| Admin local  | `admin@salonbella.pe`        | `admin123`    | Salón Bella (plan Gratis: una persona hace todo desde el celular) |
+| Admin local  | `admin@dentalsonrisa.pe`     | `admin123`    | Dental Sonrisa (plan Emprende) |
+| Operador     | `rios@dentalsonrisa.pe`      | `operador123` | Dental Sonrisa · Consultorio 1 |
+| Operador     | `paredes@dentalsonrisa.pe`   | `operador123` | Dental Sonrisa · Consultorio 2 |
 | Operador     | `operador@transportes.pe`    | `operador123` | Transportes Altiplano     |
 
 ### Recorrido sugerido para la demo (aplicación Java)
@@ -46,6 +51,37 @@ gradlew bootRun               # http://localhost:8080   (Linux/macOS: ./gradlew 
 4. **Admin** — `/login` → `admin@policlinico.pe` → *Colas* y *Ventanillas*.
 
 Todo se actualiza en **tiempo real** (SSE + htmx): abre la TV, el panel y la página del cliente en paralelo.
+
+### Negocios pequeños: cómo funcionan en el día a día
+
+El script `scripts/crear_demo_negocios.py` deja además algunos clientes esperando (S-001…S-003, R-001, R-002 y P-001) para
+tener a quién llamar.
+
+**Salón Bella · plan Gratis (S/ 0).** Rosa es la dueña y atiende sola, sin TV ni computadora: una cola («Atención») y un
+sillón.
+
+1. Una clienta llega al salón y Rosa le pregunta su celular. En la app (*¿Atiendes un negocio?* → `admin@salonbella.pe`),
+   **Emitir ticket** → nombre + celular + «acepta WhatsApp». La clienta recibe por WhatsApp su número (S-004) y el enlace
+   para ver cuántas faltan. No necesita instalar nada.
+2. Otras clientas sacan turno solas desde el QR pegado en la puerta (`/l/salon-bella`) y esperan afuera o en la tienda de al lado.
+3. Al terminar un corte, Rosa pulsa **Llamar siguiente** en el celular. A la siguiente le llega «Es tu turno» por WhatsApp, y a
+   las que ya están cerca, «faltan N personas».
+4. En la web, *Tiempo de espera* le muestra cuánto esperan sus clientas en promedio. Simulador, analítica, transferencias y
+   predicción son del plan Pro.
+5. En la pestaña *WhatsApp* de la app, Rosa registra su número y lo vincula con el código de 8 letras. Los avisos salen de su
+   propio WhatsApp.
+
+**Dental Sonrisa · plan Emprende (S/ 49).** Dos odontólogos, cada uno con su cola y su consultorio, y la Dra. Ríos como
+administradora.
+
+1. Recepción o cualquiera de los dos emite el ticket en la cola del médico que corresponde: «Dra. Ríos» (R) o «Dr. Paredes» (P).
+   Los pacientes también pueden sacar turno con el QR (`/l/dental-sonrisa`) o desde la app del cliente.
+2. Cada médico entra a la app con su cuenta (`rios@` / `paredes@dentalsonrisa.pe`). Como tiene una sola ventanilla asignada,
+   la app abre directo su consultorio: **Llamar siguiente**, Atendido, No vino y Volver a llamar. Nunca ve la cola del otro
+   (si intenta llamar en ella, la API responde `SIN_PERMISO`).
+3. Si tienen una TV en la sala, `/l/dental-sonrisa/tv` muestra «R-002 → Consultorio 1». Si no, el aviso llega por WhatsApp.
+4. Desde el celular, la administradora crea colas y ventanillas (por ejemplo, un tercer consultorio, hasta 3 en Emprende) y
+   vincula el número de WhatsApp de la clínica. Usuarios, horarios y reportes siguen en la web.
 
 ---
 

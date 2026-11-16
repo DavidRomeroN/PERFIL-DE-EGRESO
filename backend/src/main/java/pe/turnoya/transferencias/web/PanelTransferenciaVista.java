@@ -1,4 +1,4 @@
-package pe.turnoya.balanceo.transferencias;
+package pe.turnoya.transferencias.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,6 +19,7 @@ import pe.turnoya.plataforma.Modulo;
 import pe.turnoya.plataforma.ModulosLocal;
 import pe.turnoya.plataforma.Sesion;
 import pe.turnoya.plataforma.SoloPersonal;
+import pe.turnoya.transferencias.Transferencias;
 
 /** Bloque "Transferir a otra cola" del panel del operador (M6). Responde vacío si el módulo no está activo. */
 @Controller
@@ -70,7 +71,7 @@ class PanelTransferenciaVista {
         var fecha = Fechas.fechaLocal(locales.exigir(localId).zonaHoraria(), reloj.instant());
         modelo.addAttribute("bloque", transferencias.bloquePanel(localId, fecha, ventanilla));
         modelo.addAttribute("ventanilla", ventanilla);
-        modelo.addAttribute("motivos", Transferencias.MOTIVOS.stream().filter(m -> !"BALANCEO".equals(m)).toList());
+        modelo.addAttribute("motivos", Transferencias.MOTIVOS);
         modelo.addAttribute("nombresMotivo", Transferencias.NOMBRES_MOTIVO);
         return "modulos/transferencia-panel :: bloque";
     }

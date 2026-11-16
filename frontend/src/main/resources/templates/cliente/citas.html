@@ -70,8 +70,9 @@
             <input id="nombre" name="nombre" class="entrada entrada-grande" required minlength="2" maxlength="60" autocomplete="name">
           </div>
           <div class="campo">
-            <label class="etiqueta" for="telefono">Celular (opcional, para recordatorios)</label>
-            <input id="telefono" name="telefono" type="tel" inputmode="numeric" class="entrada entrada-grande" maxlength="15" placeholder="951234567" autocomplete="tel">
+            <label class="etiqueta" for="telefono">Celular</label>
+            <input id="telefono" name="telefono" type="tel" inputmode="numeric" class="entrada entrada-grande" maxlength="15" placeholder="951234567" autocomplete="tel" required>
+            <p class="ayuda">Para tus recordatorios. Si no te presentas, no podrás reservar en este local por 1 día; si vuelves a faltar, 3 días, y así cada vez más.</p>
           </div>
           <label class="casilla">
             <input type="checkbox" name="consentimiento" value="true">

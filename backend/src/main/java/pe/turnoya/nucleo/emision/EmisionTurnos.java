@@ -169,11 +169,18 @@ public class EmisionTurnos {
      */
     @Transactional
     public TurnoPublico emitirTicket(Integer localDelOperador, int colaId, String nombre, String categoria) {
+        return emitirTicket(localDelOperador, colaId, nombre, categoria, null, false);
+    }
+
+    /** Con {@code telefono}: el cliente sin app recibe por WhatsApp la confirmación y el llamado. */
+    @Transactional
+    public TurnoPublico emitirTicket(Integer localDelOperador, int colaId, String nombre, String categoria, String telefono, boolean consentimiento) {
         Cola cola = colas.porId(colaId).orElseThrow(() -> ErrorNegocio.noEncontrado("COLA_INACTIVA", "La cola no existe"));
         if (localDelOperador != null && cola.localId() != localDelOperador) {
             throw ErrorNegocio.prohibido("PROHIBIDO", "La cola pertenece a otro local");
         }
-        return emitir(SolicitudEmision.ticket(colaId, nombre, categoria));
+        String tel = telefono == null || telefono.isBlank() ? null : telefono.trim();
+        return emitir(SolicitudEmision.ticket(colaId, nombre, categoria, tel, tel != null && consentimiento));
     }
 
     private void validarHorario(SolicitudEmision s, Local local) {

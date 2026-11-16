@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'tema.dart';
 
 import '../aplicacion/casos_de_uso.dart';
 import 'sesion_app.dart';
@@ -24,6 +25,8 @@ class Dependencias extends InheritedWidget {
     required this.registrarCuenta,
     required this.ingresarConCorreo,
     required this.verPerfil,
+    required this.citas,
+    required this.personal,
     required this.sesion,
     required super.child,
   });
@@ -45,6 +48,8 @@ class Dependencias extends InheritedWidget {
   final RegistrarCuenta registrarCuenta;
   final IngresarConCorreo ingresarConCorreo;
   final VerPerfil verPerfil;
+  final CitasDelCliente citas;
+  final PersonalDelNegocio personal;
 
   /// Cuenta actual, compartida por todas las pantallas.
   final SesionApp sesion;
@@ -56,7 +61,7 @@ class Dependencias extends InheritedWidget {
 }
 
 /// `#2563eb` → Color.
-Color colorDesdeHex(String hex, {Color porDefecto = const Color(0xFF2563EB)}) {
+Color colorDesdeHex(String hex, {Color porDefecto = ColoresTurnoYa.primario}) {
   final limpio = hex.replaceFirst('#', '');
   final valor = int.tryParse(limpio.length == 6 ? 'FF$limpio' : limpio, radix: 16);
   return valor == null ? porDefecto : Color(valor);

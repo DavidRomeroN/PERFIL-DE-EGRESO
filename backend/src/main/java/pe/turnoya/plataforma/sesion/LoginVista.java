@@ -61,7 +61,7 @@ class LoginVista {
     }
 
     private static String inicioPorRol(Sesion sesion) {
-        return sesion.esAdmin() ? "/admin" : "/panel";
+        return sesion.inicio();
     }
 
     /** Solo rutas internas: evita redirecciones abiertas hacia otros sitios. */

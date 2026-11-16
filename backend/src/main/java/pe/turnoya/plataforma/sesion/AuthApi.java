@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import pe.turnoya.compartido.ErrorNegocio;
 import pe.turnoya.compartido.web.IpCliente;
 import pe.turnoya.compartido.web.RespuestaApi;
+import pe.turnoya.plataforma.RolUsuario;
 import pe.turnoya.plataforma.Sesion;
 
 /** {@code /api/v1/auth/*}: mismo contrato que el sistema anterior (login devuelve la sesión y deja la cookie). */
@@ -37,6 +38,24 @@ class AuthApi {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookies.crear(r.token()).toString())
                 .body(RespuestaApi.ok(r.sesion()));
+    }
+
+    /**
+     * Ingreso desde la app móvil del personal: devuelve el token para {@code Authorization: Bearer} (sin cookie). Solo
+     * el admin del local, los operadores y la recepción (kiosco); la app no tiene la vista de plataforma.
+     */
+    @PostMapping("/movil")
+    RespuestaApi<SesionMovil> movil(@Valid @RequestBody Credenciales credenciales, HttpServletRequest peticion) {
+        InicioSesion.Resultado r = inicioSesion.entrar(credenciales.email(), credenciales.password(), IpCliente.de(peticion));
+        RolUsuario rol = r.sesion().rol();
+        boolean delNegocio = rol == RolUsuario.ADMIN_LOCAL || rol == RolUsuario.OPERADOR || rol == RolUsuario.KIOSCO;
+        if (!delNegocio || r.sesion().localId() == null) {
+            throw ErrorNegocio.prohibido("ROL_NO_DISPONIBLE_EN_APP", "La app es para el personal del negocio. Usa la web.");
+        }
+        return RespuestaApi.ok(new SesionMovil(r.token(), r.sesion()));
+    }
+
+    record SesionMovil(String token, Sesion sesion) {
     }
 
     @PostMapping("/logout")

@@ -85,6 +85,46 @@ class UsuariosJdbc implements RepositorioUsuarios {
         jdbc.sql("DELETE FROM usuario WHERE id = :id").param("id", id).update();
     }
 
+    @Override
+    public java.util.List<Integer> ventanillasDe(int usuarioId) {
+        return jdbc.sql("SELECT ventanilla_id FROM usuario_ventanilla WHERE usuario_id = :u ORDER BY ventanilla_id")
+                .param("u", usuarioId).query(Integer.class).list();
+    }
+
+    @Override
+    public void asignarVentanillas(int usuarioId, java.util.Collection<Integer> ventanillaIds) {
+        jdbc.sql("DELETE FROM usuario_ventanilla WHERE usuario_id = :u").param("u", usuarioId).update();
+        for (Integer v : ventanillaIds) {
+            jdbc.sql("INSERT INTO usuario_ventanilla (usuario_id, ventanilla_id) VALUES (:u, :v) ON CONFLICT DO NOTHING")
+                    .param("u", usuarioId).param("v", v).update();
+        }
+    }
+
+    @Override
+    public java.util.Map<Integer, java.util.List<Integer>> asignacionesDelLocal(int localId) {
+        java.util.Map<Integer, java.util.List<Integer>> mapa = new java.util.HashMap<>();
+        jdbc.sql("""
+                        SELECT uv.usuario_id, uv.ventanilla_id FROM usuario_ventanilla uv JOIN usuario u ON u.id = uv.usuario_id
+                         WHERE u.local_id = :local ORDER BY uv.ventanilla_id""")
+                .param("local", localId)
+                .query(rs -> {
+                    mapa.computeIfAbsent(rs.getInt("usuario_id"), k -> new java.util.ArrayList<>()).add(rs.getInt("ventanilla_id"));
+                });
+        return mapa;
+    }
+
+    @Override
+    public java.util.List<VentanillaOpcion> ventanillasDelLocal(int localId) {
+        return jdbc.sql("""
+                        SELECT v.id, v.nombre, c.nombre AS cola, c.prefijo
+                          FROM ventanilla v LEFT JOIN cola c ON c.id = v.cola_id
+                         WHERE v.local_id = :local AND v.activa
+                         ORDER BY c.orden NULLS LAST, c.prefijo, v.nombre""")
+                .param("local", localId)
+                .query((rs, i) -> new VentanillaOpcion(rs.getInt("id"), rs.getString("nombre"), rs.getString("cola"), rs.getString("prefijo")))
+                .list();
+    }
+
     private static UsuarioFila fila(java.sql.ResultSet rs, int i) throws java.sql.SQLException {
         return new UsuarioFila(rs.getInt("id"), rs.getString("nombre"), rs.getString("email"), RolUsuario.valueOf(rs.getString("rol")),
                 rs.getBoolean("activo"), Sql.instante(rs, "created_at"), Sql.instante(rs, "ultimo_acceso"), Sql.entero(rs, "local_id"));

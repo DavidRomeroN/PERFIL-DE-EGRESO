@@ -28,7 +28,7 @@
 
     <p th:if="${#lists.isEmpty(colas)}" class="vacio">El local no tiene colas activas.</p>
 
-    <section class="tarjeta esperas-por-cola" th:unless="${#lists.isEmpty(esperas)}">
+    <section class="tarjeta esperas-por-cola" th:fragment="tarjetaEsperas" th:unless="${#lists.isEmpty(esperas)}">
       <h2 class="tarjeta-titulo">¿Cuánto esperan tus clientes?</h2>
       <p class="texto-apagado">Tiempo desde que sacan su turno hasta que los llaman, en cada cola.</p>
       <div class="tabla-contenedor">

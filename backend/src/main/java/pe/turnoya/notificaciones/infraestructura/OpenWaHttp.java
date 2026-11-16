@@ -39,27 +39,27 @@ class OpenWaHttp implements GatewayOpenWa {
     }
 
     @Override
-    public Estado estado() {
+    public Estado estado(String sesion) {
         if (!configurado()) {
-            return new Estado(false, url(), cfg.openwaSession(), false, "sin_configurar", null, null, null, null);
+            return new Estado(false, url(), sesion, false, "sin_configurar", null, null, null, null);
         }
         try {
-            JsonNode s = buscarSesion();
+            JsonNode s = buscarSesion(sesion);
             if (s == null) {
-                return new Estado(true, url(), cfg.openwaSession(), true, "sin_sesion", null, null, null, null);
+                return new Estado(true, url(), sesion, true, "sin_sesion", null, null, null, null);
             }
             String status = s.path("status").asString("");
             String qr = "qr_ready".equals(status) ? qr(s.path("id").asString("")) : null;
-            return new Estado(true, url(), cfg.openwaSession(), true, status, s.path("phone").asString(null), s.path("pushName").asString(null),
+            return new Estado(true, url(), sesion, true, status, s.path("phone").asString(null), s.path("pushName").asString(null),
                     qr, s.path("lastError").asString(null));
         } catch (ErrorOpenWa e) {
-            return new Estado(true, url(), cfg.openwaSession(), false, "sin_sesion", null, null, null, e.getMessage());
+            return new Estado(true, url(), sesion, false, "sin_sesion", null, null, null, e.getMessage());
         }
     }
 
     @Override
-    public void iniciar() {
-        JsonNode s = asegurarSesion();
+    public void iniciar(String sesion) {
+        JsonNode s = asegurarSesion(sesion);
         String status = s.path("status").asString("");
         if (List.of("ready", "qr_ready", "initializing", "authenticating").contains(status)) {
             return;
@@ -68,8 +68,8 @@ class OpenWaHttp implements GatewayOpenWa {
     }
 
     @Override
-    public void detener(boolean desvincular) {
-        JsonNode s = buscarSesion();
+    public void detener(String sesion, boolean desvincular) {
+        JsonNode s = buscarSesion(sesion);
         if (s != null) {
             accion(s.path("id").asString(""), desvincular ? "logout" : "stop");
         }
@@ -86,17 +86,49 @@ class OpenWaHttp implements GatewayOpenWa {
         }
     }
 
-    private JsonNode asegurarSesion() {
-        JsonNode s = buscarSesion();
-        return s != null ? s : llamar(() -> http.post().uri("/sessions").body(Map.of("name", cfg.openwaSession())).retrieve().body(JsonNode.class));
+    @Override
+    public String codigoVinculacion(String sesion, String telefono) {
+        if (!configurado()) {
+            throw new ErrorOpenWa("OpenWA no está configurado en el servidor (OPENWA_URL y OPENWA_API_KEY)", 503);
+        }
+        iniciar(sesion);
+        String id = asegurarSesion(sesion).path("id").asString("");
+        // Recién arrancada, la sesión tarda unos segundos en aceptar el pedido del código (409 = aún no está lista)
+        for (int intento = 0; ; intento++) {
+            try {
+                JsonNode r = llamar(() -> http.post().uri("/sessions/{id}/pairing-code", id).body(Map.of("phoneNumber", telefono))
+                        .retrieve().body(JsonNode.class));
+                JsonNode d = r != null && r.has("data") ? r.get("data") : r;
+                String codigo = d == null ? null : d.path("pairingCode").asString(d.path("code").asString(null));
+                if (codigo == null || codigo.isBlank()) {
+                    throw new ErrorOpenWa("OpenWA no devolvió el código de vinculación", 502);
+                }
+                return codigo;
+            } catch (ErrorOpenWa e) {
+                if (intento >= 5 || (e.status() != 409 && e.status() != 400)) {
+                    throw e;
+                }
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
     }
 
-    private JsonNode buscarSesion() {
+    private JsonNode asegurarSesion(String sesion) {
+        JsonNode s = buscarSesion(sesion);
+        return s != null ? s : llamar(() -> http.post().uri("/sessions").body(Map.of("name", sesion)).retrieve().body(JsonNode.class));
+    }
+
+    private JsonNode buscarSesion(String sesion) {
         JsonNode r = llamar(() -> http.get().uri("/sessions").retrieve().body(JsonNode.class));
         JsonNode lista = r != null && r.has("data") ? r.get("data") : r;
         if (lista != null) {
             for (JsonNode s : lista) {
-                if (cfg.openwaSession().equals(s.path("name").asString("")) || cfg.openwaSession().equals(s.path("id").asString(""))) {
+                if (sesion.equals(s.path("name").asString("")) || sesion.equals(s.path("id").asString(""))) {
                     return s;
                 }
             }

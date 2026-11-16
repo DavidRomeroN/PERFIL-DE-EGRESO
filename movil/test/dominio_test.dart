@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:turnoya_movil/aplicacion/casos_de_uso.dart';
 import 'package:turnoya_movil/dominio/codigo_qr.dart';
+import 'package:turnoya_movil/dominio/citas.dart';
 import 'package:turnoya_movil/dominio/modelos.dart';
+import 'package:turnoya_movil/dominio/personal.dart';
 import 'package:turnoya_movil/dominio/puertos.dart';
 import 'package:turnoya_movil/dominio/url_servidor.dart';
 
@@ -404,4 +406,185 @@ void main() {
       expect(const Cuenta(telefono: '+51 9** *** 321').identificador, '+51 9** *** 321');
     });
   });
+}
+
+/// Citas en memoria: una cita activa en «centro» y una sanción vigente.
+class CitasFalsas implements ServicioCitas {
+  String? presenciaRecibida;
+  final reservadas = <int>[];
+
+  @override
+  Future<List<LocalConCitas>> localesConCitas() async => const [
+        LocalConCitas(slug: 'centro', nombre: 'Centro', rubro: 'Salud', ciudad: 'Juliaca', servicios: 1),
+        LocalConCitas(slug: 'dental-sonrisa', nombre: 'Dental Sonrisa', rubro: 'Salud', ciudad: 'Juliaca', servicios: 2),
+      ];
+
+  @override
+  Future<OfertaCitas> ofertaCitas(String slug) async => const OfertaCitas(
+      disponible: true, local: 'Centro', color: '#2563eb', servicios: [ServicioCita(id: 1, nombre: 'Consulta', duracionMin: 15, diasMax: 7)]);
+
+  @override
+  Future<List<DiaCita>> diasCita(String slug, int servicioId) async => const [DiaCita(fecha: '2026-11-16', abierto: true, libres: 3)];
+
+  @override
+  Future<List<HorarioCita>> horariosCita(String slug, int servicioId, String fecha) async =>
+      const [HorarioCita(id: 9, hora: '09:00', restantes: 1, disponible: true)];
+
+  @override
+  Future<MisCitas> misCitas(String sesion) async => const MisCitas([
+        Cita(
+            token: 'cita-1',
+            estado: EstadoCita.reservada,
+            inicio: null,
+            inicioTexto: 'lunes, 16 de noviembre, 09:00',
+            localSlug: 'centro',
+            local: 'Centro',
+            servicio: 'Consulta',
+            codigo: 'ABC123',
+            activa: true),
+      ], [
+        Sancion(local: 'Otro local', hastaTexto: '17/11 a las 10:00', motivo: 'No se presentó a su cita: sin citas por 1 día'),
+      ]);
+
+  @override
+  Future<void> reservarCita(String sesion, {required String slug, required int servicioId, required int horarioId}) async =>
+      reservadas.add(horarioId);
+
+  @override
+  Future<void> cancelarCita(String sesion, String token) async {}
+
+  @override
+  Future<LlegadaCita> checkinCita(String sesion, String token, String presencia) async {
+    presenciaRecibida = presencia;
+    return const LlegadaCita(turnoToken: 'turno-cita', codigo: 'C-001', tarde: false);
+  }
+}
+
+class PersonalEnMemoria implements AlmacenPersonal {
+  SesionPersonal? sesion;
+
+  @override
+  Future<SesionPersonal?> leerPersonal() async => sesion;
+
+  @override
+  Future<void> guardarPersonal(SesionPersonal s) async => sesion = s;
+
+  @override
+  Future<void> borrarPersonal() async => sesion = null;
+}
+
+/// API del personal en memoria: un consultorio con una ventanilla (o dos con [dosVentanillas]).
+class PersonalFalso implements ServicioPersonal {
+  PersonalFalso({this.dosVentanillas = false, this.rol = 'OPERADOR'});
+
+  final bool dosVentanillas;
+  final String rol;
+  final llamadas = <int>[];
+  final marcados = <String>[];
+  Map<String, Object?>? ticket;
+  var vencida = false;
+
+  @override
+  Future<SesionPersonal> ingresarPersonal(String correo, String clave) async {
+    if (clave != 'operador123') throw const ErrorTurno('CREDENCIALES_INVALIDAS', 'Correo o contraseña incorrectos');
+    return SesionPersonal(token: 'jwt.de.prueba', nombre: 'Dra. Ríos', rol: rol, local: 'Dental Sonrisa');
+  }
+
+  @override
+  Future<PanelPersonal> panel(String token) async {
+    if (vencida) throw const ErrorTurno('NO_AUTENTICADO', 'Inicia sesión para continuar');
+    return PanelPersonal(
+      usuario: 'Dra. Ríos',
+      esAdmin: rol == 'ADMIN_LOCAL',
+      local: 'Dental Sonrisa',
+      slug: 'dental-sonrisa',
+      whatsapp: true,
+      ventanillas: [
+        const VentanillaPersonal(
+            id: 1, nombre: 'Consultorio 1', colaId: 10, cola: 'Dra. Ríos', prefijo: 'R', enEspera: 2,
+            siguientes: [TurnoPersonal(id: 5, codigo: 'R-002', nombre: 'Ana', canal: 'TICKET')]),
+        if (dosVentanillas)
+          const VentanillaPersonal(id: 2, nombre: 'Consultorio 2', colaId: 11, cola: 'Dr. Paredes', prefijo: 'P', enEspera: 0),
+      ],
+      colasTicket: [
+        const ColaTicket(id: 10, nombre: 'Dra. Ríos', prefijo: 'R'),
+        if (dosVentanillas) const ColaTicket(id: 11, nombre: 'Dr. Paredes', prefijo: 'P'),
+      ],
+    );
+  }
+
+  @override
+  Future<TurnoPersonal?> llamarSiguiente(String token, int ventanillaId) async {
+    llamadas.add(ventanillaId);
+    return const TurnoPersonal(id: 5, codigo: 'R-002', canal: 'TICKET');
+  }
+
+  @override
+  Future<void> marcarTurno(String token, int turnoId, String estado) async => marcados.add('$turnoId:$estado');
+
+  @override
+  Future<TicketEmitido> emitirTicket(String token, {required int colaId, String? nombre, String? telefono, bool consentimiento = false}) async {
+    ticket = {'colaId': colaId, 'nombre': nombre, 'telefono': telefono, 'consentimiento': consentimiento};
+    return const TicketEmitido(codigo: 'R-003', token: 'tk');
+  }
+
+  @override
+  Future<PanelKiosco> panelKiosco(String token) async => PanelKiosco(
+        usuario: 'Recepción',
+        local: 'Dental Sonrisa',
+        slug: 'dental-sonrisa',
+        whatsapp: true,
+        puedeTransferir: true,
+        colas: const [
+          ColaKiosco(id: 10, nombre: 'Dra. Ríos', prefijo: 'R', enEspera: 1, tiempoEstimadoSeg: 300),
+          ColaKiosco(id: 11, nombre: 'Dr. Paredes', prefijo: 'P', enEspera: 0),
+        ],
+        espera: [
+          EsperaKiosco(id: 5, codigo: 'R-002', nombre: 'Ana', canal: 'TICKET', emitidoAt: DateTime.now(), colaId: 10, cola: 'Dra. Ríos', prefijo: 'R'),
+        ],
+      );
+
+  @override
+  Future<TicketEmitido> emitirTicketKiosco(String token, {required int colaId, String? nombre, String? telefono, bool consentimiento = false}) async {
+    ticket = {'recepcion': true, 'colaId': colaId, 'nombre': nombre, 'telefono': telefono, 'consentimiento': consentimiento};
+    return const TicketEmitido(codigo: 'R-003', token: 'tk');
+  }
+
+  final transferencias = <String>[];
+
+  @override
+  Future<String> transferir(String token, int turnoId, int aColaId) async {
+    transferencias.add('$turnoId->$aColaId');
+    return 'P-001';
+  }
+
+  @override
+  Future<List<ColaNegocio>> colas(String token) async =>
+      const [ColaNegocio(id: 10, prefijo: 'R', nombre: 'Dra. Ríos', activa: true, ventanillas: ['Consultorio 1'])];
+
+  @override
+  Future<void> crearCola(String token, {required String prefijo, required String nombre}) async {}
+
+  @override
+  Future<void> activarCola(String token, int id, bool activa) async {}
+
+  @override
+  Future<void> eliminarCola(String token, int id) async {}
+
+  @override
+  Future<List<VentanillaNegocio>> ventanillas(String token) async =>
+      const [VentanillaNegocio(id: 1, nombre: 'Consultorio 1', activa: true, colaId: 10, cola: 'Dra. Ríos')];
+
+  @override
+  Future<void> crearVentanilla(String token, {required String nombre, required int colaId}) async {}
+
+  @override
+  Future<void> editarVentanilla(String token, int id, {String? nombre, bool? activa}) async {}
+
+  @override
+  Future<WhatsAppNegocio> whatsapp(String token) async => const WhatsAppNegocio(configurado: true, estado: 'sin_sesion');
+
+  @override
+  Future<WhatsAppNegocio> accionWhatsapp(String token, String accion, {String? telefono}) async => WhatsAppNegocio(
+      configurado: true, estado: 'qr_ready', numero: '+51951234567', codigo: accion == 'codigo' ? 'ABCD1234' : null);
 }

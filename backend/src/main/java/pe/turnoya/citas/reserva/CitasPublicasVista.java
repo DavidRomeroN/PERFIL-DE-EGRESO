@@ -91,7 +91,11 @@ class CitasPublicasVista {
             flash.addFlashAttribute("error", "Escribe tu nombre (2 a 60 caracteres)");
             return volver + "&slot=" + slotId;
         }
-        if (tel != null && !consentimiento) {
+        if (tel == null) {
+            flash.addFlashAttribute("error", "Escribe tu celular: con él confirmamos tu cita y te enviamos recordatorios");
+            return volver + "&slot=" + slotId;
+        }
+        if (!consentimiento) {
             flash.addFlashAttribute("error", "Para usar tu celular acepta el aviso de datos personales");
             return volver + "&slot=" + slotId;
         }
@@ -116,6 +120,9 @@ class CitasPublicasVista {
         modelo.addAttribute("cita", cita);
         modelo.addAttribute("activa", cita.estado().name().equals("RESERVADA") || cita.estado().name().equals("CONFIRMADA"));
         modelo.addAttribute("qr", qr.svg(cita.urlQr(), 180));
+        if (cita.estado().name().equals("NO_SHOW")) {
+            reservas.sancionDe(token).ifPresent(h -> modelo.addAttribute("sancionHasta", h));
+        }
         if (Boolean.TRUE.equals(cita.puedeCancelar()) && fecha != null && fecha.matches("\\d{4}-\\d{2}-\\d{2}")) {
             try {
                 Local local = disponibilidad.localPublico(cita.local().slug());

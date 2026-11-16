@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'tema.dart';
 
 import '../dominio/modelos.dart';
 import 'dependencias.dart';
@@ -91,12 +92,9 @@ class _PantallaMiTurnoState extends State<PantallaMiTurno> {
           padding: const EdgeInsets.all(20),
           children: [
             if (_sinConexion)
-              const Card(
-                color: Color(0xFFFFF3CD),
-                child: ListTile(leading: Icon(Icons.wifi_off), title: Text('Sin conexión. Reintentando…')),
-              ),
+              const AvisoTarjeta(tono: TonoAviso.alerta, icono: Icons.wifi_off, titulo: 'Sin conexión. Reintentando…'),
             Card(
-              color: llamado ? Colors.green.shade600 : null,
+              color: llamado ? ColoresTurnoYa.exito : null,
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(

@@ -68,6 +68,16 @@ public class TomaDeTurnos {
     }
 
     /** M6 · Transfiere el turno a otra cola del local conservando su lugar. Corre en la transacción de quien llama. */
+    /** Ticket impreso desde el panel de kiosco del personal (cualquier cola del local). */
+    public TurnoPublico ticketDeRecepcion(int localId, int colaId, String nombre, String categoria) {
+        return ticketDeRecepcion(localId, colaId, nombre, categoria, null, false);
+    }
+
+    /** Con celular y su permiso, el cliente recibe la confirmación y el llamado por WhatsApp. */
+    public TurnoPublico ticketDeRecepcion(int localId, int colaId, String nombre, String categoria, String telefono, boolean consentimiento) {
+        return emision.emitirTicket(localId, colaId, nombre, categoria, telefono, consentimiento);
+    }
+
     public TurnoTransferido transferir(int localId, int turnoId, int aColaId) {
         var r = emision.transferir(localId, turnoId, aColaId);
         return new TurnoTransferido(r.origenId(), r.origenCodigo(), r.deColaId(), r.sucesorId(), r.sucesorCodigo(), r.sucesorToken(), r.aColaId(),

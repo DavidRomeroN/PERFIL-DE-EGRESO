@@ -376,3 +376,27 @@
   opacity: 1;
   cursor: not-allowed;
 }
+
+/* Operador con una sola ventanilla: se muestra su nombre en lugar del selector */
+.ventanilla-unica { font-weight: 600; font-size: .9rem; padding: .35rem .75rem; border: 1px solid var(--borde); border-radius: var(--radio-lg); }
+
+/* Panel de kiosco (recepción): botones grandes por cola para emitir tickets */
+.panel-kiosco { grid-template-columns: 1fr; }
+.encabezado-seccion { margin-bottom: .75rem; }
+.titulo-seccion { font-size: 1.15rem; font-weight: 600; }
+.colas-kiosco { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .75rem; }
+.cola-kiosco {
+  display: flex; align-items: center; gap: .9rem; width: 100%; padding: 1rem; text-align: left;
+  border: 1px solid var(--borde); border-radius: var(--radio-lg); background: var(--tarjeta); color: inherit;
+  cursor: pointer; font: inherit; transition: border-color 150ms, box-shadow 150ms, transform 150ms;
+}
+.cola-kiosco:hover, .cola-kiosco:focus-visible { border-color: var(--local); box-shadow: 0 4px 14px color-mix(in oklch, var(--local) 18%, transparent); }
+.cola-kiosco:active { transform: scale(.98); }
+.cola-kiosco-prefijo {
+  display: grid; place-items: center; flex: none; width: 3rem; height: 3rem; border-radius: var(--radio-lg);
+  background: var(--local); color: #fff; font-size: 1.35rem; font-weight: 700;
+}
+.cola-kiosco-texto { display: flex; flex-direction: column; gap: .15rem; min-width: 0; flex: 1; }
+.cola-kiosco-texto strong { font-size: 1rem; }
+.cola-kiosco-texto span { font-size: .82rem; color: var(--apagado-texto); }
+.cola-kiosco-accion { font-size: 1.3rem; opacity: .7; }

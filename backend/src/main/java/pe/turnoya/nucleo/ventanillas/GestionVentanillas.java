@@ -21,7 +21,11 @@ import pe.turnoya.plataforma.CatalogoLocales;
 import pe.turnoya.plataforma.Local;
 import pe.turnoya.plataforma.Plan;
 
-/** Administración de ventanillas del local. Respeta el máximo de ventanillas del plan (RN05). */
+/**
+ * Administración de ventanillas del local. Respeta el máximo de ventanillas del plan (RN05). Regla simple: cada cola
+ * tiene una sola ventanilla activa y cada ventanilla atiende una sola cola. Quién llama en cada ventanilla se decide
+ * en Usuarios (un operador puede tener una, varias o todas).
+ */
 @Service
 public class GestionVentanillas {
 
@@ -56,8 +60,9 @@ public class GestionVentanillas {
         if (ventanillas.contar(localId) >= plan.maxVentanillas()) {
             throw new ErrorNegocio("LIMITE_PLAN", "Tu plan " + plan.nombre() + " permite hasta " + plan.maxVentanillas() + " ventanilla(s).", 402);
         }
-        validarCola(localId, datos.colaId());
-        int id = ventanillas.crear(localId, datos.nombre().trim(), datos.colaId(), datos.activa() == null || datos.activa());
+        boolean activa = datos.activa() == null || datos.activa();
+        validarCola(localId, datos.colaId(), activa, null);
+        int id = ventanillas.crear(localId, datos.nombre().trim(), datos.colaId(), activa);
         Ventanilla v = ventanillas.porIdEnLocal(id, localId).orElseThrow();
         auditoria.registrar(actor, localId, "CREAR", "ventanilla", id, "Creó la ventanilla " + v.nombre(), datos);
         eventos.publishEvent(new ColaActualizada(localId, null));
@@ -67,10 +72,11 @@ public class GestionVentanillas {
     @Transactional
     public Ventanilla editar(int localId, int ventanillaId, CambiosVentanilla cambios, Auditoria.Actor actor) {
         Ventanilla v = exigir(localId, ventanillaId);
-        Integer colaId = cambios.colaId() != null ? cambios.colaId().orElse(null) : v.colaId();
-        validarCola(localId, colaId);
-        Ventanilla nueva = new Ventanilla(v.id(), v.localId(), cambios.nombre() != null ? cambios.nombre().trim() : v.nombre(), colaId,
-                cambios.activa() != null ? cambios.activa() : v.activa());
+        // Ausente (Jackson lo entrega como Optional vacío) = sin cambio: una ventanilla ya no puede quedarse sin cola
+        Integer colaId = cambios.colaId() != null && cambios.colaId().isPresent() ? cambios.colaId().get() : v.colaId();
+        boolean activa = cambios.activa() != null ? cambios.activa() : v.activa();
+        validarCola(localId, colaId, activa, v.id());
+        Ventanilla nueva = new Ventanilla(v.id(), v.localId(), cambios.nombre() != null ? cambios.nombre().trim() : v.nombre(), colaId, activa);
         ventanillas.actualizar(nueva);
         auditoria.registrar(actor, localId, "EDITAR", "ventanilla", ventanillaId, "Editó la ventanilla " + nueva.nombre(), cambios);
         eventos.publishEvent(new ColaActualizada(localId, null));
@@ -98,9 +104,24 @@ public class GestionVentanillas {
                 .orElseThrow(() -> ErrorNegocio.noEncontrado("NO_ENCONTRADO", "Ventanilla no encontrada"));
     }
 
-    private void validarCola(int localId, Integer colaId) {
-        if (colaId != null && colas.porIdEnLocal(colaId, localId).isEmpty()) {
-            throw new ErrorNegocio("VALIDACION", "La cola no pertenece a este local", 422);
+    /** Una ventanilla activa atiende exactamente una cola, y esa cola no puede tener otra ventanilla activa. */
+    private void validarCola(int localId, Integer colaId, boolean activa, Integer exceptoId) {
+        if (colaId == null) {
+            if (activa) {
+                throw new ErrorNegocio("VALIDACION", "Elige la cola que atiende esta ventanilla", 422);
+            }
+            return;
+        }
+        Cola cola = colas.porIdEnLocal(colaId, localId)
+                .orElseThrow(() -> new ErrorNegocio("VALIDACION", "La cola no pertenece a este local", 422));
+        if (activa) {
+            ventanillas.activasDelLocal(localId).stream()
+                    .filter(o -> Objects.equals(o.colaId(), colaId) && !Objects.equals(o.id(), exceptoId))
+                    .findFirst()
+                    .ifPresent(o -> {
+                        throw ErrorNegocio.conflicto("COLA_CON_VENTANILLA", "La cola " + cola.nombre() + " ya tiene la ventanilla "
+                                + o.nombre() + ". Cada cola tiene una sola ventanilla.");
+                    });
         }
     }
 
@@ -116,7 +137,7 @@ public class GestionVentanillas {
             Boolean activa) {
     }
 
-    /** {@code colaId} ausente = sin cambio; presente y nulo = atiende todas las colas. */
+    /** {@code colaId} ausente = sin cambio (ya no se admite una ventanilla activa sin cola). */
     public record CambiosVentanilla(
             @Size(min = 2, max = 40, message = "Mínimo 2 caracteres") String nombre,
             Optional<@Positive Integer> colaId,

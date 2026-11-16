@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head th:replace="~{fragmentos/base :: cabeza('Fila virtual y turnos')}"></head>
-<body class="pagina-inicio" th:with="nombreDemo=${demo != null} ? ${demo.nombreComercial} : 'Policlínico San Román'">
+<body class="pagina-inicio">
 
 <header class="inicio-nav">
   <div class="inicio-nav-contenido">
     <a th:replace="~{fragmentos/base :: logo('/', false)}"></a>
     <nav aria-label="Secciones" class="inicio-nav-enlaces">
       <a href="#como-funciona">Cómo funciona</a>
-      <a href="#demo">Demo</a>
+      <a href="#negocios">Negocios</a>
       <a href="#precios">Precios</a>
     </nav>
     <div class="inicio-nav-acciones">
       <a class="boton boton-fantasma boton-pequeno solo-escritorio"
-         th:href="${sesion != null} ? (${sesion.esAdmin()} ? @{/admin} : @{/panel}) : @{/login}"
+         th:href="${sesion != null} ? @{${sesion.inicio()}} : @{/login}"
          th:text="${sesion != null} ? 'Ir a mi panel' : 'Ingresar'">Ingresar</a>
-      <a th:if="${demo != null}" class="boton boton-pequeno" th:href="@{/l/{s}(s=${demo.slug})}">Probar demo →</a>
+      <a class="boton boton-pequeno" th:href="@{/registro}">Crear mi local →</a>
     </div>
   </div>
 </header>
@@ -28,7 +28,7 @@
       <span class="linea"><span style="--i:1" class="acento">quieras.</span></span>
     </h1>
     <div class="ticket-vivo" aria-hidden="true">
-      <p class="ticket-vivo-local" th:text="${nombreDemo}">Policlínico San Román</p>
+      <p class="ticket-vivo-local">Tu local</p>
       <p class="ticket-vivo-etiqueta">Tu turno</p>
       <p class="ticket-vivo-codigo">B-011</p>
       <div class="ticket-vivo-filas">
@@ -41,7 +41,10 @@
     <div class="inicio-flancos">
       <div>
         <p>El cliente escanea un QR, sigue su turno en el celular y recibe un WhatsApp cuando faltan dos personas.</p>
-        <a th:if="${demo != null}" class="boton" th:href="@{/l/{s}(s=${demo.slug})}">Tomar un turno de prueba</a>
+        <div class="inicio-flanco-acciones">
+          <a class="boton" th:href="@{/registro}">Crear mi local</a>
+          <a class="boton boton-fantasma" href="#precios">Ver planes</a>
+        </div>
       </div>
       <div class="inicio-flanco-derecho">
         <p class="fuerte" th:text="${gratis != null} ? 'Gratis hasta ' + ${#numbers.formatInteger(gratis.maxTurnosMes, 1, 'COMMA')} + ' turnos al mes' : 'Empieza gratis'">Empieza gratis</p>
@@ -80,7 +83,7 @@
         <summary>Recibe el aviso</summary>
         <div class="paso-cuerpo">
           <p>Cuando faltan dos personas le llega un WhatsApp automático con su número y el enlace para seguirlo.</p>
-          <div class="paso-pieza"><p class="pieza-whatsapp">Hola Lucía, tu turno <b>B-011</b> en <b th:text="${nombreDemo}">Policlínico</b> está por llegar: faltan 2 personas. <small>11:06 ✓✓</small></p></div>
+          <div class="paso-pieza"><p class="pieza-whatsapp">Hola Lucía, tu turno <b>B-011</b> en <b>tu local</b> está por llegar: faltan 2 personas. <small>11:06 ✓✓</small></p></div>
         </div>
       </details>
       <details name="paso" class="paso paso-4">
@@ -108,37 +111,33 @@
     </div>
   </section>
 
-  <!-- Demo: tablero de salidas -->
-  <section id="demo" class="inicio-demo">
+  <!-- Para qué negocio: lo que cada plan resuelve en la práctica -->
+  <section id="negocios" class="inicio-negocios">
     <div class="inicio-seccion">
       <div class="inicio-titulo">
-        <h2>Pruébalo ahora</h2>
-        <p>Abre la pantalla TV en una pestaña, toma un turno desde el celular y llámalo desde el panel. Son datos de prueba, todo se actualiza en vivo.</p>
+        <h2>Hecho para tu negocio</h2>
+        <p>Desde la peluquería que atiende sola con el celular hasta el policlínico con varias ventanillas y pantalla en la sala.</p>
       </div>
-      <div class="tablero-salidas">
-        <div class="tablero-cabecera"><span>Local</span><span>Rubro</span><span>Dirección</span><span>Acceso</span></div>
-        <ul>
-          <li th:each="l : ${locales}">
-            <span class="tablero-local"><i th:style="'background:' + ${l.colorPrimario} + ';box-shadow:0 0 12px ' + ${l.colorPrimario}"></i><span th:text="${l.nombreComercial}">Local</span></span>
-            <span class="tablero-dato" th:text="${l.rubro}">Salud</span>
-            <span class="tablero-dato" th:text="${l.direccion} ?: '—'">Dirección</span>
-            <span class="tablero-acciones">
-              <a class="boton boton-pequeno boton-claro" th:href="@{/l/{s}(s=${l.slug})}">Tomar turno</a>
-              <a class="boton boton-pequeno boton-contorno-claro" target="_blank" rel="noopener" th:href="@{/l/{s}/tv(s=${l.slug})}">TV</a>
-            </span>
-          </li>
-        </ul>
-        <p class="tablero-pie"><span class="punto-vivo"></span><span th:text="${#numbers.formatInteger(totalTurnos, 1, 'COMMA')} + ' turnos registrados en la demo'">0 turnos</span></p>
+      <div class="negocios">
+        <article class="negocio">
+          <p class="negocio-plan">Gratis</p>
+          <h3>Atiendes sola o solo</h3>
+          <p>Un salón de belleza o una barbería: una cola, sin TV ni computadora. Llamas a tus clientes desde la app del celular y les llega el aviso por WhatsApp.</p>
+        </article>
+        <article class="negocio">
+          <p class="negocio-plan">Emprende</p>
+          <h3>Un consultorio, dos médicos</h3>
+          <p>Cada profesional con su cola y su cuenta. Citas con hora y check-in al llegar, atención preferente y el WhatsApp del propio negocio.</p>
+        </article>
+        <article class="negocio">
+          <p class="negocio-plan">Pro</p>
+          <h3>Mucha gente, varias ventanillas</h3>
+          <p>Policlínicos, municipalidades y agencias: pantalla TV, kiosco en recepción, transferencias entre colas, predicción de espera y analítica.</p>
+        </article>
       </div>
-
-      <h3 class="cuentas-titulo">Cuentas de demostración</h3>
-      <p class="cuentas-subtitulo">Entra al panel o a la administración con un clic.</p>
-      <div class="cuentas-demo">
-        <a th:each="c : ${cuentas}" class="cuenta-demo" th:href="@{/login(next=${c[3]},email=${c[1]})}">
-          <span class="cuenta-rol"><span th:text="${c[0]}">Rol</span><span aria-hidden="true">↗</span></span>
-          <span class="cuenta-dato" th:text="${c[1]}">correo</span>
-          <span class="cuenta-dato" th:text="${c[2]}">clave</span>
-        </a>
+      <div class="negocios-pie">
+        <p>El personal atiende desde la web o desde la app móvil; los clientes no instalan nada.</p>
+        <a class="boton boton-grande boton-claro" th:href="@{/registro}">Crear mi local →</a>
       </div>
     </div>
   </section>
@@ -184,12 +183,11 @@
   <div class="inicio-pie-contenido">
     <div>
       <p class="inicio-pie-lema">Tu sala de espera,<br>sin fila.</p>
-      <a class="boton boton-grande boton-claro" th:href="@{/registro}">Crear mi local →</a>
     </div>
     <nav aria-label="Enlaces" class="inicio-pie-enlaces">
+      <a th:href="@{/registro}">Crear mi local</a>
       <a th:href="@{/login}">Ingresar</a>
-      <a th:if="${demo != null}" th:href="@{/l/{s}(s=${demo.slug})}">Tomar un turno</a>
-      <a th:if="${demo != null}" target="_blank" rel="noopener" th:href="@{/l/{s}/tv(s=${demo.slug})}">Pantalla TV</a>
+      <a href="#como-funciona">Cómo funciona</a>
       <a href="#precios">Precios</a>
     </nav>
     <div class="inicio-pie-creditos">

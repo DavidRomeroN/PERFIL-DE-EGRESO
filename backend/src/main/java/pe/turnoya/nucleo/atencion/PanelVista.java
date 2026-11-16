@@ -31,6 +31,8 @@ import pe.turnoya.plataforma.SoloPersonal;
 /**
  * Panel de ventanilla (RF05, RF06, RF07). Cada acción devuelve el panel actualizado (htmx lo reemplaza) y un aviso;
  * el resto de cambios llega por SSE. La ventanilla elegida se recuerda en una cookie del dispositivo.
+ *
+ * <p>Un operador solo ve, llama y emite tickets en las ventanillas que le asignó el administrador ({@link AccesoVentanillas}).
  */
 @Controller
 @SoloPersonal
@@ -42,12 +44,14 @@ class PanelVista {
     private final OperacionVentanilla operacion;
     private final EmisionTurnos emision;
     private final CatalogoLocales locales;
+    private final AccesoVentanillas acceso;
 
-    PanelVista(ConsultaTurnos consulta, OperacionVentanilla operacion, EmisionTurnos emision, CatalogoLocales locales) {
+    PanelVista(ConsultaTurnos consulta, OperacionVentanilla operacion, EmisionTurnos emision, CatalogoLocales locales, AccesoVentanillas acceso) {
         this.consulta = consulta;
         this.operacion = operacion;
         this.emision = emision;
         this.locales = locales;
+        this.acceso = acceso;
     }
 
     @GetMapping("/panel")
@@ -75,13 +79,14 @@ class PanelVista {
     String llamar(@AuthenticationPrincipal Sesion sesion, @RequestParam(required = false) String slug, @RequestParam int ventanilla,
                   @RequestParam(required = false) Integer vista, HttpServletRequest peticion, HttpServletResponse respuesta, Model modelo) {
         Local local = LocalDelPanel.resolver(sesion, slug, locales);
+        acceso.exigirVentanilla(sesion, ventanilla);
         Optional<TurnoPublico> llamado = operacion.llamarSiguiente(ventanilla, local.id(), Auditoria.Actor.de(sesion, peticion));
         if (llamado.isPresent()) {
             Htmx.aviso(respuesta, Htmx.Tipo.EXITO, "Llamando a " + llamado.get().codigo(), Map.of("sonido", true));
         } else {
             Htmx.aviso(respuesta, Htmx.Tipo.INFO, "No hay turnos en espera");
         }
-        // Desde "Todas las ventanillas" se llama en una ventanilla pero se vuelve a la vista completa
+        // Desde "Mis ventanillas" se llama en una ventanilla pero se vuelve a la vista completa
         return fragmentoOPanel(sesion, local, vista != null ? vista : Integer.valueOf(ventanilla), peticion, modelo);
     }
 
@@ -93,6 +98,7 @@ class PanelVista {
         if (estado != EstadoTurno.LLAMADO && estado != EstadoTurno.ATENDIDO && estado != EstadoTurno.NO_SE_PRESENTO) {
             throw new ErrorNegocio("VALIDACION", "Acción no válida desde el panel", 422);
         }
+        acceso.exigirTurno(sesion, local.id(), id);
         operacion.cambiarEstado(id, local.id(), estado, Auditoria.Actor.de(sesion, peticion));
         switch (estado) {
             case LLAMADO -> Htmx.aviso(respuesta, Htmx.Tipo.EXITO, "Rellamando…", Map.of("sonido", true));
@@ -106,9 +112,12 @@ class PanelVista {
     @PostMapping("/panel/ticket")
     String ticket(@AuthenticationPrincipal Sesion sesion, @RequestParam(required = false) String slug, @RequestParam int colaId,
                   @RequestParam(required = false) String nombre, @RequestParam(required = false) Integer ventanilla,
+                  @RequestParam(required = false) String telefono, @RequestParam(defaultValue = "false") boolean consentimiento,
                   HttpServletRequest peticion, HttpServletResponse respuesta, Model modelo) {
         Local local = LocalDelPanel.resolver(sesion, slug, locales);
-        TurnoPublico t = emision.emitirTicket(local.id(), colaId, nombre == null || nombre.isBlank() ? null : nombre.trim(), null);
+        acceso.exigirCola(sesion, local.id(), colaId);
+        TurnoPublico t = emision.emitirTicket(local.id(), colaId, nombre == null || nombre.isBlank() ? null : nombre.trim(), null, telefono,
+                consentimiento);
         Htmx.aviso(respuesta, Htmx.Tipo.EXITO, "Ticket " + t.codigo() + " emitido", Map.of("abrirVentana", "/ticket/" + t.token()));
         return fragmentoOPanel(sesion, local, ventanilla, peticion, modelo);
     }
@@ -126,7 +135,7 @@ class PanelVista {
         List<PanelModelo.OpcionLocal> opciones = sesion.esSuperAdmin()
                 ? locales.activos().stream().map(l -> new PanelModelo.OpcionLocal(l.slug(), l.nombreComercial())).toList()
                 : List.of();
-        modelo.addAttribute("p", PanelModelo.de(consulta.snapshot(local, true), ventanilla, opciones));
+        modelo.addAttribute("p", PanelModelo.de(consulta.snapshot(local, true), ventanilla, opciones, acceso.permitidas(sesion)));
     }
 
     private static Optional<Integer> recordada(HttpServletRequest peticion, String slug) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../dominio/modelos.dart';
 import 'dependencias.dart';
+import 'pantalla_negocio.dart';
 import 'pantalla_escaner.dart';
 import 'pantalla_local.dart';
 import 'pantalla_mi_turno.dart';
@@ -122,6 +123,13 @@ class _PantallaInicioState extends State<PantallaInicio> {
                 ],
                 const SizedBox(height: 16),
                 const _ComoFunciona(),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (contexto) => PantallaNegocio(alSalir: () => Navigator.of(contexto).pop()))),
+                  icon: const Icon(Icons.storefront_outlined),
+                  label: const Text('¿Atiendes un negocio? Ingresa aquí'),
+                ),
               ],
             ),
           ),

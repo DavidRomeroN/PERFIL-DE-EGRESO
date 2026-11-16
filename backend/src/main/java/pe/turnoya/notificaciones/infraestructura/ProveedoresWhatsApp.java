@@ -109,19 +109,24 @@ class ProveedoresWhatsApp {
 
         @Override
         public Resultado enviar(String telefono, String plantilla, List<String> parametros, String texto) {
+            return enviarDesde(cfg.openwaSession(), telefono, plantilla, parametros, texto);
+        }
+
+        @Override
+        public Resultado enviarDesde(String nombreSesion, String telefono, String plantilla, List<String> parametros, String texto) {
             try {
                 JsonNode sesiones = http.get().uri("/sessions").retrieve().body(JsonNode.class);
                 JsonNode lista = sesiones != null && sesiones.has("data") ? sesiones.get("data") : sesiones;
                 JsonNode sesion = null;
                 if (lista != null) {
                     for (JsonNode s : lista) {
-                        if (cfg.openwaSession().equals(s.path("name").asString("")) || cfg.openwaSession().equals(s.path("id").asString(""))) {
+                        if (nombreSesion.equals(s.path("name").asString("")) || nombreSesion.equals(s.path("id").asString(""))) {
                             sesion = s;
                         }
                     }
                 }
                 if (sesion == null) {
-                    return Resultado.fallo("La sesión \"" + cfg.openwaSession() + "\" no existe en OpenWA");
+                    return Resultado.fallo("La sesión \"" + nombreSesion + "\" no existe en OpenWA: vincula el número del negocio");
                 }
                 if (!"ready".equals(sesion.path("status").asString(""))) {
                     return Resultado.fallo("La sesión de WhatsApp no está conectada (estado: " + sesion.path("status").asString("") + ")");

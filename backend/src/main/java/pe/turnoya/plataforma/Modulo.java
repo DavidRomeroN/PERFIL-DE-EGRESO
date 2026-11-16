@@ -6,7 +6,7 @@ public enum Modulo {
     M2("Predicción de espera", "Le dice al cliente cuánto le falta y a qué hora conviene venir", "/admin/modulos/prediccion"),
     M3("Citas y reservas", "El cliente reserva su hora y confirma su llegada con el QR del local", "/admin/modulos/citas"),
     M5("Kiosco offline", "Pantalla táctil para sacar turno sin celular, aunque se caiga internet", "/admin/modulos/kiosco"),
-    M6("Transferencia y balanceo", "Pasar clientes de una cola a otra y repartir la carga cuando una se llena", "/admin/modulos/balanceo"),
+    M6("Transferencias", "Pasar a un cliente de una cola a otra sin que pierda su lugar", "/admin/modulos/transferencias"),
     M7("Analítica y SLA", "Horas más llenas, cumplimiento de tu meta de espera, alertas y reportes", "/admin/analitica"),
     M8("Simulador de capacidad", "Calcula cuántas ventanillas necesitas para que nadie espere de más", "/admin/simulador");
 

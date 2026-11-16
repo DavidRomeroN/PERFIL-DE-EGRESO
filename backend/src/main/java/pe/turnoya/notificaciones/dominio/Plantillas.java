@@ -6,6 +6,7 @@ public final class Plantillas {
     public static final String TURNO_PROXIMO = "turno_proximo";
     public static final String TURNO_LLAMADO = "turno_llamado";
     public static final String TURNO_VENCIDO = "turno_vencido";
+    public static final String TURNO_EMITIDO = "turno_emitido";
 
     private Plantillas() {
     }
@@ -15,6 +16,12 @@ public final class Plantillas {
         String cuantos = faltan <= 0 ? "ya casi es tu turno" : faltan == 1 ? "falta 1 persona" : "faltan " + faltan + " personas";
         return saludo + ", tu turno *" + codigo + "* en *" + local + "* está por llegar: " + cuantos
                 + ". Acércate a la sala. Sigue tu turno aquí: " + url;
+    }
+
+    public static String turnoEmitido(String nombre, String codigo, String local, String url) {
+        String saludo = nombre != null && !nombre.isBlank() ? "Hola " + nombre.trim().split(" ")[0] + " 👋" : "Hola 👋";
+        return saludo + ", tu turno en *" + local + "* es el *" + codigo + "*. Te escribiremos por aquí cuando sea tu turno; "
+                + "no necesitas descargar nada. Síguelo en vivo: " + url;
     }
 
     public static String turnoLlamado(String codigo, String ventanilla, String local) {

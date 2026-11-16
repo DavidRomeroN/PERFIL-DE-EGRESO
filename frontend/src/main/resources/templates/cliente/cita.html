@@ -15,6 +15,13 @@
     <p class="cita-fecha" th:text="${cita.inicioLocal}">lunes, 3 de noviembre, 09:00</p>
     <p><span class="insignia" th:classappend="'cita-' + ${cita.estado}" th:text="${cita.estado.name() == 'RESERVADA'} ? 'Reservada' : (${cita.estado.name() == 'CONFIRMADA'} ? 'Confirmada' : (${cita.estado.name() == 'CHECKIN'} ? 'Ya llegaste' : (${cita.estado.name() == 'ATENDIDA'} ? 'Atendida' : (${cita.estado.name() == 'NO_SHOW'} ? 'No asististe' : 'Cancelada'))))">Reservada</span></p>
 
+    <div th:if="${sancionHasta != null}" class="alerta alerta-aviso" role="status">
+      <div>
+      <p><strong>No te presentaste a esta cita.</strong></p>
+      <p th:text="'No podrás reservar en este local hasta el ' + ${sancionHasta} + '. Si vuelves a faltar, la espera será más larga (3, 7, 15 y hasta 30 días). Al asistir a una cita se borra el historial.'">No podrás reservar…</p>
+      </div>
+    </div>
+
     <a th:if="${cita.turno != null}" class="boton boton-local boton-grande boton-bloque" th:href="@{/t/{t}(t=${cita.turno.token})}"
        th:text="'Ver mi turno ' + ${cita.turno.codigo}">Ver mi turno</a>
 

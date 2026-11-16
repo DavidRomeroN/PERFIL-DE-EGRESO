@@ -38,7 +38,7 @@
 
 .inicio-flancos { display: grid; gap: 1.5rem; width: 100%; max-width: 80rem; margin-top: 2.5rem; padding: 0 .5rem; }
 .inicio-flancos p { font-size: 1.05rem; line-height: 1.6; color: var(--apagado-texto); }
-.inicio-flancos .boton { margin-top: 1rem; }
+.inicio-flanco-acciones { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
 .inicio-flancos .fuerte { font-weight: 500; color: var(--texto); }
 @media (min-width: 64rem) {
   .inicio-flancos { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); grid-template-columns: 300px 300px; justify-content: space-between; padding: 0 1.5rem; margin: 0; }
@@ -99,39 +99,19 @@
 .inicio-incluye-pie p { font-size: 1.1rem; line-height: 1.6; color: var(--apagado-texto); }
 .inicio-incluye-pie .boton { justify-self: start; margin-top: 1.25rem; }
 
-/* Demo */
-.inicio-demo { background: #020617; color: #fff; }
-.inicio-demo .inicio-titulo p { color: rgba(255,255,255,.65); }
-.tablero-salidas { margin-top: 3.5rem; border-radius: 1.5rem; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); overflow: hidden; }
-.tablero-cabecera { display: none; padding: .75rem 1.5rem; font-size: .8rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: rgba(252,211,77,.8); }
-.tablero-salidas li, .tablero-cabecera { gap: 1.5rem; }
-@media (min-width: 48rem) {
-  .tablero-cabecera, .tablero-salidas li { display: grid; grid-template-columns: 2fr 1fr 2fr 260px; align-items: center; }
-}
-.tablero-salidas li { display: grid; gap: .75rem; padding: 1.25rem 1.5rem; border-top: 1px solid rgba(255,255,255,.1); transition: background-color 200ms; }
-.tablero-salidas li:hover { background: rgba(255,255,255,.04); }
-.tablero-local { display: flex; align-items: center; gap: .75rem; font-size: 1.25rem; font-weight: 600; }
-.tablero-local i { width: .6rem; height: .6rem; flex-shrink: 0; border-radius: 50%; }
-.tablero-dato { font-size: .95rem; color: rgba(255,255,255,.6); }
-.tablero-acciones { display: flex; gap: .5rem; }
-.tablero-acciones .boton { flex: 1; }
+/* Para qué negocio: tres tarjetas sobre fondo oscuro */
+.inicio-negocios { background: #020617; color: #fff; }
+.inicio-negocios .inicio-titulo p { color: rgba(255,255,255,.65); }
+.negocios { display: grid; gap: 1rem; margin-top: 3.5rem; }
+@media (min-width: 56rem) { .negocios { grid-template-columns: repeat(3, 1fr); } }
+.negocio { padding: 1.75rem; border-radius: 1.5rem; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.negocio-plan { font-size: .8rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: rgba(252,211,77,.85); }
+.negocio h3 { margin-top: .75rem; font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; }
+.negocio p:last-child { margin-top: .75rem; line-height: 1.6; color: rgba(255,255,255,.65); }
+.negocios-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; margin-top: 2.5rem; }
+.negocios-pie p { max-width: 36rem; color: rgba(255,255,255,.65); }
 .boton.boton-claro { background: #fff; color: #020617; }
 .boton.boton-claro:hover { background: rgba(255,255,255,.9); }
-.boton.boton-contorno-claro { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.2); }
-.boton.boton-contorno-claro:hover { background: rgba(255,255,255,.1); }
-.tablero-pie { display: flex; align-items: center; gap: .5rem; padding: .75rem 1.5rem; border-top: 1px solid rgba(255,255,255,.1); font-size: .8rem; color: rgba(255,255,255,.5); }
-.punto-vivo { width: .5rem; height: .5rem; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: latido 1.8s infinite; }
-@keyframes latido { 70% { box-shadow: 0 0 0 .5rem rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
-.cuentas-titulo { margin-top: 2.5rem; font-size: 1.1rem; font-weight: 600; }
-.cuentas-subtitulo { margin-top: .25rem; font-size: .95rem; color: rgba(255,255,255,.6); }
-.cuentas-demo { display: grid; gap: .75rem; margin-top: 1.25rem; }
-@media (min-width: 40rem) { .cuentas-demo { grid-template-columns: 1fr 1fr; } }
-@media (min-width: 64rem) { .cuentas-demo { grid-template-columns: repeat(4, 1fr); } }
-.cuenta-demo { display: flex; flex-direction: column; padding: 1rem; border-radius: 1rem; background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); transition: background-color 200ms, box-shadow 200ms; }
-.cuenta-demo:hover { background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 1px rgba(45,212,191,.5); }
-.cuenta-rol { display: flex; justify-content: space-between; margin-bottom: .75rem; font-weight: 500; }
-.cuenta-rol span:last-child { color: rgba(255,255,255,.4); }
-.cuenta-dato { overflow: hidden; text-overflow: ellipsis; font-family: var(--fuente-mono); font-size: .8rem; color: rgba(255,255,255,.5); }
 
 /* Precios: boletos */
 .inicio-precios { background: var(--secundario); }
@@ -167,7 +147,6 @@
 .inicio-pie-contenido { display: grid; gap: 2.5rem; max-width: 80rem; margin: 0 auto; padding: 6rem 1.5rem 18vw; }
 @media (min-width: 64rem) { .inicio-pie-contenido { grid-template-columns: 7fr 2fr 3fr; padding-top: 8rem; } .inicio-pie-enlaces { grid-column: 3; } .inicio-pie-creditos { grid-column: 1 / -1; } }
 .inicio-pie-lema { font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 600; line-height: 1; letter-spacing: -0.035em; }
-.inicio-pie .boton { margin-top: 2rem; }
 .boton.boton-claro.boton-grande { color: #042f2e; }
 .inicio-pie-enlaces { display: flex; flex-direction: column; gap: .5rem; }
 .inicio-pie-enlaces a { width: fit-content; color: rgba(204,251,241,.8); transition: color 200ms; }
@@ -177,6 +156,6 @@
 .inicio-pie-marca { position: absolute; left: 50%; bottom: -0.06em; transform: translate(-50%, 30%); margin: 0; font-size: 28vw; font-weight: 700; line-height: 1; letter-spacing: -0.06em; white-space: nowrap; color: #134e4a; pointer-events: none; user-select: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .inicio-hero .linea > span, .ticket-vivo, .ticket-vivo-barra span, .punto-vivo { animation: none; }
+  .inicio-hero .linea > span, .ticket-vivo, .ticket-vivo-barra span { animation: none; }
 }
-.inicio-pie-enlaces a, .cuenta-demo { text-decoration: none; }
+.inicio-pie-enlaces a { text-decoration: none; }

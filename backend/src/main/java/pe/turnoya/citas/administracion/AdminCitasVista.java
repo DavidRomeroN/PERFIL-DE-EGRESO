@@ -90,7 +90,8 @@ class AdminCitasVista {
     String guardarConfig(@AuthenticationPrincipal Sesion sesion, @RequestParam int colaId, @RequestParam(defaultValue = "false") boolean activo,
                          @RequestParam int duracionSlotMin, @RequestParam int cuotaCitasPct, @RequestParam(required = false) Integer capacidadFija,
                          @RequestParam int anticipacionMinMin, @RequestParam int anticipacionMaxDias, @RequestParam int checkinAntesMin,
-                         @RequestParam int checkinDespuesMin, @RequestParam int graciaNoShowMin, @RequestParam int maxNoShow, @RequestParam int bloqueoDias,
+                         @RequestParam int checkinDespuesMin, @RequestParam int graciaNoShowMin, @RequestParam(defaultValue = "1") int maxNoShow,
+                         @RequestParam(defaultValue = "1") int bloqueoDias,
                          @RequestParam int pesoCita, HttpServletRequest peticion, RedirectAttributes flash) {
         int localId = local(sesion, peticion);
         try {

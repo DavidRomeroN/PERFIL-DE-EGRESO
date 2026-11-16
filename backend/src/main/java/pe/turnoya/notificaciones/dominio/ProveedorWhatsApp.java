@@ -12,6 +12,11 @@ public interface ProveedorWhatsApp {
 
     Resultado enviar(String telefonoE164, String plantilla, List<String> parametros, String textoRenderizado);
 
+    /** Envía desde la sesión (número) de un negocio; los proveedores sin sesiones propias la ignoran. */
+    default Resultado enviarDesde(String sesion, String telefonoE164, String plantilla, List<String> parametros, String textoRenderizado) {
+        return enviar(telefonoE164, plantilla, parametros, textoRenderizado);
+    }
+
     record Resultado(boolean ok, String proveedorMsgId, String error) {
 
         public static Resultado exito(String id) {

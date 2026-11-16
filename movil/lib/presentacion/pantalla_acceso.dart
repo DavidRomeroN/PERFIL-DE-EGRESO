@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'tema.dart';
 
 import '../aplicacion/casos_de_uso.dart';
 import '../dominio/modelos.dart';
@@ -146,7 +147,7 @@ class _PantallaAccesoState extends State<PantallaAcceso> {
                   labelText: 'Contraseña',
                   prefixIcon: const Icon(Icons.lock_outline),
                   helperText: _registro ? (problemaClave ?? (_clave.text.isEmpty ? 'Mínimo 8 caracteres, con letras y números' : 'Contraseña segura ✓')) : null,
-                  helperStyle: TextStyle(color: _registro && _clave.text.isNotEmpty ? (problemaClave == null ? Colors.green.shade700 : Colors.orange.shade800) : null),
+                  helperStyle: TextStyle(color: _registro && _clave.text.isNotEmpty ? (problemaClave == null ? ColoresTurnoYa.exito : ColoresTurnoYa.alerta) : null),
                   suffixIcon: IconButton(
                     tooltip: _verClave ? 'Ocultar contraseña' : 'Mostrar contraseña',
                     icon: Icon(_verClave ? Icons.visibility_off : Icons.visibility),

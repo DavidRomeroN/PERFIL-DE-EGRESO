@@ -137,7 +137,7 @@ class _Titulo extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
-        child: Text(texto, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: const Color(0xFF64748B), fontWeight: FontWeight.w700)),
+        child: Text(texto, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: ColoresTurnoYa.neutro, fontWeight: FontWeight.w700)),
       );
 }
 
@@ -150,7 +150,7 @@ class _TarjetaHistorial extends StatelessWidget {
   static Color _color(EstadoTurno e) => switch (e) {
         EstadoTurno.atendido => ColoresTurnoYa.exito,
         EstadoTurno.noSePresento => ColoresTurnoYa.peligro,
-        EstadoTurno.cancelado => const Color(0xFF64748B),
+        EstadoTurno.cancelado => ColoresTurnoYa.neutro,
         EstadoTurno.llamado => ColoresTurnoYa.exito,
         _ => ColoresTurnoYa.primario,
       };
@@ -180,7 +180,7 @@ class _TarjetaHistorial extends StatelessWidget {
                   children: [
                     Text(t.cola, style: const TextStyle(fontWeight: FontWeight.w600)),
                     Text('${t.local}${t.emitidoAt == null ? '' : ' · ${fechaCorta(t.emitidoAt!)}'}',
-                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                        style: const TextStyle(color: ColoresTurnoYa.neutro, fontSize: 13)),
                   ],
                 ),
               ),

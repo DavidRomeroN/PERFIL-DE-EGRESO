@@ -117,9 +117,26 @@ public final class ReglasCitas {
         return dif >= minMin * 60_000L && dif <= maxDias * 86_400_000L;
     }
 
-    /** RN-M3-06: bloqueo por reincidencia. */
-    public static boolean debeBloquear(int noShows90d, int maxNoShow) {
-        return maxNoShow > 0 && noShows90d >= maxNoShow;
+    /**
+     * Sanción por no presentarse, en días sin poder reservar en ese local: 1 día la primera falta, 3 la segunda seguida,
+     * luego 7, 15 y 30 como máximo. Las faltas seguidas vuelven a cero cuando el cliente asiste a una cita o pasan
+     * {@link #MEMORIA_FALTAS_DIAS} días sin faltar.
+     */
+    public static final int[] DIAS_SANCION = {1, 3, 7, 15, 30};
+
+    /** Días que se recuerdan las faltas para escalar la sanción. */
+    public static final int MEMORIA_FALTAS_DIAS = 90;
+
+    public static int diasDeSancion(int faltasSeguidas) {
+        if (faltasSeguidas <= 0) {
+            return 0;
+        }
+        return DIAS_SANCION[Math.min(faltasSeguidas, DIAS_SANCION.length) - 1];
+    }
+
+    /** "1 día", "3 días". */
+    public static String textoDias(int dias) {
+        return dias == 1 ? "1 día" : dias + " días";
     }
 
     // -----------------------------------------------------------------------------------------------------------

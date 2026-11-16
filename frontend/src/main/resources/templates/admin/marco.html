@@ -28,6 +28,7 @@
     <p class="menu-admin-grupo">Operación</p>
     <a th:href="@{/admin}" th:attr="aria-current=${seccion == 'dashboard'} ? 'page'">Dashboard</a>
     <a th:href="@{/panel}">Panel de ventanilla</a>
+    <a th:href="@{/panel-kiosco}">Panel de kiosco</a>
     <a th:if="${marco != null and marco.local != null}" target="_blank" th:href="@{/l/{s}/tv(s=${marco.local.slug})}">Pantalla TV ↗</a>
 
     <p class="menu-admin-grupo">Local</p>
@@ -35,6 +36,7 @@
     <a th:href="@{/admin/ventanillas}" th:attr="aria-current=${seccion == 'ventanillas'} ? 'page'">Ventanillas</a>
     <a th:href="@{/admin/usuarios}" th:attr="aria-current=${seccion == 'usuarios'} ? 'page'">Usuarios</a>
     <a th:href="@{/admin/reportes}" th:attr="aria-current=${seccion == 'reportes'} ? 'page'">Reportes</a>
+    <a th:if="${marco != null and !marco.modulo('M2')}" th:href="@{/admin/esperas}" th:attr="aria-current=${seccion == 'esperas'} ? 'page'">Tiempo de espera</a>
     <a th:href="@{/admin/notificaciones}" th:attr="aria-current=${seccion == 'notificaciones'} ? 'page'">Avisos WhatsApp</a>
     <a th:href="@{/admin/pantalla}" th:attr="aria-current=${seccion == 'pantalla'} ? 'page'">Pantalla TV y QR</a>
     <a th:href="@{/admin/operacion}" th:attr="aria-current=${seccion == 'operacion'} ? 'page'">Horario y ausencias</a>
@@ -49,7 +51,7 @@
       <a th:if="${marco.modulo('M2')}" th:href="@{/admin/modulos/prediccion}" th:attr="aria-current=${seccion == 'M2'} ? 'page'">Predicción</a>
       <a th:if="${marco.modulo('M3')}" th:href="@{/admin/modulos/citas}" th:attr="aria-current=${seccion == 'M3'} ? 'page'">Citas</a>
       <a th:if="${marco.modulo('M5')}" th:href="@{/admin/modulos/kiosco}" th:attr="aria-current=${seccion == 'M5'} ? 'page'">Kiosco</a>
-      <a th:if="${marco.modulo('M6')}" th:href="@{/admin/modulos/balanceo}" th:attr="aria-current=${seccion == 'M6'} ? 'page'">Balanceo</a>
+      <a th:if="${marco.modulo('M6')}" th:href="@{/admin/modulos/transferencias}" th:attr="aria-current=${seccion == 'M6'} ? 'page'">Transferencias</a>
       <a th:if="${marco.modulo('M7')}" th:href="@{/admin/analitica}" th:attr="aria-current=${seccion == 'M7'} ? 'page'">Analítica y alertas</a>
       <a th:if="${marco.modulo('M8')}" th:href="@{/admin/simulador}" th:attr="aria-current=${seccion == 'M8'} ? 'page'">Simulador</a>
     </th:block>

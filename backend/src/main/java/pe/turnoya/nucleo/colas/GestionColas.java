@@ -68,6 +68,11 @@ public class GestionColas {
                 datos.orden() == null ? 0 : datos.orden()));
         Cola cola = colas.porId(id).orElseThrow();
         auditoria.registrar(actor, localId, "CREAR", "cola", id, "Creó la cola " + cola.nombre(), datos);
+        // Cada cola trae su ventanilla (con el mismo nombre), si el plan todavía lo permite
+        if (ventanillas.contar(localId) < plan.maxVentanillas()) {
+            int ventanillaId = ventanillas.crear(localId, recortar(cola.nombre(), 40), id, cola.activa());
+            auditoria.registrar(actor, localId, "CREAR", "ventanilla", ventanillaId, "Creó la ventanilla de la cola " + cola.nombre(), null);
+        }
         eventos.publishEvent(new ColaActualizada(localId, id));
         return cola;
     }
@@ -86,6 +91,9 @@ public class GestionColas {
             colas.actualizar(nueva);
             return nueva.id();
         });
+        if (c.activa() != nueva.activa()) {
+            sincronizarVentanilla(localId, nueva);
+        }
         auditoria.registrar(actor, localId, "EDITAR", "cola", colaId, "Editó la cola " + nueva.nombre(), cambios);
         eventos.publishEvent(new ColaActualizada(localId, colaId));
         return nueva;
@@ -99,8 +107,19 @@ public class GestionColas {
         if (colas.contarTurnos(colaId) > 0) {
             Cola desactivada = new Cola(c.id(), c.localId(), c.prefijo(), c.nombre(), c.descripcion(), false, c.tiempoAtencionBase(), c.orden());
             colas.actualizar(desactivada);
+            sincronizarVentanilla(localId, desactivada);
             auditoria.registrar(actor, localId, "DESACTIVAR", "cola", colaId, "Desactivó la cola " + c.nombre(), null);
             return Map.of("desactivada", true, "cola", desactivada);
+        }
+        // Su ventanilla se va con ella (o se desactiva si tiene historial)
+        for (Ventanilla v : ventanillas.delLocal(localId)) {
+            if (Objects.equals(v.colaId(), colaId)) {
+                if (ventanillas.contarTurnos(v.id()) > 0) {
+                    ventanillas.actualizar(new Ventanilla(v.id(), v.localId(), v.nombre(), null, false));
+                } else {
+                    ventanillas.eliminar(v.id());
+                }
+            }
         }
         colas.eliminar(colaId);
         auditoria.registrar(actor, localId, "ELIMINAR", "cola", colaId, "Eliminó la cola " + c.nombre(), null);
@@ -110,6 +129,25 @@ public class GestionColas {
     @Transactional(readOnly = true)
     public Cola exigir(int localId, int colaId) {
         return colas.porIdEnLocal(colaId, localId).orElseThrow(() -> ErrorNegocio.noEncontrado("NO_ENCONTRADO", "Cola no encontrada"));
+    }
+
+    /**
+     * La ventanilla sigue a su cola: al desactivar la cola se desactiva su ventanilla; al reactivarla vuelve la más
+     * reciente de sus ventanillas (si no tiene ninguna activa).
+     */
+    private void sincronizarVentanilla(int localId, Cola cola) {
+        List<Ventanilla> deLaCola = ventanillas.delLocal(localId).stream().filter(v -> Objects.equals(v.colaId(), cola.id())).toList();
+        if (!cola.activa()) {
+            deLaCola.stream().filter(Ventanilla::activa)
+                    .forEach(v -> ventanillas.actualizar(new Ventanilla(v.id(), v.localId(), v.nombre(), v.colaId(), false)));
+        } else if (deLaCola.stream().noneMatch(Ventanilla::activa)) {
+            deLaCola.stream().max(java.util.Comparator.comparingInt(Ventanilla::id))
+                    .ifPresent(v -> ventanillas.actualizar(new Ventanilla(v.id(), v.localId(), v.nombre(), v.colaId(), true)));
+        }
+    }
+
+    private static String recortar(String texto, int max) {
+        return texto.length() <= max ? texto : texto.substring(0, max);
     }
 
     private static int conPrefijoUnico(java.util.function.IntSupplier operacion) {

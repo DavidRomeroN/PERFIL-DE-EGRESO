@@ -18,6 +18,7 @@ import pe.turnoya.compartido.web.IpCliente;
 import pe.turnoya.compartido.web.LimitadorPeticiones;
 import pe.turnoya.compartido.web.RespuestaApi;
 import pe.turnoya.nucleo.TurnoPublico;
+import pe.turnoya.nucleo.atencion.AccesoVentanillas;
 import pe.turnoya.plataforma.LocalDeTrabajo;
 import pe.turnoya.plataforma.Sesion;
 import pe.turnoya.plataforma.SoloPersonal;
@@ -33,12 +34,15 @@ class EmisionApi {
     private final EmisionTurnos emision;
     private final LimitadorPeticiones limitador;
     private final LocalDeTrabajo localDeTrabajo;
+    private final AccesoVentanillas acceso;
 
-    EmisionApi(InformacionLocal informacion, EmisionTurnos emision, LimitadorPeticiones limitador, LocalDeTrabajo localDeTrabajo) {
+    EmisionApi(InformacionLocal informacion, EmisionTurnos emision, LimitadorPeticiones limitador, LocalDeTrabajo localDeTrabajo,
+               AccesoVentanillas acceso) {
         this.informacion = informacion;
         this.emision = emision;
         this.limitador = limitador;
         this.localDeTrabajo = localDeTrabajo;
+        this.acceso = acceso;
     }
 
     @GetMapping("/api/v1/public/locales/{slug}")
@@ -67,7 +71,11 @@ class EmisionApi {
     ResponseEntity<RespuestaApi<TurnoPublico>> ticket(@Valid @RequestBody PedidoTicket pedido, @AuthenticationPrincipal Sesion sesion,
                                                       HttpServletRequest peticion) {
         Integer localDelOperador = sesion.esSuperAdmin() ? null : localDeTrabajo.resolver(sesion, peticion);
-        return RespuestaApi.creado(emision.emitirTicket(localDelOperador, pedido.colaId(), pedido.nombre(), pedido.categoriaCodigo()));
+        if (localDelOperador != null) {
+            acceso.exigirCola(sesion, localDelOperador, pedido.colaId());
+        }
+        return RespuestaApi.creado(emision.emitirTicket(localDelOperador, pedido.colaId(), pedido.nombre(), pedido.categoriaCodigo(),
+                pedido.telefono(), Boolean.TRUE.equals(pedido.consentimiento())));
     }
 
     record PedidoTurno(
@@ -80,6 +88,7 @@ class EmisionApi {
             @Pattern(regexp = "(?i)QR|APP") String canal) {
     }
 
-    record PedidoTicket(@NotNull @Positive Integer colaId, @Size(max = 60) String nombre, @Size(max = 16) String categoriaCodigo) {
+    record PedidoTicket(@NotNull @Positive Integer colaId, @Size(max = 60) String nombre, @Size(max = 16) String categoriaCodigo,
+                        @Size(max = 20) String telefono, Boolean consentimiento) {
     }
 }
