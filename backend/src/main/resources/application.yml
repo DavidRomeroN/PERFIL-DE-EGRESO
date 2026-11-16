@@ -1,4 +1,4 @@
-# TurnoYa — configuración. Los valores vienen de las mismas variables de entorno que usa legacy/
+# TurnoYa — configuración. Los valores vienen de las mismas variables de entorno que usa el sistema anterior
 # (ver .env.example en la raíz). El .env de la raíz se importa si existe.
 spring:
   application:
@@ -17,7 +17,7 @@ spring:
       minimum-idle: 2
   flyway:
     locations: classpath:db/migration
-    # BD creada por Prisma (legacy/): se toma como base la versión 10 y solo se aplica lo nuevo.
+    # BD creada por Prisma (el sistema anterior): se toma como base la versión 10 y solo se aplica lo nuevo.
     # En una BD vacía se ejecutan todas las migraciones desde V1.
     baseline-on-migrate: true
     baseline-version: 10
@@ -69,6 +69,12 @@ turnoya:
     openwa-url: ${OPENWA_URL:http://localhost:2785}
     openwa-api-key: ${OPENWA_API_KEY:}
     openwa-session: ${OPENWA_SESSION:turnoya}
+  mercadopago:
+    access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
+    public-key: ${MERCADOPAGO_PUBLIC_KEY:${NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY:}}
+    webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}
+    # Solo desarrollo: el resultado sale del titular de la tarjeta de prueba (APRO, CONT, OTHE…)
+    simulado: ${MERCADOPAGO_SIMULADO:false}
   tiempo-real:
     # memoria (una instancia) | redis (varias réplicas)
     bus: ${TURNOYA_BUS:memoria}

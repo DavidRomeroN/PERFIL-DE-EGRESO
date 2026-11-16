@@ -3,10 +3,10 @@ package pe.turnoya.plataforma;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import pe.turnoya.compartido.web.FiltroIdPeticion;
 import pe.turnoya.compartido.web.IpCliente;
+import pe.turnoya.plataforma.dominio.RepositorioAuditoria;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -21,39 +21,23 @@ public class Auditoria {
 
     private static final Logger log = LoggerFactory.getLogger(Auditoria.class);
 
-    private final JdbcClient jdbc;
+    private final RepositorioAuditoria repositorio;
     private final ObjectMapper json;
 
-    Auditoria(JdbcClient jdbc, ObjectMapper json) {
-        this.jdbc = jdbc;
+    Auditoria(RepositorioAuditoria repositorio, ObjectMapper json) {
+        this.repositorio = repositorio;
         this.json = json;
     }
 
     /** Debe llamarse dentro de la transacción que hace los cambios ({@code @Transactional}). */
     public void fijarActor(Actor actor) {
-        jdbc.sql("SELECT set_config('app.usuario_id', :usuario, true), set_config('app.request_id', :request, true), set_config('app.ip', :ip, true)")
-                .param("usuario", actor.usuarioId() == null ? "" : String.valueOf(actor.usuarioId()))
-                .param("request", actor.requestId() == null ? "" : actor.requestId())
-                .param("ip", actor.ip() == null ? "" : actor.ip())
-                .query((rs, i) -> 1)
-                .list();
+        repositorio.fijarActor(actor);
     }
 
     public void registrar(Actor actor, Integer localId, String accion, String entidad, Object entidadId, String humana, Object datos) {
         try {
-            jdbc.sql("""
-                            INSERT INTO auditoria (local_id, usuario_id, accion, entidad, entidad_id, datos_json, ip, request_id, accion_humana)
-                            VALUES (:local, :usuario, :accion, :entidad, :entidadId, CAST(:datos AS jsonb), :ip, :request, :humana)""")
-                    .param("local", localId)
-                    .param("usuario", actor.usuarioId())
-                    .param("accion", accion)
-                    .param("entidad", entidad)
-                    .param("entidadId", entidadId == null ? null : String.valueOf(entidadId))
-                    .param("datos", datos == null ? null : json.writeValueAsString(datos))
-                    .param("ip", actor.ip())
-                    .param("request", actor.requestId())
-                    .param("humana", humana)
-                    .update();
+            repositorio.registrar(actor, localId, accion, entidad, entidadId == null ? null : String.valueOf(entidadId),
+                    datos == null ? null : json.writeValueAsString(datos), humana);
         } catch (RuntimeException e) {
             // La auditoría legible nunca bloquea la operación (el trigger ya registró el cambio)
             log.warn("No se pudo registrar la auditoría {} {}: {}", accion, entidad, e.getMessage());

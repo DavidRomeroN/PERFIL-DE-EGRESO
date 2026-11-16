@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Usuarios')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Usuarios</h1>
+        <p>Administradores y operadores de ventanilla del local. Cada uno entra con su correo y contraseña.</p>
+      </div>
+      <button type="button" class="boton" data-abrir="nuevo-usuario">Nuevo usuario</button>
+    </div>
+
+    <dialog class="dialogo" id="nuevo-usuario">
+      <form class="formulario" method="post" th:action="@{/admin/usuarios}" th:attr="hx-post=@{/admin/usuarios}" hx-target="#lista" hx-swap="outerHTML" data-limpiar-al-enviar>
+        <h2>Nuevo usuario</h2>
+        <div class="campo"><label class="etiqueta">Nombre <input name="nombre" class="entrada" required minlength="2" maxlength="80" placeholder="Recepción · Ana Quispe"></label></div>
+        <div class="campo"><label class="etiqueta">Correo <input name="email" type="email" class="entrada" required placeholder="ana@local.pe"></label></div>
+        <div class="campo"><label class="etiqueta">Contraseña <input name="password" type="password" class="entrada" required minlength="6" maxlength="72" autocomplete="new-password" placeholder="Mínimo 6"></label></div>
+        <div class="campo"><label class="etiqueta">Rol
+          <select name="rol" class="entrada"><option value="OPERADOR">Operador de ventanilla</option><option value="ADMIN_LOCAL">Administrador del local</option></select>
+        </label></div>
+        <div class="dialogo-pie">
+          <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+          <button type="submit" class="boton">Crear</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="lista" th:fragment="lista" class="tarjeta tarjeta-sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(usuarios)}"><td colspan="6" class="vacio">Todavía no hay usuarios en este local.</td></tr>
+          <tr th:each="u : ${usuarios}">
+            <td><strong th:text="${u.nombre}">Ana</strong> <span th:if="${u.id == sesion.sub}" class="texto-apagado">(tú)</span></td>
+            <td th:text="${u.email}">ana@local.pe</td>
+            <td><span class="canal-etiqueta" th:text="${u.rol.etiqueta()}">Operador</span></td>
+            <td><span th:class="${u.activo} ? 'estado-activo' : 'estado-inactivo'" th:text="${u.activo} ? 'Activo' : 'Inactivo'">Activo</span></td>
+            <td class="numeros" th:text="${u.ultimoAcceso != null} ? ${@fmt.fechaHora(u.ultimoAcceso)} : 'Nunca'">—</td>
+            <td>
+              <div class="tabla-acciones">
+                <button type="button" class="boton boton-contorno boton-pequeno" th:attr="data-abrir='editar-usuario-' + ${u.id}">Editar</button>
+                <form th:if="${u.id != sesion.sub}" method="post" th:action="@{/admin/usuarios/{id}/eliminar(id=${u.id})}"
+                      th:attr="hx-post=@{/admin/usuarios/{id}/eliminar(id=${u.id})},hx-confirm='¿Eliminar a ' + ${u.nombre} + '? Esta acción no se puede deshacer.'"
+                      hx-target="#lista" hx-swap="outerHTML">
+                  <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Eliminar</button>
+                </form>
+              </div>
+              <dialog class="dialogo" th:id="'editar-usuario-' + ${u.id}">
+                <form class="formulario" method="post" th:action="@{/admin/usuarios/{id}(id=${u.id})}" th:attr="hx-post=@{/admin/usuarios/{id}(id=${u.id})}" hx-target="#lista" hx-swap="outerHTML">
+                  <h2 th:text="'Editar ' + ${u.nombre}">Editar</h2>
+                  <div class="campo"><label class="etiqueta">Nombre <input name="nombre" class="entrada" required maxlength="80" th:value="${u.nombre}"></label></div>
+                  <div class="campo"><label class="etiqueta">Correo <input name="email" type="email" class="entrada" required th:value="${u.email}"></label></div>
+                  <div class="campo"><label class="etiqueta">Nueva contraseña <input name="password" type="password" class="entrada" minlength="6" maxlength="72" autocomplete="new-password" placeholder="(sin cambios)"></label></div>
+                  <div class="campo"><label class="etiqueta">Rol
+                    <select name="rol" class="entrada">
+                      <option value="OPERADOR" th:selected="${u.rol.name() == 'OPERADOR'}">Operador de ventanilla</option>
+                      <option value="ADMIN_LOCAL" th:selected="${u.rol.name() == 'ADMIN_LOCAL'}">Administrador del local</option>
+                    </select>
+                  </label></div>
+                  <label class="casilla"><input type="checkbox" name="activo" value="true" th:checked="${u.activo}" th:disabled="${u.id == sesion.sub}"> <span>Cuenta activa</span></label>
+                  <input th:if="${u.id == sesion.sub}" type="hidden" name="activo" value="true">
+                  <div class="dialogo-pie">
+                    <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+                    <button type="submit" class="boton">Guardar</button>
+                  </div>
+                </form>
+              </dialog>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

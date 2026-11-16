@@ -357,7 +357,7 @@ Resumen; el detalle técnico completo está en cada archivo.
 | M1 | Motor de prioridades con aging | 1 | [`modulos/M1-prioridades.md`](modulos/M1-prioridades.md) | Clave de orden estable e indexada, anti-inanición, `FOR UPDATE SKIP LOCKED` | 40 |
 | M2 | Predicción de espera | 1 | [`modulos/M2-prediccion-espera.md`](modulos/M2-prediccion-espera.md) | EMA + estacionalidad, intervalos empíricos, validación walk-forward | 56 |
 | M3 | Citas y reservas con check-in QR | 2 | [`modulos/M3-citas-reservas.md`](modulos/M3-citas-reservas.md) | Cupos atómicos, ventana de check-in, jobs, `.ics` | 64 |
-| M4 | Chatbot de WhatsApp | 2 | [`modulos/M4-chatbot-whatsapp.md`](modulos/M4-chatbot-whatsapp.md) | FSM pura, webhook con HMAC, idempotencia, *handoff* | 56 |
+| M4 | Chatbot de WhatsApp | 2 | `modulos/M4-chatbot-whatsapp.md` (módulo retirado) | FSM pura, webhook con HMAC, idempotencia, *handoff* | 56 |
 | M5 | Kiosco offline-first | 3 | [`modulos/M5-kiosco-offline.md`](modulos/M5-kiosco-offline.md) | PWA + IndexedDB outbox, sync idempotente, reloj | 72 |
 | M6 | Transferencia y balanceo | 3 | [`modulos/M6-transferencia-balanceo.md`](modulos/M6-transferencia-balanceo.md) | Motor de reglas, histéresis, *dry-run*, antigüedad conservada | 56 |
 | M7 | Analítica y SLA con alertas | 4 | [`modulos/M7-analitica-sla.md`](modulos/M7-analitica-sla.md) | Percentiles SQL, MV, MAD, deduplicación y escalamiento | 60 |

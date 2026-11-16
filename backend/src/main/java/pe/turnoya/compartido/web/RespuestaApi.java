@@ -5,7 +5,7 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 
 /**
- * Sobre de respuesta de la API (mismo contrato que legacy/):
+ * Sobre de respuesta de la API (mismo contrato que el sistema anterior):
  * {@code {ok:true, data}} o {@code {ok:false, error:{codigo, mensaje, ...extra}}}.
  */
 public record RespuestaApi<T>(boolean ok, T data) {

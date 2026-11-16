@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
-/** La DATABASE_URL de legacy/ (formato Prisma) sirve tal cual para el proyecto Java. */
+/** La DATABASE_URL del sistema anterior (formato Prisma) sirve tal cual para el proyecto Java. */
 class UrlBaseDatosTest {
 
     @Test

@@ -4,15 +4,15 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import pe.turnoya.compartido.ErrorNegocio;
-import pe.turnoya.plataforma.infraestructura.LocalesJdbc;
+import pe.turnoya.plataforma.dominio.RepositorioLocales;
 
 /** Consulta de locales y sus planes para el resto de módulos. */
 @Service
 public class CatalogoLocales {
 
-    private final LocalesJdbc locales;
+    private final RepositorioLocales locales;
 
-    CatalogoLocales(LocalesJdbc locales) {
+    CatalogoLocales(RepositorioLocales locales) {
         this.locales = locales;
     }
 

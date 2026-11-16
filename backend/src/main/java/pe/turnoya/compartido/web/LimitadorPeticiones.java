@@ -13,7 +13,7 @@ import pe.turnoya.compartido.datos.Sql;
 
 /**
  * F7: límite de peticiones con ventana fija, guardado en la tabla {@code rate_limit}. Sobrevive a reinicios y lo
- * comparten todas las réplicas (y legacy/ mientras convivan). Si la BD falla no bloquea al usuario.
+ * comparten todas las réplicas (y el sistema anterior mientras convivan). Si la BD falla no bloquea al usuario.
  */
 @Component
 public class LimitadorPeticiones {

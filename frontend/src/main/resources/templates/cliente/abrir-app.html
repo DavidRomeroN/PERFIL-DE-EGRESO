@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('App TurnoYa · ' + ${local.nombreComercial})}"></head>
+<body class="pagina-cliente" th:style="'--local:' + ${local.colorPrimario}">
+
+<header th:replace="~{fragmentos/base :: cabeceraLocal(${local.nombreComercial}, ${local.rubro}, ${local.direccion}, ${local.logoUrl})}"></header>
+
+<main class="cliente-main">
+  <div class="tarjeta tarjeta-flotante entrar">
+    <h2 class="titulo-paso">Toma tu turno con la app</h2>
+    <p class="texto-apagado">
+      Abre la app <strong>TurnoYa</strong>, toca «Escanear QR» y apunta al código de la pantalla. Tu turno entra en la
+      misma cola que los de WhatsApp y lo sigues en vivo desde el celular.
+    </p>
+
+    <!--/* Esquema propio de la app (Android lo registra en su manifest); sin app instalada el enlace no hace nada */-->
+    <a class="boton boton-local boton-grande boton-bloque" style="margin-top: 1.25rem"
+       th:href="'turnoya://l/' + ${local.slug} + (${presencia != null} ? '?p=' + ${presencia} : '')">Abrir la app TurnoYa</a>
+
+    <p class="texto-apagado" style="margin-top: 1.25rem; text-align: center">¿No tienes la app?</p>
+    <a class="boton boton-contorno boton-bloque" style="margin-top: 0.5rem"
+       th:href="@{/l/{s}(s=${local.slug})}">Tomar turno en la web</a>
+  </div>
+</main>
+</body>
+</html>

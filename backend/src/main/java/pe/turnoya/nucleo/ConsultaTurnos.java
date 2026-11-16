@@ -6,6 +6,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Set;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,16 +19,16 @@ import pe.turnoya.compartido.tiempo.Fechas;
 import pe.turnoya.nucleo.SnapshotLocal.ColaInfo;
 import pe.turnoya.nucleo.SnapshotLocal.EnEspera;
 import pe.turnoya.nucleo.SnapshotLocal.Llamado;
-import pe.turnoya.nucleo.aplicacion.ExtensionesNucleo;
 import pe.turnoya.nucleo.dominio.Cola;
 import pe.turnoya.nucleo.dominio.Promedios;
 import pe.turnoya.nucleo.dominio.Turno;
 import pe.turnoya.nucleo.dominio.Ventanilla;
-import pe.turnoya.nucleo.infraestructura.ClientesJdbc;
-import pe.turnoya.nucleo.infraestructura.ColasJdbc;
-import pe.turnoya.nucleo.infraestructura.TurnosJdbc;
-import pe.turnoya.nucleo.infraestructura.TurnosJdbc.TurnoDelDia;
-import pe.turnoya.nucleo.infraestructura.VentanillasJdbc;
+import pe.turnoya.nucleo.extensiones.ExtensionesNucleo;
+import pe.turnoya.nucleo.dominio.RepositorioClientes;
+import pe.turnoya.nucleo.dominio.RepositorioColas;
+import pe.turnoya.nucleo.dominio.RepositorioTurnos.TurnoDelDia;
+import pe.turnoya.nucleo.dominio.RepositorioTurnos;
+import pe.turnoya.nucleo.dominio.RepositorioVentanillas;
 import pe.turnoya.nucleo.puertos.EstimadorEspera;
 import pe.turnoya.plataforma.CatalogoLocales;
 import pe.turnoya.plataforma.Local;
@@ -37,17 +39,17 @@ import pe.turnoya.plataforma.Plan;
 @Transactional(readOnly = true)
 public class ConsultaTurnos {
 
-    private final TurnosJdbc turnos;
-    private final ColasJdbc colas;
-    private final VentanillasJdbc ventanillas;
-    private final ClientesJdbc clientes;
+    private final RepositorioTurnos turnos;
+    private final RepositorioColas colas;
+    private final RepositorioVentanillas ventanillas;
+    private final RepositorioClientes clientes;
     private final CatalogoLocales locales;
     private final ExtensionesNucleo extensiones;
     private final CifradoDatos cifrado;
     private final PropiedadesTurnoYa propiedades;
     private final Clock reloj;
 
-    ConsultaTurnos(TurnosJdbc turnos, ColasJdbc colas, VentanillasJdbc ventanillas, ClientesJdbc clientes, CatalogoLocales locales,
+    ConsultaTurnos(RepositorioTurnos turnos, RepositorioColas colas, RepositorioVentanillas ventanillas, RepositorioClientes clientes, CatalogoLocales locales,
                    ExtensionesNucleo extensiones, CifradoDatos cifrado, PropiedadesTurnoYa propiedades, Clock reloj) {
         this.turnos = turnos;
         this.colas = colas;
@@ -111,13 +113,24 @@ public class ConsultaTurnos {
      * tokens de seguimiento; la versión pública no los incluye.
      */
     public SnapshotLocal snapshot(Local local, boolean paraPersonal) {
+        return snapshot(local, paraPersonal, Set.of());
+    }
+
+    /**
+     * Foto del local limitada a unas colas (una "sala" de la pantalla TV): colas, ventanillas, llamados y estadísticas
+     * solo de ellas. Sin colas, o si ninguna sigue activa, es la foto completa.
+     */
+    public SnapshotLocal snapshot(Local local, boolean paraPersonal, Set<Integer> soloColas) {
         Plan plan = locales.planDe(local);
         Instant ahora = reloj.instant();
         LocalDate fecha = Fechas.fechaLocal(local.zonaHoraria(), ahora);
         List<Cola> todas = colas.delLocal(local.id());
-        List<Cola> activas = todas.stream().filter(Cola::activa).toList();
-        List<Ventanilla> vents = ventanillas.activasDelLocal(local.id());
-        List<TurnoDelDia> delDia = turnos.delDia(local.id(), fecha);
+        List<Cola> todasActivas = todas.stream().filter(Cola::activa).toList();
+        boolean filtrar = todasActivas.stream().anyMatch(c -> soloColas.contains(c.id()));
+        List<Cola> activas = filtrar ? todasActivas.stream().filter(c -> soloColas.contains(c.id())).toList() : todasActivas;
+        Set<Integer> idsColas = activas.stream().map(Cola::id).collect(Collectors.toSet());
+        List<Ventanilla> vents = ventanillas.activasDelLocal(local.id()).stream().filter(v -> !filtrar || idsColas.contains(v.colaId())).toList();
+        List<TurnoDelDia> delDia = turnos.delDia(local.id(), fecha).stream().filter(x -> !filtrar || idsColas.contains(x.turno().colaId())).toList();
 
         List<ColaInfo> infoColas = new ArrayList<>();
         for (Cola c : activas) {
@@ -137,7 +150,7 @@ public class ConsultaTurnos {
             }
             List<Llamado> enAtencion = llamados.stream().map(x -> new Llamado(x.turno().id(), x.turno().codigo(), x.turno().codigoProvisional(),
                     paraPersonal ? x.turno().token() : null, Objects.requireNonNullElse(x.ventanillaNombre(), ""), x.turno().ventanillaId(),
-                    x.turno().llamadoAt(), x.turno().rellamadas(), paraPersonal ? x.clienteNombre() : null)).toList();
+                    x.turno().llamadoAt(), x.turno().rellamadas(), paraPersonal ? x.clienteNombre() : null, x.turno().canal())).toList();
             double esperaProm = Promedios.minutos(propios.stream().filter(x -> x.turno().estado() == EstadoTurno.ATENDIDO)
                     .map(x -> Promedios.entre(x.turno().emitidoAt(), x.turno().llamadoAt())).toList());
             infoColas.add(new ColaInfo(c.id(), c.nombre(), c.prefijo(), c.descripcion(),
@@ -150,7 +163,8 @@ public class ConsultaTurnos {
                 .sorted(Comparator.comparing((TurnoDelDia x) -> x.turno().llamadoAt()).reversed())
                 .limit(8)
                 .map(x -> new SnapshotLocal.UltimoLlamado(x.turno().id(), x.turno().codigo(), x.turno().codigoProvisional(),
-                        Objects.requireNonNullElse(x.ventanillaNombre(), ""), x.turno().estado(), x.turno().llamadoAt()))
+                        Objects.requireNonNullElse(x.ventanillaNombre(), ""), x.turno().estado(), x.turno().llamadoAt(),
+                        x.turno().canal()))
                 .toList();
 
         List<Turno> hoy = delDia.stream().map(TurnoDelDia::turno).toList();

@@ -9,6 +9,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import pe.turnoya.compartido.config.PropiedadesTurnoYa;
+import pe.turnoya.notificaciones.dominio.ProveedorWhatsApp;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -46,7 +47,7 @@ class ProveedoresWhatsApp {
         }
     }
 
-    /** WhatsApp Cloud API con plantilla aprobada. */
+    /** WhatsApp Cloud API: avisos con plantilla aprobada y respuestas del bot como texto libre. */
     static final class Meta implements ProveedorWhatsApp {
         private final PropiedadesTurnoYa.WhatsApp cfg;
         private final RestClient http;
@@ -66,7 +67,12 @@ class ProveedoresWhatsApp {
             if (cfg.token() == null || cfg.token().isBlank() || cfg.phoneNumberId() == null || cfg.phoneNumberId().isBlank()) {
                 return Resultado.fallo("WHATSAPP_TOKEN o WHATSAPP_PHONE_NUMBER_ID no configurados");
             }
-            Map<String, Object> cuerpo = Map.of(
+            // Sin plantilla: respuesta del bot dentro de la ventana de 24 h que abrió el cliente (texto libre)
+            Map<String, Object> cuerpo = plantilla == null ? Map.of(
+                    "messaging_product", "whatsapp",
+                    "to", telefono.replace("+", ""),
+                    "type", "text",
+                    "text", Map.of("body", texto)) : Map.of(
                     "messaging_product", "whatsapp",
                     "to", telefono.replace("+", ""),
                     "type", "template",

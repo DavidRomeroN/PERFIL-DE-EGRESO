@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Reservar una cita · ' + ${local.nombre})}"></head>
+<body class="pagina-cliente" th:style="'--local:' + ${local.color}">
+
+<header th:replace="~{fragmentos/base :: cabeceraLocal(${local.nombre}, 'Reservar una cita', ${local.direccion}, ${local.logoUrl})}"></header>
+
+<!--/* M3 · Reserva: servicio → día → horario → datos. Cada paso es un enlace o un formulario (sin JavaScript). */-->
+<main class="cliente-main">
+  <div class="tarjeta tarjeta-flotante entrar">
+
+    <div th:if="${!servicios.disponible}">
+      <p>Este local no atiende con cita por el momento.</p>
+      <a class="boton boton-local boton-bloque" th:href="@{/l/{s}(s=${local.slug})}">Tomar un turno</a>
+    </div>
+
+    <div th:if="${error}" class="alerta alerta-error sacudir" role="alert" th:text="${error}">Error</div>
+
+    <th:block th:if="${servicios.disponible}">
+      <section class="paso-cita">
+        <h2 class="titulo-paso"><span class="paso-numero" th:classappend="${cola != null} ? 'hecho'" th:text="${cola != null} ? '✓' : '1'">1</span> Servicio</h2>
+        <div class="lista-colas">
+          <a th:each="c : ${servicios.colas}" class="opcion-cola" th:classappend="${cola != null and cola.id == c.id} ? 'elegida'"
+             th:href="@{/l/{s}/citas(s=${local.slug},cola=${c.id})}" th:attr="aria-current=${cola != null and cola.id == c.id} ? 'step'">
+            <span class="opcion-cola-texto">
+              <span class="opcion-cola-nombre" th:text="${c.nombre}">Consulta</span>
+              <span th:if="${c.descripcion}" class="texto-apagado" th:text="${c.descripcion}">Descripción</span>
+              <span class="opcion-cola-datos"><span th:text="${c.configCitas.duracionSlotMin} + ' min por cita'">15 min</span></span>
+            </span>
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="paso-cita" th:if="${cola != null and dias != null}">
+        <h2 class="titulo-paso"><span class="paso-numero" th:classappend="${fecha != null} ? 'hecho'" th:text="${fecha != null} ? '✓' : '2'">2</span> Día</h2>
+        <div class="dias-cita">
+          <th:block th:each="d : ${dias}">
+            <a th:if="${d.abierto and d.libres > 0}" class="dia-cita" th:classappend="${fecha == d.fecha} ? 'elegido'"
+               th:href="@{/l/{s}/citas(s=${local.slug},cola=${cola.id},fecha=${d.fecha})}">
+              <span th:text="${d.etiqueta}">lun 3 nov</span><small th:text="${d.libres} + ' cupos'">4 cupos</small>
+            </a>
+            <span th:unless="${d.abierto and d.libres > 0}" class="dia-cita deshabilitado">
+              <span th:text="${d.etiqueta}">dom 2 nov</span><small th:text="${d.abierto} ? 'lleno' : 'cerrado'">cerrado</small>
+            </span>
+          </th:block>
+        </div>
+      </section>
+
+      <section class="paso-cita" th:if="${fecha != null and slots != null}">
+        <h2 class="titulo-paso"><span class="paso-numero" th:classappend="${slot != null} ? 'hecho'" th:text="${slot != null} ? '✓' : '3'">3</span> Horario · <span th:text="${fechaEtiqueta}">lun 3 nov</span></h2>
+        <p th:if="${#lists.isEmpty(slots)}" class="texto-apagado">No hay horarios ese día.</p>
+        <div class="horarios-cita">
+          <th:block th:each="s : ${slots}">
+            <a th:if="${s.disponible}" class="horario-cita numeros" th:classappend="${slot != null and slot.id == s.id} ? 'elegido'"
+               th:href="@{/l/{s}/citas(s=${local.slug},cola=${cola.id},fecha=${fecha},slot=${s.id})}" th:text="${s.hora}">09:00</a>
+            <span th:unless="${s.disponible}" class="horario-cita numeros deshabilitado" th:text="${s.hora}">09:15</span>
+          </th:block>
+        </div>
+      </section>
+
+      <section class="paso-cita" th:if="${slot != null}">
+        <h2 class="titulo-paso"><span class="paso-numero">4</span> Tus datos</h2>
+        <form class="formulario" method="post" th:action="@{/l/{s}/citas(s=${local.slug})}">
+          <input type="hidden" name="colaId" th:value="${cola.id}">
+          <input type="hidden" name="slotId" th:value="${slot.id}">
+          <input type="hidden" name="fecha" th:value="${fecha}">
+          <div class="campo">
+            <label class="etiqueta" for="nombre">Nombre</label>
+            <input id="nombre" name="nombre" class="entrada entrada-grande" required minlength="2" maxlength="60" autocomplete="name">
+          </div>
+          <div class="campo">
+            <label class="etiqueta" for="telefono">Celular (opcional, para recordatorios)</label>
+            <input id="telefono" name="telefono" type="tel" inputmode="numeric" class="entrada entrada-grande" maxlength="15" placeholder="951234567" autocomplete="tel">
+          </div>
+          <label class="casilla">
+            <input type="checkbox" name="consentimiento" value="true">
+            <span class="ayuda">Acepto que usen mi celular solo para recordarme la cita (Ley N.° 29733). Se borra a los 90 días.</span>
+          </label>
+          <button type="submit" class="boton boton-local boton-grande boton-bloque" th:text="'✓ Reservar ' + ${slot.hora}">Reservar</button>
+        </form>
+      </section>
+    </th:block>
+  </div>
+</main>
+</body>
+</html>

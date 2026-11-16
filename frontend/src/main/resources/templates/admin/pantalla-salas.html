@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<!--/* Bloque que /admin/pantalla carga con htmx: enlaces de la TV por sala (conjunto de colas) */-->
+<section class="tarjeta" id="salas-tv" th:fragment="bloque" style="margin-top: 1.5rem">
+  <h2 class="tarjeta-titulo">Pantallas por sala</h2>
+  <p class="texto-apagado" style="font-size: .85rem">
+    Si tus servicios están en ambientes distintos, abre en cada televisor el enlace de su sala: solo mostrará y anunciará los turnos de
+    esas colas. Con un solo ambiente, usa «Todo el local». El televisor no necesita iniciar sesión: abre el enlace y ponlo en pantalla completa.
+  </p>
+  <div class="tabla-contenedor">
+    <table class="tabla">
+      <thead><tr><th>Pantalla</th><th>Enlace para el televisor</th><th></th></tr></thead>
+      <tbody>
+      <tr th:each="g : ${guardadas}">
+        <td><strong th:text="${g.nombre}">Caja + Plataforma</strong><p class="ayuda" th:text="${g.detalle}">Sala combinada</p></td>
+        <td><input th:if="${g.url != null}" class="entrada numeros" readonly th:value="${g.url}" th:attr="aria-label='Enlace de ' + ${g.nombre}"></td>
+        <td>
+          <div class="acciones-fila">
+            <a th:if="${g.url != null}" class="boton boton-pequeno" th:href="${g.url}" target="_blank" rel="noopener">Abrir ↗</a>
+            <form method="post" th:action="@{/admin/pantalla/salas/{id}/eliminar(id=${g.salaId})}"
+                  th:attr="hx-post=@{/admin/pantalla/salas/{id}/eliminar(id=${g.salaId})},hx-confirm='¿Eliminar la pantalla «' + ${g.nombre} + '»? El televisor que use este enlace seguirá mostrando esas colas hasta que lo cambies.'"
+                  hx-target="#salas-tv" hx-swap="outerHTML">
+              <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno" th:attr="aria-label='Eliminar la pantalla ' + ${g.nombre}">Eliminar</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      <tr th:each="e : ${enlaces}">
+        <td><strong th:text="${e.nombre}">Todo el local</strong><p class="ayuda" th:text="${e.detalle}">Todas las colas</p></td>
+        <td><input class="entrada numeros" readonly th:value="${e.url}" th:attr="aria-label='Enlace de ' + ${e.nombre}"></td>
+        <td><a class="boton boton-contorno boton-pequeno" th:href="${e.url}" target="_blank" rel="noopener">Abrir ↗</a></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div th:if="${error}" class="alerta alerta-error" role="alert" th:text="${error}" style="margin-top: 1rem">Error</div>
+  <form th:if="${#lists.size(colas) > 2}" class="formulario" style="margin-top: 1rem" method="post" th:action="@{/admin/pantalla/salas}"
+        th:attr="hx-post=@{/admin/pantalla/salas}" hx-target="#salas-tv" hx-swap="outerHTML">
+    <p class="etiqueta">¿Una sala con varias colas? Márcalas, ponle un nombre si quieres y créala:</p>
+    <div class="acciones-fila" style="flex-wrap: wrap">
+      <label class="casilla" th:each="c : ${colas}">
+        <input type="checkbox" name="colas" th:value="${c.id}" th:checked="${#lists.contains(marcadas, c.id)}"> <span th:text="${c.nombre}">Caja</span>
+      </label>
+    </div>
+    <div class="acciones-fila" style="flex-wrap: wrap">
+      <label class="solo-lectores" for="nombre-sala">Nombre de la sala</label>
+      <input id="nombre-sala" name="nombre" class="entrada" th:maxlength="${maxNombre}" th:value="${nombreEscrito}" placeholder="Nombre (opcional), p. ej. Sala del segundo piso" style="max-width: 22rem">
+      <button type="submit" class="boton boton-contorno boton-pequeno">Crear pantalla</button>
+    </div>
+  </form>
+</section>
+</body>
+</html>

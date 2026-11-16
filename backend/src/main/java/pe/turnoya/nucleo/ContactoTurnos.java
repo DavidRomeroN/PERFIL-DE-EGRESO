@@ -4,9 +4,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.turnoya.compartido.seguridad.CifradoDatos;
-import pe.turnoya.nucleo.infraestructura.ClientesJdbc;
-import pe.turnoya.nucleo.infraestructura.TurnosJdbc;
-import pe.turnoya.nucleo.infraestructura.VentanillasJdbc;
+import pe.turnoya.nucleo.dominio.RepositorioClientes;
+import pe.turnoya.nucleo.dominio.RepositorioTurnos;
+import pe.turnoya.nucleo.dominio.RepositorioVentanillas;
 import pe.turnoya.plataforma.CatalogoLocales;
 
 /**
@@ -17,13 +17,13 @@ import pe.turnoya.plataforma.CatalogoLocales;
 @Transactional(readOnly = true)
 public class ContactoTurnos {
 
-    private final TurnosJdbc turnos;
-    private final ClientesJdbc clientes;
-    private final VentanillasJdbc ventanillas;
+    private final RepositorioTurnos turnos;
+    private final RepositorioClientes clientes;
+    private final RepositorioVentanillas ventanillas;
     private final CatalogoLocales locales;
     private final CifradoDatos cifrado;
 
-    ContactoTurnos(TurnosJdbc turnos, ClientesJdbc clientes, VentanillasJdbc ventanillas, CatalogoLocales locales, CifradoDatos cifrado) {
+    ContactoTurnos(RepositorioTurnos turnos, RepositorioClientes clientes, RepositorioVentanillas ventanillas, CatalogoLocales locales, CifradoDatos cifrado) {
         this.turnos = turnos;
         this.clientes = clientes;
         this.ventanillas = ventanillas;

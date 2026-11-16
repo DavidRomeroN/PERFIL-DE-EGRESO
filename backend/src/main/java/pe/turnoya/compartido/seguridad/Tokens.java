@@ -2,7 +2,7 @@ package pe.turnoya.compartido.seguridad;
 
 import java.security.SecureRandom;
 
-/** Tokens públicos (enlaces /t/:token): sin caracteres ambiguos (0/O, 1/I/L), como en legacy/. */
+/** Tokens públicos (enlaces /t/:token): sin caracteres ambiguos (0/O, 1/I/L), como en el sistema anterior. */
 public final class Tokens {
 
     private static final String ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

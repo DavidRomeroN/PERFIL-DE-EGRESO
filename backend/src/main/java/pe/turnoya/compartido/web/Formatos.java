@@ -10,7 +10,7 @@ import pe.turnoya.compartido.tiempo.Fechas;
 
 /**
  * Formatos para las plantillas: {@code ${@fmt.duracion(seg)}}, {@code ${@fmt.hora(instante)}}…
- * Mismas reglas que {@code frontend/src/lib/format.ts} de legacy/.
+ * Mismas reglas que {@code frontend/src/lib/format.ts} del sistema anterior.
  */
 @Component("fmt")
 public class Formatos {
@@ -78,6 +78,33 @@ public class Formatos {
     /** Hora actual de Lima "HH:mm" (pantalla TV). */
     public String horaActual() {
         return DateTimeFormatter.ofPattern("HH:mm").withZone(Fechas.LIMA).format(reloj.instant());
+    }
+
+    /** "2026-11-10" o LocalDate → "martes 10 de noviembre". */
+    public String fechaLarga(Object fecha) {
+        if (fecha == null) {
+            return "";
+        }
+        java.time.LocalDate d = fecha instanceof java.time.LocalDate l ? l : java.time.LocalDate.parse(fecha.toString());
+        return DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", ES_PE).format(d);
+    }
+
+    /** LocalDate → "10/11". */
+    public String diaMes(java.time.LocalDate fecha) {
+        return fecha == null ? "" : DateTimeFormatter.ofPattern("dd/MM").format(fecha);
+    }
+
+    /** Estado de un pago de suscripción, legible ("EN_PROCESO" → "En revisión"). */
+    public String estadoPago(String estado) {
+        return switch (estado == null ? "" : estado) {
+            case "APROBADO" -> "Aprobado";
+            case "EN_PROCESO" -> "En revisión";
+            case "PENDIENTE" -> "Pendiente";
+            case "RECHAZADO" -> "Rechazado";
+            case "CANCELADO" -> "Cancelado";
+            case "REEMBOLSADO" -> "Reembolsado";
+            default -> estado;
+        };
     }
 
     /** Resalta *negritas* del texto de WhatsApp con &lt;b&gt;, escapando el resto. Se llama desde el controlador. */

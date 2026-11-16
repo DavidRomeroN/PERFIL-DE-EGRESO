@@ -8,7 +8,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 import pe.turnoya.compartido.config.PropiedadesTurnoYa;
 
-/** Cookie {@code turnoya_session}: httpOnly, SameSite=Lax, 12 horas (igual que legacy/). */
+/** Cookie {@code turnoya_session}: httpOnly, SameSite=Lax, 12 horas (igual que el sistema anterior). */
 @Component
 public class CookiesSesion {
 

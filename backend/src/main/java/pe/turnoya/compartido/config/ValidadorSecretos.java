@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * F7: en producción (perfil {@code prod}) la aplicación no arranca con secretos ausentes, de ejemplo o de menos
- * de 32 caracteres. {@code ALLOW_INSECURE_SECRETS=true} lo permite solo para demos. Misma regla que legacy/.
+ * de 32 caracteres. {@code ALLOW_INSECURE_SECRETS=true} lo permite solo para demos. Misma regla que el sistema anterior.
  */
 @Component
 class ValidadorSecretos implements InitializingBean {

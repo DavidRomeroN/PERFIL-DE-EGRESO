@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<!--/*
+  M6 en el panel del operador: transferir un turno a otra cola conservando su lugar. hx-preserve evita que el
+  refresco del panel borre lo que el operador está eligiendo; tras transferir, la respuesta trae el bloque actualizado.
+*/-->
+<section th:fragment="bloque" id="bloque-transferir" hx-preserve="true" class="tarjeta widget-transferir">
+  <div class="cabecera-tarjeta">
+    <h2 class="tarjeta-titulo">Transferir a otra cola</h2>
+    <button type="button" class="boton boton-fantasma boton-pequeno" th:attr="hx-get=@{/panel/transferencia(ventanilla=${ventanilla})}"
+            hx-target="#bloque-transferir" hx-swap="outerHTML">Actualizar</button>
+  </div>
+  <p th:if="${#lists.isEmpty(bloque.turnos) or #maps.size(bloque.colas) < 2}" class="texto-apagado">
+    No hay turnos para transferir (o el local tiene una sola cola).
+  </p>
+  <form th:unless="${#lists.isEmpty(bloque.turnos) or #maps.size(bloque.colas) < 2}" method="post" th:action="@{/panel/transferencia}"
+        th:attr="hx-post=@{/panel/transferencia}" hx-target="#bloque-transferir" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
+        class="formulario">
+    <input type="hidden" name="ventanilla" th:value="${ventanilla}">
+    <div class="campo">
+      <label class="etiqueta" for="tr-turno">Turno</label>
+      <select id="tr-turno" name="turnoId" class="selector" required>
+        <option th:each="t : ${bloque.turnos}" th:value="${t.id}"
+                th:text="${t.codigo} + ' · ' + ${t.cola} + (${t.enEstaVentanilla} ? ' (actual)' : '')">A-001 · Caja</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label class="etiqueta" for="tr-cola">Cola destino</label>
+      <select id="tr-cola" name="aColaId" class="selector" required>
+        <option th:each="c : ${bloque.colas}" th:value="${c.key}" th:text="${c.value}">Caja</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label class="etiqueta" for="tr-motivo">Motivo</label>
+      <select id="tr-motivo" name="motivo" class="selector">
+        <option th:each="m : ${motivos}" th:value="${m}" th:text="${nombresMotivo.get(m)}" th:selected="${m == 'ERROR_DE_COLA'}">Motivo</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label class="etiqueta" for="tr-detalle">Detalle (opcional)</label>
+      <input id="tr-detalle" type="text" name="detalle" maxlength="200" class="entrada">
+    </div>
+    <p class="ayuda">El cliente conserva su hora de llegada y prioridad, recibe un aviso con su nuevo código y su enlace sigue funcionando.</p>
+    <button type="submit" class="boton">Transferir</button>
+  </form>
+</section>
+</body>
+</html>

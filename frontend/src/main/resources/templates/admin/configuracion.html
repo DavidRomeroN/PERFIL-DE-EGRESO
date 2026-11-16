@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Configuración')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin" th:with="l=${cfg.local}, p=${cfg.plan}, u=${cfg.uso}">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Configuración del local</h1>
+        <p>Datos del negocio, plan contratado y uso del mes.</p>
+      </div>
+    </div>
+
+    <div class="rejilla rejilla-lateral">
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Datos del negocio</h2>
+        <form class="formulario rejilla-campos" method="post" th:action="@{/admin/configuracion}" th:attr="hx-post=@{/admin/configuracion}" hx-swap="none">
+          <div class="campo ancho-completo"><label class="etiqueta" for="nc">Nombre comercial</label><input id="nc" name="nombreComercial" class="entrada" required minlength="2" maxlength="80" th:value="${l.nombreComercial}"></div>
+          <div class="campo"><label class="etiqueta" for="rs">Razón social</label><input id="rs" name="razonSocial" class="entrada" required minlength="2" maxlength="120" th:value="${l.razonSocial}"></div>
+          <div class="campo"><label class="etiqueta" for="ruc">RUC</label><input id="ruc" name="ruc" class="entrada numeros" inputmode="numeric" pattern="\d{0,11}" maxlength="11" th:value="${cfg.ruc}"></div>
+          <div class="campo"><label class="etiqueta" for="rubro">Rubro</label><input id="rubro" name="rubro" class="entrada" maxlength="40" th:value="${l.rubro}" placeholder="Salud, Transporte, Belleza…"></div>
+          <div class="campo"><label class="etiqueta" for="tel">Teléfono</label><input id="tel" name="telefono" class="entrada" maxlength="20" th:value="${l.telefono}"></div>
+          <div class="campo ancho-completo"><label class="etiqueta" for="dir">Dirección</label><input id="dir" name="direccion" class="entrada" maxlength="160" th:value="${l.direccion}"></div>
+          <div class="campo"><label class="etiqueta" for="url">Identificador público (URL)</label><input id="url" class="entrada numeros" readonly th:value="'/l/' + ${l.slug}"></div>
+          <div class="campo"><label class="etiqueta" for="zona">Zona horaria</label><input id="zona" class="entrada" readonly th:value="${l.zonaHoraria}"></div>
+          <div class="ancho-completo acciones-cabecera" style="justify-content: flex-end"><button type="submit" class="boton">Guardar</button></div>
+        </form>
+
+        <div class="alerta alerta-info" style="margin-top: 1.5rem">
+          <strong>Protección de datos (Ley N.° 29733)</strong>
+          <ul style="margin: .5rem 0 0; padding-left: 1.2rem">
+            <li>Solo se recolecta nombre (opcional) y celular (opcional) con consentimiento explícito.</li>
+            <li>Los celulares se almacenan cifrados (AES-256-GCM) y con hash para evitar duplicados.</li>
+            <li>Los datos personales se anonimizan automáticamente a los 90 días.</li>
+            <li>Cada local solo accede a sus propios datos (aislamiento multi-tenant).</li>
+          </ul>
+        </div>
+      </section>
+
+      <aside th:fragment="uso-plan" class="tarjeta" th:with="l=${cfg.local}, p=${cfg.plan}, u=${cfg.uso}">
+        <div class="cabecera-tarjeta">
+          <h2 class="tarjeta-titulo">Plan actual</h2>
+          <span class="insignia" th:text="${p.nombre}">Básico</span>
+        </div>
+        <p class="metrica-valor" th:if="${p.precioMensual.signum() == 0}">Gratis</p>
+        <p class="metrica-valor" th:unless="${p.precioMensual.signum() == 0}">S/ <span th:text="${#numbers.formatDecimal(p.precioMensual, 1, 2)}">0</span> <small class="texto-apagado">/mes</small></p>
+      
+        <div class="uso-plan">
+          <div>
+            <p class="uso-fila"><span>Turnos este mes</span><span class="numeros texto-apagado" th:text="${u.turnosMes} + ' / ' + (${cfg.turnosIlimitados()} ? '∞' : ${p.maxTurnosMes})">0</span></p>
+            <div class="barra-progreso"><span th:style="'width:' + (${cfg.turnosIlimitados()} ? 2 : ${cfg.porcentaje(u.turnosMes, p.maxTurnosMes)}) + '%'"></span></div>
+          </div>
+          <div>
+            <p class="uso-fila"><span>Avisos WhatsApp</span><span class="numeros texto-apagado" th:text="${p.whatsappHabilitado} ? ${u.avisosMes} + ' / ' + ${p.maxAvisosWhatsapp} : 'No incluido'">0</span></p>
+            <div class="barra-progreso"><span th:style="'width:' + (${p.whatsappHabilitado} ? ${cfg.porcentaje(u.avisosMes, p.maxAvisosWhatsapp)} : 0) + '%'"></span></div>
+          </div>
+          <div>
+            <p class="uso-fila"><span>Colas</span><span class="numeros texto-apagado" th:text="${u.colas} + ' / ' + (${cfg.colasIlimitadas()} ? '∞' : ${p.maxColas})">0</span></p>
+            <div class="barra-progreso"><span th:style="'width:' + (${cfg.colasIlimitadas()} ? 5 : ${cfg.porcentaje(u.colas, p.maxColas)}) + '%'"></span></div>
+          </div>
+          <div>
+            <p class="uso-fila"><span>Ventanillas</span><span class="numeros texto-apagado" th:text="${u.ventanillas} + ' / ' + ${p.maxVentanillas}">0</span></p>
+            <div class="barra-progreso"><span th:style="'width:' + ${cfg.porcentaje(u.ventanillas, p.maxVentanillas)} + '%'"></span></div>
+          </div>
+          <p class="texto-apagado" style="font-size: .8rem" th:text="${u.usuarios} + (${u.usuarios == 1} ? ' usuario' : ' usuarios') + ' con acceso.'">0 usuarios</p>
+        </div>
+        <a th:if="${p.codigo != 'PRO'}" class="boton boton-contorno boton-bloque" th:href="@{/admin/plan}" style="margin-top: 1rem">Mejorar plan</a>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

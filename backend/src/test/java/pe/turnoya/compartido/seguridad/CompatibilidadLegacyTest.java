@@ -15,7 +15,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Vectores dorados: valores producidos por el código de legacy/ ({@code legacy/backend/scripts/generar-vectores.ts}).
+ * Vectores dorados: valores producidos por el código del sistema anterior ({@code legacy/backend/scripts/generar-vectores.ts}, commit bce0774).
  * Java debe leer los datos que ya existen en la BD y aceptar las sesiones del sistema anterior (riesgo 3 del plan).
  */
 class CompatibilidadLegacyTest {

@@ -21,13 +21,13 @@ import pe.turnoya.plataforma.Sesion;
 
 /**
  * Firma y verifica la sesión como JWT HS256 con {@code JWT_SECRET}: mismo algoritmo, secreto y campos que
- * {@code backend/src/auth.ts} de legacy/. Una cookie emitida por un sistema la acepta el otro.
+ * {@code backend/src/auth.ts} del sistema anterior. Una cookie emitida por un sistema la acepta el otro.
  */
 @Component
 public class FirmaSesion {
 
     public static final Duration DURACION = Duration.ofHours(12);
-    /** Secreto de desarrollo de legacy/ cuando no hay JWT_SECRET (ValidadorSecretos lo impide en producción). */
+    /** Secreto de desarrollo del sistema anterior cuando no hay JWT_SECRET (ValidadorSecretos lo impide en producción). */
     private static final String SECRETO_DESARROLLO = "turnoya-dev-secret-cambiar-en-produccion-2026";
 
     private final byte[] secreto;

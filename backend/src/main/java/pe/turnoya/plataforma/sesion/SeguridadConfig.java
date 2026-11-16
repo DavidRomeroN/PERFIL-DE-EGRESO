@@ -31,7 +31,7 @@ import org.springframework.security.web.header.writers.StaticHeadersWriter;
  *   <li>Rutas públicas: pantallas del cliente, TV, ticket, API pública y SSE. Todo lo demás exige sesión; los
  *       permisos finos van en cada controlador con {@code @SoloPersonal} / {@code @SoloAdmin}.</li>
  *   <li>CSRF con cookie para las páginas (htmx envía el token en una cabecera). La API JSON ({@code /api/**})
- *       queda fuera, como en legacy/: la protege la cookie SameSite=Lax.</li>
+ *       queda fuera, como en el sistema anterior: la protege la cookie SameSite=Lax.</li>
  * </ul>
  */
 @Configuration(proxyBeanMethods = false)
@@ -41,17 +41,22 @@ class SeguridadConfig {
     private static final String[] PUBLICAS = {
             "/", "/login", "/error", "/favicon.ico", "/manifest.webmanifest",
             "/css/**", "/js/**", "/img/**", "/webjars/**",
-            "/l/**", "/t/**", "/ticket/**",
-            "/api/v1/public/**", "/api/v1/realtime/**", "/api/v1/auth/login", "/api/v1/auth/logout",
-            "/api/health", "/actuator/health/**",
+            "/l/**", "/t/**", "/ticket/**", "/registro", "/c/**", "/cita/**", "/kiosco", "/kiosco/**", "/k/**",
+            "/api/v1/public/**", "/api/v1/realtime/**",
+            // M5: el kiosco se autentica con su token Bearer (no tiene sesión)
+            "/api/v1/kiosco/emparejar", "/api/v1/kiosco/config", "/api/v1/kiosco/heartbeat", "/api/v1/kiosco/turnos", "/api/v1/kiosco/sync",
+            "/api/v1/kiosco/mantenimiento", "/api/v1/kiosco/citas/checkin", "/api/v1/kiosco/qr", "/api/v1/webhooks/**", "/api/v1/auth/login", "/api/v1/auth/logout",
+            "/api/health", "/actuator/health/**", "/kiosco-sw.js",
     };
 
     private static final String CSP = String.join("; ",
             "default-src 'self'",
             "img-src 'self' data: blob: https:",
             "style-src 'self' 'unsafe-inline'",
-            "script-src 'self'",
-            "connect-src 'self'",
+            // Mercado Pago: el Card Payment Brick (pago del plan y alta de locales) carga su SDK y sus iframes
+            "script-src 'self' https://sdk.mercadopago.com https://http2.mlstatic.com",
+            "connect-src 'self' https://api.mercadopago.com https://api.mercadolibre.com https://events.mercadopago.com",
+            "frame-src https://*.mercadopago.com https://*.mercadolibre.com https://*.mlstatic.com",
             "font-src 'self' data:",
             "worker-src 'self' blob:",
             "frame-ancestors 'self'");
@@ -86,7 +91,7 @@ class SeguridadConfig {
         return http.build();
     }
 
-    /** bcrypt: valida los hashes {@code $2b$} que generó bcryptjs en legacy/ (no hace falta resetear contraseñas). */
+    /** bcrypt: valida los hashes {@code $2b$} que generó bcryptjs en el sistema anterior (no hace falta resetear contraseñas). */
     @Bean
     PasswordEncoder codificadorClaves() {
         return new BCryptPasswordEncoder(10);

@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * Configuración propia de TurnoYa ({@code turnoya.*} en application.yml). Los valores vienen de las mismas
- * variables de entorno que usa legacy/ (DATABASE_URL, JWT_SECRET, DATA_ENCRYPTION_KEY, WHATSAPP_*…).
+ * variables de entorno que usa el sistema anterior (DATABASE_URL, JWT_SECRET, DATA_ENCRYPTION_KEY, WHATSAPP_*…).
  */
 @ConfigurationProperties("turnoya")
 public record PropiedadesTurnoYa(
@@ -14,6 +14,7 @@ public record PropiedadesTurnoYa(
         @DefaultValue Seguridad seguridad,
         @DefaultValue WhatsApp whatsapp,
         @DefaultValue TiempoReal tiempoReal,
+        @DefaultValue MercadoPago mercadopago,
         @DefaultValue("true") boolean jobsHabilitados) {
 
     /** Un .env antiguo puede traer valores entre comillas ("…"): se quitan para que funcionen igual. */
@@ -61,6 +62,29 @@ public record PropiedadesTurnoYa(
             openwaUrl = sinComillas(openwaUrl);
             openwaApiKey = sinComillas(openwaApiKey);
             openwaSession = sinComillas(openwaSession);
+        }
+    }
+
+    /**
+     * Pagos de suscripción con Mercado Pago (Checkout API + Card Payment Brick). El navegador solo tokeniza la tarjeta con
+     * la clave pública; el cobro lo crea el servidor con el access token. {@code simulado} (solo desarrollo) decide el
+     * resultado por el titular de la tarjeta de prueba (APRO, CONT, OTHE…) sin llamar a /v1/payments.
+     */
+    public record MercadoPago(String accessToken, String publicKey, String webhookSecret, String simulado) {
+
+        public MercadoPago {
+            accessToken = sinComillas(accessToken);
+            publicKey = sinComillas(publicKey);
+            webhookSecret = sinComillas(webhookSecret);
+        }
+
+        public boolean configurado() {
+            return accessToken != null && accessToken.length() > 20;
+        }
+
+        /** Acepta "true" o "1" (como el sistema anterior); vacío o ausente es falso. */
+        public boolean esSimulado() {
+            return "true".equalsIgnoreCase(simulado) || "1".equals(simulado);
         }
     }
 

@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import static org.hamcrest.Matchers.containsString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,14 +32,15 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import pe.turnoya.compartido.ErrorNegocio;
-import pe.turnoya.nucleo.aplicacion.EmisionTurnos;
-import pe.turnoya.nucleo.aplicacion.HistorialTurnos;
-import pe.turnoya.nucleo.aplicacion.OperacionVentanilla;
-import pe.turnoya.nucleo.aplicacion.SolicitudEmision;
+import pe.turnoya.nucleo.appmovil.PresenciaApp;
+import pe.turnoya.nucleo.atencion.OperacionVentanilla;
+import pe.turnoya.nucleo.emision.EmisionTurnos;
+import pe.turnoya.nucleo.emision.SolicitudEmision;
+import pe.turnoya.nucleo.historial.HistorialTurnos;
 import pe.turnoya.plataforma.Auditoria;
 
 /**
- * Núcleo contra un PostgreSQL real (Testcontainers): Flyway aplica las migraciones de legacy/ desde cero y se
+ * Núcleo contra un PostgreSQL real (Testcontainers): Flyway aplica las migraciones del sistema anterior desde cero y se
  * prueban las garantías que más importan. Se omite si no hay Docker (en CI siempre corre).
  */
 @SpringBootTest(properties = {
@@ -53,7 +57,7 @@ class NucleoIntegracionTest {
 
     @DynamicPropertySource
     static void baseDeDatos(DynamicPropertyRegistry registro) {
-        // Mismo formato que la DATABASE_URL de legacy/ (también prueba la conversión a JDBC)
+        // Mismo formato que la DATABASE_URL del sistema anterior (también prueba la conversión a JDBC)
         registro.add("turnoya.database-url", () -> "postgresql://" + POSTGRES.getUsername() + ":" + POSTGRES.getPassword() + "@"
                 + POSTGRES.getHost() + ":" + POSTGRES.getMappedPort(5432) + "/" + POSTGRES.getDatabaseName() + "?schema=public");
     }
@@ -70,6 +74,8 @@ class NucleoIntegracionTest {
     HistorialTurnos historial;
     @Autowired
     MockMvc mvc;
+    @Autowired
+    PresenciaApp presencia;
 
     private int localId;
     private int colaId;
@@ -151,7 +157,7 @@ class NucleoIntegracionTest {
         assertThat(enEspera).isZero();
     }
 
-    /** API pública: mismo sobre {ok, data} que legacy/ y sin tokens ajenos en el estado público. */
+    /** API pública: mismo sobre {ok, data} que el sistema anterior y sin tokens ajenos en el estado público. */
     @Test
     void apiPublicaConElMismoContrato() throws Exception {
         mvc.perform(post("/api/v1/public/turnos").contentType(MediaType.APPLICATION_JSON).content("{\"colaId\": " + colaId + "}"))
@@ -186,6 +192,28 @@ class NucleoIntegracionTest {
         assertThat(historial.consultar(localId, null, ventanillas.get(1), null, null).items()).isEmpty();
         assertThat(historial.consultar(localId, null, null, EstadoTurno.LLAMADO, null).items())
                 .extracting(f -> f.codigo()).containsExactly("A-002");
+    }
+
+    @Test
+    void laAppTomaTurnoYLaTvMuestraSuQr() throws Exception {
+        // App móvil: su API, con la marca de presencia del QR de la TV y el id del dispositivo
+        mvc.perform(post("/api/v1/public/app/turnos").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"colaId\": " + colaId + ", \"presencia\": \"" + presencia.vigente(localId)
+                                + "\", \"dispositivo\": \"dispositivo-nucleo-0001\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.codigo").value("A-001"))
+                .andExpect(jsonPath("$.data.canal").value("APP"));
+
+        mvc.perform(get("/api/v1/public/locales/{slug}/estado", slug))
+                .andExpect(jsonPath("$.data.colas[0].espera[0].canal").value("APP"));
+
+        // La TV ofrece solo el QR de la app (el chatbot de WhatsApp se retiró)
+        mvc.perform(get("/l/{slug}/tv", slug))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/l/" + slug + "/app")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("wa.me/"))));
+        mvc.perform(post("/api/v1/webhooks/whatsapp").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -2,7 +2,7 @@
 
 > Estado: **núcleo migrado** (colas, ventanillas, turnos, panel de ventanilla, pantalla TV, "mi turno", ticket,
 > login, administración de colas y ventanillas). M1–M8, pagos, usuarios, configuración del local y super-admin
-> siguen en `legacy/` hasta que se migren con la receta de la sección 6.
+> siguen en el sistema anterior (commit `bce0774`, carpeta `legacy/`) hasta que se migren con la receta de la sección 6.
 >
 > Complementa [`MIGRACION_SPRING.md`](MIGRACION_SPRING.md) (plan por fases) y [`ARQUITECTURA.md`](ARQUITECTURA.md)
 > (sistema anterior).
@@ -14,20 +14,20 @@
 | Tema | Decisión | Por qué |
 |---|---|---|
 | Estilo | **Monolito modular** con Spring Modulith 2.1 | Los turnos necesitan transacciones fuertes en una sola BD (`FOR UPDATE SKIP LOCKED`); los módulos dan fronteras claras sin sistemas distribuidos. |
-| Dentro de cada módulo | **Hexagonal**: `dominio` · `aplicacion` · `infraestructura` · `web` | Las reglas no dependen de Spring ni de la BD; los adaptadores (BD, WhatsApp) se cambian sin tocar el negocio. |
+| Dentro de cada módulo | **Hexagonal + vertical slicing**: `dominio` (modelo y puertos) · `infraestructura` (adaptadores) · una carpeta por funcionalidad | Las reglas no dependen de la BD ni de la web; los adaptadores (BD, WhatsApp, Redis) se cambian sin tocar el negocio; todo lo de una funcionalidad (caso de uso, API, vista) está junto. |
 | Entre módulos | **Eventos** (`@ApplicationModuleListener`) y **puertos** | El núcleo no llama a notificaciones ni a la TV: publica lo que pasó. Nada de llamadas encadenadas ("código en cascada"). |
 | Garantía de entrega | Registro de publicaciones de Modulith (tabla `event_publication`, migración V11) | Si el proceso se cae antes de enviar un WhatsApp, el evento se reintenta al arrancar. |
 | Acceso a datos | **JdbcClient con SQL explícito** (sin JPA ni jOOQ) | El dominio ya vive en SQL (funciones de turnos, enums nativos, `TIMESTAMP` en UTC). SQL visible = fácil de revisar; sin magia de ORM. *Cambia lo previsto en MIGRACION_SPRING.md (jOOQ + JPA).* |
 | Migraciones | **Flyway** con las 10 migraciones de Prisma copiadas sin cambios (V1–V10) | En una BD existente toma la versión 10 como base; en una vacía crea todo. |
 | Frontend | **Thymeleaf + htmx** (hipermedia), JavaScript mínimo | Un solo lenguaje para el equipo. El navegador solo hace lo que no puede hacer el servidor: sonido, voz, vibración, imprimir. |
-| CSS | Hojas propias con **tokens de diseño** (mismos colores que legacy/) | Sin herramientas de Node ni compilación de CSS. |
+| CSS | Hojas propias con **tokens de diseño** (mismos colores que el sistema anterior) | Sin herramientas de Node ni compilación de CSS. |
 | JS de terceros | htmx y su extensión SSE como **WebJars** (versión fija en `gradle/libs.versions.toml`) | Nada copiado al repositorio; se actualiza cambiando una línea. |
-| Sesión | **JWT HS256 en la cookie `turnoya_session`**, mismo secreto y campos que legacy/ | Durante la convivencia, una sesión sirve en los dos sistemas. |
+| Sesión | **JWT HS256 en la cookie `turnoya_session`**, mismo secreto y campos que el sistema anterior | Durante la convivencia, una sesión sirve en los dos sistemas. |
 | Tiempo real | SSE con **hilos virtuales**; bus **en memoria** o **Redis** (`TURNOYA_BUS=redis`) | Resuelve el riesgo 1 del plan: varias réplicas comparten los eventos. |
-| Tareas programadas | Reclamo en la tabla **`job_estado`** (misma regla que legacy/) | Resuelve el riesgo 2: aunque corran legacy/ y Java a la vez, cada corrida se ejecuta una sola vez. |
-| Datos personales | Cifrado AES-GCM y hash del celular **byte a byte compatibles** con legacy/ | Resuelve el riesgo 3: lo comprueban los vectores dorados (sección 7). |
+| Tareas programadas | Reclamo en la tabla **`job_estado`** (misma regla que el sistema anterior) | Resuelve el riesgo 2: aunque corran el sistema anterior y Java a la vez, cada corrida se ejecuta una sola vez. |
+| Datos personales | Cifrado AES-GCM y hash del celular **byte a byte compatibles** con el sistema anterior | Resuelve el riesgo 3: lo comprueban los vectores dorados (sección 7). |
 
-### Correcciones de seguridad respecto de legacy/
+### Correcciones de seguridad respecto del sistema anterior
 
 - El estado público del local (`/api/v1/public/locales/:slug/estado`, pantalla TV) ya **no incluye los tokens de seguimiento** de cada turno. Con ellos cualquiera podía cancelar turnos ajenos.
 - El canal SSE público tampoco envía el token en `turno:llamado` / `turno:estado`.
@@ -57,8 +57,8 @@ clase interna de otro. Los diagramas actualizados quedan en `backend/build/sprin
 |---|---|
 | `compartido` | Todo (módulo abierto) |
 | `plataforma` | `CatalogoLocales`, `ModulosLocal`, `HorarioAtencion`, `Auditoria`, `LocalDeTrabajo`, `Local`, `Plan`, `Sesion`, `Modulo`, `RolUsuario`, `@SoloPersonal`, `@SoloAdmin` |
-| `nucleo` | `ConsultaTurnos`, `ContactoTurnos`, `TurnoPublico`, `SnapshotLocal`, `EstadoTurno`, `CanalTurno`; `nucleo.eventos.*`; `nucleo.puertos.*` |
-| `notificaciones` | `NotificacionRegistrada` (evento) |
+| `nucleo` | `ConsultaTurnos`, `ContactoTurnos`, `TomaDeTurnos` (puerto de entrada de los canales conversacionales), `TurnoPublico`, `SnapshotLocal`, `EstadoTurno`, `CanalTurno`; `nucleo.eventos.*`; `nucleo.puertos.*` |
+| `notificaciones` | `NotificacionRegistrada` (evento), `MensajesWhatsApp` (respuestas de texto libre del bot) |
 | `tiemporeal` | — (solo escucha) |
 
 ### Puertos del núcleo (para M1, M2 y M3)
@@ -90,24 +90,46 @@ Los eventos **no llevan datos personales**: quedan guardados en `event_publicati
 
 ---
 
-## 3. Capas dentro de un módulo
+## 3. Dentro de un módulo: hexagonal con vertical slicing
+
+Cada módulo es un **hexágono**: en el centro el dominio con sus **puertos**; alrededor, los **adaptadores**. Los
+adaptadores de salida (BD, WhatsApp, Redis) viven en `infraestructura/`. Los de entrada (API REST y vistas) viven
+**dentro de la funcionalidad** a la que pertenecen, junto a su caso de uso: eso es el *vertical slicing*. Para cambiar
+"llamar al siguiente" se abre una sola carpeta (`atencion/`), no cuatro capas.
 
 ```
 pe.turnoya.<modulo>/
   (raíz)            API pública: servicios de consulta, registros que devuelven, enums
   eventos/          @NamedInterface: eventos que publica
-  puertos/          @NamedInterface: interfaces que otros implementan
-  dominio/          reglas puras y registros (sin Spring, sin SQL) → pruebas unitarias simples
-  aplicacion/       casos de uso: un servicio por intención (EmisionTurnos, OperacionVentanilla…), @Transactional
-  infraestructura/  repositorios *Jdbc, adaptadores externos, @Bean de tareas programadas
-  web/api/          @RestController: contrato JSON /api/v1 (igual que legacy/)
-  web/vistas/       @Controller: páginas Thymeleaf y fragmentos para htmx
+  puertos/          @NamedInterface: interfaces que implementan otros módulos (M1, M2, M3…)
+  dominio/          modelo y reglas puras + puertos de salida (Repositorio*): sin SQL ni web
+  infraestructura/  adaptadores de salida: *Jdbc (implementan los Repositorio*), WhatsApp, Redis
+  <funcionalidad>/  un slice por funcionalidad: caso(s) de uso + *Api (@RestController) + *Vista (@Controller)
 ```
+
+El núcleo, por ejemplo:
+
+| Slice | Qué hace | Clases |
+|---|---|---|
+| `emision/` | Tomar turno por QR (RF01) y ticket impreso (RF07) | `EmisionTurnos`, `InformacionLocal`, `EmisionApi`, `TomarTurnoVista`, `TicketVista` |
+| `seguimiento/` | "Mi turno": consultar, cancelar (RF04) y valorar (N07) | `CancelacionTurnos`, `Valoraciones`, `SeguimientoApi`, `MiTurnoVista` |
+| `atencion/` | Panel de ventanilla: llamar, atender, rellamar (RF05, RF06) | `OperacionVentanilla`, `AtencionApi`, `PanelVista` |
+| `historial/` | Historial del día con indicadores (N02) | `HistorialTurnos`, `HistorialApi` |
+| `pantalla/` | Pantalla TV (RF12) | `PantallaApi`, `PantallaTvVista` |
+| `colas/`, `ventanillas/` | Administración (RF08) | `GestionColas`, `ColasApi`, `AdminColasVista`… |
+| `avisos/` | Aviso cuando faltan N personas (RF03) | `AvisosCola` |
+| `expiracion/` | RN04: llamado sin presentarse | `ExpiracionLlamados`, `TareaExpiracion` |
+| `extensiones/` | Elige la implementación de cada puerto por local | `ExtensionesNucleo`, `EsperaPorPromedio` |
+
+`ArquitecturaHexagonalTest` (ArchUnit) hace cumplir las reglas: el dominio no conoce la BD ni la web ni las
+funcionalidades; nadie fuera de `infraestructura/` usa un adaptador (los `*Jdbc` ni siquiera son públicos); el SQL solo
+vive en los adaptadores; los controladores no están en `dominio/` ni en `infraestructura/`.
 
 Reglas prácticas:
 
-- Un **caso de uso por clase** con nombre de negocio. Si un método crece, se divide; si dos casos se llaman entre sí en
-  cadena, probablemente falta un evento.
+- Un **caso de uso por clase** con nombre de negocio, en el slice de su funcionalidad. Si un método crece, se divide;
+  si dos slices se llaman entre sí en cadena, probablemente falta un evento.
+- Los casos de uso dependen de los **puertos** (`RepositorioTurnos`), nunca de los adaptadores (`TurnosJdbc`).
 - Los **controladores no tienen lógica**: validan la entrada, resuelven el local de la sesión (`LocalDeTrabajo`) y llaman
   a un caso de uso.
 - Los **errores de negocio** se lanzan como `ErrorNegocio(codigo, mensaje, status)`. La API los convierte al sobre
@@ -129,7 +151,7 @@ Reglas prácticas:
 - **Multi-tenant**: el `localId` sale siempre de la sesión (`LocalDeTrabajo.resolver`), nunca del cuerpo de la petición.
   Todas las consultas del personal filtran por `local_id`.
 - **Migraciones nuevas**: `backend/src/main/resources/db/migration/V12__descripcion.sql` en adelante. Mientras conviva
-  legacy/, solo cambios **aditivos** (columnas nuevas con valor por defecto, tablas nuevas).
+  el sistema anterior, solo cambios **aditivos** (columnas nuevas con valor por defecto, tablas nuevas).
 
 ---
 
@@ -159,28 +181,34 @@ Reglas prácticas:
 
 ---
 
-## 6. Receta: migrar un módulo de legacy/
+## 6. Receta: migrar un módulo del sistema anterior
 
 Ejemplo con M1 Prioridades. Lo mismo vale para M2–M8, pagos y la administración.
+
+El código original ya no está en esta rama: su última versión está en el commit `bce0774`, carpeta `legacy/`. Se lee
+sin cambiar de rama con `git ls-tree -r --name-only bce0774 legacy/backend/src/prioridades` y
+`git show bce0774:legacy/backend/src/prioridades/<archivo>`.
 
 1. **Leer el original**: `legacy/backend/src/prioridades/` (reglas y servicio), sus rutas en
    `legacy/frontend/src/app/api/v1/prioridades/**` y sus pantallas en `legacy/frontend/src/app/admin/modulos/prioridades/`.
    Las pruebas de `legacy/backend/tests/unit/prioridades.test.ts` dicen qué comportamiento conservar.
-2. **Crear el paquete** `pe.turnoya.prioridades` con `package-info.java` (`@ApplicationModule`) y las capas de la sección 3.
-3. **Reglas puras** a `dominio/` con sus pruebas (portar los casos de las pruebas de legacy/; para propiedades, jqwik).
-4. **Casos de uso** a `aplicacion/`; **SQL** a `infraestructura/*Jdbc`.
+2. **Crear el paquete** `pe.turnoya.prioridades` con `package-info.java` (`@ApplicationModule`), `dominio/`,
+   `infraestructura/` y un slice por funcionalidad (sección 3), por ejemplo `categorias/` y `verificacion/`.
+3. **Reglas puras** a `dominio/` con sus pruebas (portar los casos de las pruebas del sistema anterior; para propiedades, jqwik).
+4. **Casos de uso** al slice de su funcionalidad; **puertos** (`Repositorio*`) a `dominio/`; **SQL** a
+   `infraestructura/*Jdbc`, que implementa el puerto y no es público.
 5. **Conectar con el núcleo sin tocarlo**:
    - implementar el puerto que corresponda (`PoliticaPrioridad`) con `aplica(localId) = modulos.activo(localId, Modulo.M1)`;
    - escuchar los eventos que necesite (`TurnoCerrado`, `TurnoEmitido`) con `@ApplicationModuleListener`;
    - si el núcleo necesita algo nuevo, agregar un **puerto** o un **evento** en `nucleo.puertos` / `nucleo.eventos`, nunca
      una llamada directa del núcleo al módulo.
-6. **API REST** en `web/api/` con el **mismo contrato** que legacy/ (rutas, campos, códigos de error).
+6. **API REST** (`*Api`) en el slice, con el **mismo contrato** que el sistema anterior (rutas, campos, códigos de error).
 7. **Pantallas** en `frontend/src/main/resources/templates/<modulo>/` y su CSS en `static/css/pantallas/`.
    Agregar el enlace en `templates/admin/marco.html` (quitar el "en migración").
 8. **Tareas programadas** como `@Bean TareaProgramada` con **el mismo nombre** que en `legacy/backend/src/jobs/registro.ts`.
-9. **Verificar**: `gradlew build` (incluye `ModularidadTest`). Si el módulo cifra o firma algo, agregar sus casos al
+9. **Verificar**: `gradlew build` (incluye `ModularidadTest` y `ArquitecturaHexagonalTest`). Si el módulo cifra o firma algo, agregar sus casos al
    generador de vectores dorados.
-10. **Corte**: cuando la versión Java está en producción, se borra el código de ese módulo en legacy/.
+10. **Corte**: cuando la versión Java está en producción, se retira esa ruta del sistema anterior.
 
 ---
 
@@ -190,13 +218,15 @@ Ejemplo con M1 Prioridades. Lo mismo vale para M2–M8, pagos y la administraci�
 |---|---|---|
 | Unitarias | `src/test/java/.../dominio`, `EstadoTurnoTest`, `HorarioAtencionTest`… | Reglas puras, sin Spring |
 | Modularidad | `ModularidadTest` | Fronteras y ciclos entre módulos; genera los diagramas |
-| Compatibilidad | `CompatibilidadLegacyTest` + `src/test/resources/vectores/compatibilidad.json` | Celulares, cifrado, bcrypt y JWT idénticos a legacy/ |
+| Compatibilidad | `CompatibilidadLegacyTest` + `src/test/resources/vectores/compatibilidad.json` | Celulares, cifrado, bcrypt y JWT idénticos al sistema anterior |
 | Integración | `NucleoIntegracionTest` (Testcontainers) | Migraciones desde cero, numeración, RN03, 3 ventanillas concurrentes, contrato de la API pública |
 
-Regenerar los vectores dorados (después de cambiar algo en `legacy/backend/src/crypto.ts` o `auth.ts`):
+Los vectores dorados se generaron con `legacy/backend/scripts/generar-vectores.ts` (commit `bce0774`). Solo hace falta
+regenerarlos si cambia el cifrado o la firma de sesiones del sistema anterior; se hace desde ese commit:
 
 ```bash
-cd legacy/backend
+git worktree add ../turnoya-anterior bce0774
+cd ../turnoya-anterior/legacy/backend
 npx tsx scripts/generar-vectores.ts
 ```
 
@@ -204,14 +234,15 @@ Las pruebas de integración necesitan Docker; sin él se omiten (en CI siempre c
 
 ---
 
-## 8. Convivencia con legacy/
+## 8. Convivencia con el sistema anterior
 
 - **Base de datos**: una sola. Flyway (Java) es el dueño del esquema a partir de ahora. Para una BD nueva con datos de
-  demostración: primero `npm run setup` en legacy/ (crea y siembra), luego Java la toma como base (versión 10).
+  demostración: primero `npm run setup` en el sistema anterior (crea y siembra), luego Java la toma como
+  base (versión 10). En una BD vacía Flyway crea el esquema completo, sin datos de demostración.
 - **Sesión**: la misma cookie y el mismo `JWT_SECRET`.
 - **Tareas**: las del núcleo (`expirar-llamados`) se reclaman en `job_estado`; si corren ambos sistemas, una sola instancia
   ejecuta cada corrida.
 - **Tiempo real**: cada sistema tiene su propio canal SSE. Mientras convivan, conviene que las pantallas de un local usen
   un solo sistema.
-- **Puertos**: Java en 8080, legacy/ en 3000. En producción, un proxy (Nginx/Caddy) decide por ruta qué sistema responde,
+- **Puertos**: Java en 8080, el sistema anterior en 3000. En producción, un proxy (Nginx/Caddy) decide por ruta qué sistema responde,
   y se mueve una ruta a Java cuando su módulo está migrado.

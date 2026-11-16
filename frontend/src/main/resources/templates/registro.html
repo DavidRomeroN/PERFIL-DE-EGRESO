@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Crear mi local')}"></head>
+<body>
+<main class="registro" id="registro" th:attr="data-clave-publica=${clavePublica},data-habilitado=${pagosHabilitados}">
+  <div class="registro-barra">
+    <a th:replace="~{fragmentos/base :: logo('/', false)}"></a>
+    <a class="enlace-apagado" th:href="@{/login}">Ya tengo cuenta</a>
+  </div>
+
+  <section data-paso="datos">
+    <div class="registro-cabecera entrar">
+      <h1>Crea tu local en TurnoYa</h1>
+      <p>Elige un plan, completa los datos y en un minuto tienes tu QR listo.</p>
+    </div>
+
+    <form class="formulario" id="form-registro" novalidate>
+      <fieldset class="registro-planes" aria-label="Plan">
+        <label class="registro-plan" th:each="p : ${planes}">
+          <input type="radio" name="plan" th:value="${p.codigo}" th:checked="${p.codigo == planElegido}"
+                 th:attr="data-precio=${p.precio},data-nombre=${p.nombre}">
+          <span class="registro-plan-nombre" th:text="${p.nombre}">Emprende</span>
+          <span class="registro-plan-precio">
+            <th:block th:if="${p.precio.signum() == 0}">Gratis</th:block>
+            <th:block th:unless="${p.precio.signum() == 0}">S/ <span th:text="${#numbers.formatDecimal(p.precio, 1, 2)}">49</span><small> /mes</small></th:block>
+          </span>
+          <span class="registro-plan-descripcion" th:if="${p.descripcion}" th:text="${p.descripcion}">…</span>
+        </label>
+      </fieldset>
+
+      <p class="alerta alerta-error" role="alert" hidden data-registro-error></p>
+
+      <fieldset class="tarjeta rejilla-campos">
+        <legend>Tu negocio</legend>
+        <div class="campo"><label class="etiqueta" for="nombreComercial">Nombre comercial</label><input id="nombreComercial" name="nombreComercial" class="entrada" required minlength="2" maxlength="80"></div>
+        <div class="campo"><label class="etiqueta" for="razonSocial">Razón social</label><input id="razonSocial" name="razonSocial" class="entrada" required minlength="2" maxlength="120"></div>
+        <div class="campo"><label class="etiqueta" for="ruc">RUC (opcional)</label><input id="ruc" name="ruc" class="entrada numeros" inputmode="numeric" pattern="\d{11}" maxlength="11"></div>
+        <div class="campo"><label class="etiqueta" for="rubro">Rubro</label><input id="rubro" name="rubro" class="entrada" maxlength="40" value="Salud"></div>
+        <div class="campo"><label class="etiqueta" for="ciudad">Ciudad</label><input id="ciudad" name="ciudad" class="entrada" maxlength="60" value="Juliaca"></div>
+        <div class="campo"><label class="etiqueta" for="telefono">Teléfono (opcional)</label><input id="telefono" name="telefono" class="entrada" maxlength="20"></div>
+        <div class="campo ancho-completo"><label class="etiqueta" for="direccion">Dirección (opcional)</label><input id="direccion" name="direccion" class="entrada" maxlength="160"></div>
+        <div class="campo ancho-completo"><label class="etiqueta" for="slug">Dirección para tus clientes (turnoya.pe/l/…)</label><input id="slug" name="slug" class="entrada numeros" required pattern="[a-z0-9\-]{3,40}" maxlength="40"></div>
+      </fieldset>
+
+      <fieldset class="tarjeta rejilla-campos">
+        <legend>Administrador</legend>
+        <div class="campo"><label class="etiqueta" for="adminNombre">Tu nombre</label><input id="adminNombre" name="adminNombre" class="entrada" required minlength="2" maxlength="80"></div>
+        <div class="campo"><label class="etiqueta" for="adminEmail">Correo</label><input id="adminEmail" name="adminEmail" type="email" class="entrada" required autocomplete="email"></div>
+        <div class="campo"><label class="etiqueta" for="password">Contraseña (mínimo 8)</label><input id="password" name="password" type="password" class="entrada" required minlength="8" maxlength="72" autocomplete="new-password"></div>
+      </fieldset>
+
+      <label class="casilla registro-terminos">
+        <input type="checkbox" name="aceptaTerminos" value="true" required>
+        <span>Acepto los términos del servicio y el tratamiento de datos (Ley 29733).<span data-aviso-cobro></span></span>
+      </label>
+
+      <button type="submit" class="boton boton-grande registro-enviar" data-registro-enviar>Crear mi local gratis</button>
+    </form>
+  </section>
+
+  <section class="tarjeta registro-pago" data-paso="pago" hidden>
+    <div class="registro-pago-cabecera">
+      <div>
+        <p class="registro-pago-plan" data-pago-plan>Plan · 1 mes</p>
+        <p class="texto-apagado" data-pago-quien></p>
+      </div>
+      <p class="registro-pago-monto">S/ <span data-pago-monto>0.00</span></p>
+    </div>
+    <p class="alerta alerta-error" role="alert" hidden data-pago-error></p>
+    <div id="mp-brick" class="pago-brick"></div>
+    <button type="button" class="enlace-apagado" data-volver>← Volver a mis datos</button>
+  </section>
+
+  <section class="registro-listo" data-paso="listo" hidden>
+    <span class="registro-icono" data-icono-listo aria-hidden="true">✓</span>
+    <h1 data-listo-titulo>¡Tu local está listo!</h1>
+    <p class="texto-apagado" data-listo-mensaje></p>
+    <div class="registro-listo-acciones" data-listo-acciones>
+      <a class="boton boton-grande" data-ingresar th:href="@{/login(next='/admin')}">Ingresar al panel</a>
+      <p data-listo-slug hidden>Tus clientes tomarán turno en <a class="numeros" data-enlace-local href="/">/l/…</a></p>
+    </div>
+  </section>
+</main>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+<script th:src="@{/js/registro.js}" defer></script>
+</body>
+</html>

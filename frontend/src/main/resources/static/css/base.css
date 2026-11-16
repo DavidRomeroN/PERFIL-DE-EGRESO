@@ -10,6 +10,11 @@
   margin: 0;
 }
 
+/* El atributo hidden gana siempre, aunque la clase defina display (flex, grid…) */
+[hidden] {
+  display: none !important;
+}
+
 html {
   font-family: var(--fuente);
   -webkit-text-size-adjust: 100%;

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Convierte la {@code DATABASE_URL} de legacy/ ({@code postgresql://usuario:clave@host:5432/bd?schema=public})
+ * Convierte la {@code DATABASE_URL} del sistema anterior ({@code postgresql://usuario:clave@host:5432/bd?schema=public})
  * a una URL JDBC con usuario y clave aparte. Así las dos aplicaciones comparten la misma variable de entorno.
  */
 public record UrlBaseDatos(String jdbcUrl, String usuario, String clave) {

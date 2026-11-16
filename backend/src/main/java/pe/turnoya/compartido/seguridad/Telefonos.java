@@ -7,7 +7,7 @@ import java.util.Optional;
 /**
  * Celulares: normalización a E.164, hash para búsquedas y máscara para mostrar.
  *
- * <p>Debe dar exactamente los mismos resultados que legacy/: el hash es la clave del índice único
+ * <p>Debe dar exactamente los mismos resultados que el sistema anterior: el hash es la clave del índice único
  * {@code ux_cliente_telefono_hash} (un celular = un cliente) y de la regla RN03.
  */
 public final class Telefonos {

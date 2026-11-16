@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Analítica y alertas')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Analítica y alertas</h1>
+        <p>Tiempos de espera y atención, cumplimiento del SLA por cola, satisfacción y alertas del local.</p>
+      </div>
+    </div>
+
+    <div th:if="${mensaje}" class="alerta alerta-exito" role="status" th:text="${mensaje}">Listo</div>
+    <div th:if="${error}" class="alerta alerta-error" role="alert" th:text="${error}">Error</div>
+
+    <nav class="pestanas" aria-label="Secciones de analítica">
+      <a th:href="@{/admin/analitica}" th:attr="aria-current=${tab != 'alertas'} ? 'page'">Analítica</a>
+      <a th:href="@{/admin/analitica(tab='alertas')}" th:attr="aria-current=${tab == 'alertas'} ? 'page'">
+        Alertas <span th:if="${abiertas > 0}" class="insignia estado-AVISADO" th:text="${abiertas}">1</span>
+      </a>
+    </nav>
+
+    <!--/* ====== Analítica ====== */-->
+    <th:block th:if="${tab != 'alertas'}">
+      <form class="formulario filtros-analitica" method="get" th:action="@{/admin/analitica}">
+        <div class="campos-3">
+          <div class="campo"><label class="etiqueta" for="f-desde">Desde</label>
+            <input id="f-desde" name="desde" type="date" class="entrada" th:value="${rango.desde}"></div>
+          <div class="campo"><label class="etiqueta" for="f-hasta">Hasta</label>
+            <input id="f-hasta" name="hasta" type="date" class="entrada" th:value="${rango.hasta}"></div>
+          <div class="campo"><span class="etiqueta">&nbsp;</span>
+            <div class="acciones-fila">
+              <button type="submit" class="boton boton-contorno">Aplicar</button>
+              <a class="boton boton-fantasma" th:href="@{/admin/analitica/percentiles.csv(desde=${rango.desde},hasta=${rango.hasta})}">CSV</a>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" name="metrica" th:value="${metrica}">
+      </form>
+
+      <div class="rejilla rejilla-4 kpis">
+        <section class="tarjeta">
+          <p class="etiqueta">Turnos emitidos</p>
+          <p class="kpi-valor numeros" th:text="${resumen.total}">0</p>
+        </section>
+        <section class="tarjeta">
+          <p class="etiqueta">Atendidos</p>
+          <p class="kpi-valor numeros" th:text="${resumen.atendidos}">0</p>
+        </section>
+        <section class="tarjeta">
+          <p class="etiqueta">Abandono</p>
+          <p class="kpi-valor numeros" th:text="${#numbers.formatDecimal(resumen.tasaAbandono, 1, 1)} + ' %'">0 %</p>
+        </section>
+        <section class="tarjeta">
+          <p class="etiqueta">Satisfacción (CSAT)</p>
+          <p class="kpi-valor numeros" th:text="${resumen.csat.promedio != null} ? ${#numbers.formatDecimal(resumen.csat.promedio, 1, 2)} + ' ★' : '—'">—</p>
+          <p class="ayuda" th:text="${resumen.csat.n} + ' valoraciones'">0 valoraciones</p>
+        </section>
+      </div>
+
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">SLA por cola (ventana móvil)</h2>
+        <p th:if="${#lists.isEmpty(resumen.sla)}" class="vacio">No hay colas activas.</p>
+        <div class="tabla-contenedor" th:unless="${#lists.isEmpty(resumen.sla)}">
+          <table class="tabla">
+            <thead><tr><th>Cola</th><th>Objetivo</th><th>Muestra</th><th>Cumplen</th><th>En riesgo</th><th>Cumplimiento</th><th>Presupuesto de error</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="s : ${resumen.sla}">
+              <td th:text="${s.cola}">Caja</td>
+              <td th:if="${s.configurado}" th:text="${#numbers.formatDecimal(s.objetivoPct, 1, 0)} + ' % en ≤ ' + ${s.esperaMaxMin} + ' min'">90 % en 15 min</td>
+              <td th:unless="${s.configurado}" class="texto-apagado">Sin SLA</td>
+              <td class="numeros" th:text="${s.muestra}">0</td>
+              <td class="numeros" th:text="${s.cumplen}">0</td>
+              <td class="numeros" th:classappend="${s.enRiesgo > 0} ? 'texto-aviso'" th:text="${s.enRiesgo}">0</td>
+              <td class="numeros" th:classappend="${s.cumple == null} ? '' : (${s.cumple} ? 'texto-exito' : 'texto-peligro')"
+                  th:text="${s.cumplimientoPct != null} ? ${#numbers.formatDecimal(s.cumplimientoPct, 1, 1)} + ' %' : '—'">—</td>
+              <td class="numeros" th:text="${s.configurado and s.presupuestoConsumido != null} ? ${s.presupuestoPct()} + ' % consumido' : '—'">—</td>
+              <td><button type="button" class="boton boton-fantasma boton-pequeno" th:attr="data-abrir='sla-' + ${s.colaId}">Editar</button></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="ayuda">Los turnos aún en espera cuentan como «en riesgo» si ya superaron el objetivo; el resto queda pendiente hasta ser llamado.</p>
+      </section>
+
+      <dialog class="dialogo" th:each="s : ${resumen.sla}" th:id="'sla-' + ${s.colaId}">
+        <form class="formulario" method="post" th:action="@{/admin/analitica/sla/{id}(id=${s.colaId})}">
+          <h2 th:text="'SLA de ' + ${s.cola}">SLA</h2>
+          <div class="campos-3">
+            <div class="campo"><label class="etiqueta" th:for="'sla-espera-' + ${s.colaId}">Espera máxima (min)</label>
+              <input th:id="'sla-espera-' + ${s.colaId}" name="esperaMaxMin" type="number" min="1" max="240" class="entrada" required
+                     th:value="${s.esperaMaxMin ?: 15}"></div>
+            <div class="campo"><label class="etiqueta" th:for="'sla-obj-' + ${s.colaId}">Objetivo (%)</label>
+              <input th:id="'sla-obj-' + ${s.colaId}" name="objetivoPct" type="number" min="1" max="100" step="0.1" class="entrada" required
+                     th:value="${s.objetivoPct ?: 90}"></div>
+            <div class="campo"><label class="etiqueta" th:for="'sla-ventana-' + ${s.colaId}">Ventana (min)</label>
+              <input th:id="'sla-ventana-' + ${s.colaId}" name="ventanaMin" type="number" min="15" max="1440" class="entrada" required
+                     th:value="${s.ventanaMin ?: 60}"></div>
+          </div>
+          <!--/* Sin campo oculto: si la casilla no va marcada, el parámetro no llega y el SLA queda inactivo */-->
+          <label class="casilla"><input type="checkbox" name="activo" value="true" th:checked="${s.configurado or s.esperaMaxMin == null}"> SLA activo</label>
+          <div class="dialogo-pie">
+            <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+            <button type="submit" class="boton">Guardar</button>
+          </div>
+        </form>
+      </dialog>
+
+      <section class="tarjeta">
+        <div class="cabecera-tarjeta">
+          <h2 class="tarjeta-titulo">Mapa de calor</h2>
+          <form method="get" th:action="@{/admin/analitica}">
+            <input type="hidden" name="desde" th:value="${rango.desde}">
+            <input type="hidden" name="hasta" th:value="${rango.hasta}">
+            <label class="etiqueta" for="f-metrica">Métrica</label>
+            <select id="f-metrica" name="metrica" class="selector" data-autoenviar>
+              <option value="llegadas" th:selected="${calor.metrica == 'llegadas'}">Llegadas promedio</option>
+              <option value="espera_p90" th:selected="${calor.metrica == 'espera_p90'}">Espera p90 (min)</option>
+              <option value="abandono" th:selected="${calor.metrica == 'abandono'}">Abandono (%)</option>
+            </select>
+          </form>
+        </div>
+        <div class="tabla-contenedor">
+          <table class="tabla mapa-calor">
+            <thead><tr><th></th><th th:each="h : ${calor.horas}" class="numeros" th:text="${h}">6</th></tr></thead>
+            <tbody>
+            <tr th:each="f : ${calor.matriz}">
+              <th th:text="${f.dia}">Lun</th>
+              <td th:each="c : ${f.celdas}" class="numeros celda-calor" th:classappend="${c.confiable} ? '' : 'celda-dudosa'"
+                  th:style="'--intensidad:' + ${calor.intensidad(c.valor)}"
+                  th:title="${f.dia} + ' ' + ${c.hora} + ':00 · ' + ${c.valor} + ' (n=' + ${c.n} + ')'"
+                  th:text="${c.n > 0} ? ${#numbers.formatDecimal(c.valor, 1, 1)} : ''">0</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="ayuda">Las celdas atenuadas tienen pocos datos (menos de 5 turnos) y no son confiables.</p>
+      </section>
+
+      <div class="rejilla rejilla-2">
+        <section class="tarjeta">
+          <h2 class="tarjeta-titulo">Percentiles por cola (min)</h2>
+          <p th:if="${#lists.isEmpty(resumen.percentiles)}" class="vacio">Sin turnos atendidos en el rango.</p>
+          <div class="tabla-contenedor" th:unless="${#lists.isEmpty(resumen.percentiles)}">
+            <table class="tabla">
+              <thead><tr><th>Cola</th><th>n</th><th>Espera p50</th><th>p90</th><th>p95</th><th>Atención p50</th><th>p90</th></tr></thead>
+              <tbody>
+              <tr th:each="p : ${resumen.percentiles}">
+                <td th:text="${p.grupo}">Caja</td>
+                <td class="numeros" th:text="${p.n}">0</td>
+                <td class="numeros" th:text="${p.espera.p50 ?: '—'}">—</td>
+                <td class="numeros" th:text="${p.espera.p90 ?: '—'}">—</td>
+                <td class="numeros" th:text="${p.espera.p95 ?: '—'}">—</td>
+                <td class="numeros" th:text="${p.atencion.p50 ?: '—'}">—</td>
+                <td class="numeros" th:text="${p.atencion.p90 ?: '—'}">—</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="tarjeta">
+          <h2 class="tarjeta-titulo">Espera p90 por hora del día</h2>
+          <p th:if="${#lists.isEmpty(porHora)}" class="vacio">Sin datos.</p>
+          <ul class="barras-hora" th:unless="${#lists.isEmpty(porHora)}">
+            <li th:each="p : ${porHora}">
+              <span class="barra-etiqueta numeros" th:text="${p.grupo}">8</span>
+              <span class="barra" th:style="'--ancho:' + ${p.espera.p90 == null ? 0 : p.espera.p90 / maxHora}"></span>
+              <span class="barra-valor numeros" th:text="${p.espera.p90 ?: '—'} + ' min · n=' + ${p.n}">0</span>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </th:block>
+
+    <!--/* ====== Alertas ====== */-->
+    <th:block th:if="${tab == 'alertas'}">
+      <section class="tarjeta">
+        <div class="cabecera-tarjeta">
+          <h2 class="tarjeta-titulo">Alertas activas</h2>
+          <a class="boton boton-fantasma boton-pequeno" th:href="@{/admin/analitica(tab='alertas')}">Actualizar</a>
+        </div>
+        <p th:if="${#lists.isEmpty(activas)}" class="vacio">No hay alertas activas. Todo en orden.</p>
+        <div class="tabla-contenedor" th:unless="${#lists.isEmpty(activas)}">
+          <table class="tabla">
+            <thead><tr><th>Alerta</th><th>Tipo</th><th>Nivel</th><th>Estado</th><th>Veces</th><th>Desde</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${activas}">
+              <td>
+                <strong th:text="${a.titulo}">Espera alta</strong>
+                <p class="ayuda" th:text="${a.textoDetalle()}">detalle</p>
+              </td>
+              <td th:text="${a.nombreTipo}">SLA</td>
+              <td class="numeros" th:text="${a.nivel}">1</td>
+              <td>
+                <span class="insignia" th:classappend="${a.estado == 'ABIERTA'} ? 'estado-AVISADO'" th:text="${a.estado}">ABIERTA</span>
+                <p th:if="${a.silenciadaHasta != null}" class="ayuda" th:text="'hasta ' + ${@fmt.hora(a.silenciadaHasta)}"></p>
+              </td>
+              <td class="numeros" th:text="${a.ocurrencias}">1</td>
+              <td th:text="${@fmt.haceCuanto(a.primeraVezAt)}">hace 5 min</td>
+              <td>
+                <div class="acciones-fila">
+                  <form th:if="${a.estado == 'ABIERTA'}" method="post" th:action="@{/admin/analitica/alertas/{id}/accion(id=${a.id})}">
+                    <input type="hidden" name="accion" value="RECONOCER">
+                    <button type="submit" class="boton boton-contorno boton-pequeno">Reconocer</button>
+                  </form>
+                  <form th:if="${a.estado != 'SILENCIADA'}" method="post" th:action="@{/admin/analitica/alertas/{id}/accion(id=${a.id})}">
+                    <input type="hidden" name="accion" value="SILENCIAR">
+                    <button type="submit" class="boton boton-fantasma boton-pequeno">Silenciar 1 h</button>
+                  </form>
+                  <form method="post" th:action="@{/admin/analitica/alertas/{id}/accion(id=${a.id})}">
+                    <input type="hidden" name="accion" value="RESOLVER">
+                    <button type="submit" class="boton boton-pequeno">Resolver</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="ayuda">Reconocer detiene el escalamiento. Las alertas medidas se resuelven solas cuando la condición desaparece durante el tiempo de la regla.</p>
+      </section>
+
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Reglas</h2>
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Regla</th><th>Umbral</th><th>Escalamiento</th><th>Autorresolución</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${reglas}">
+              <td>
+                <strong th:text="${r.nombre}">Regla</strong>
+                <p class="ayuda" th:text="${r.nombreTipo}">tipo</p>
+              </td>
+              <td>
+                <form th:each="u : ${r.umbral}" class="acciones-fila" method="post" th:action="@{/admin/analitica/reglas/{id}/umbral(id=${r.id})}">
+                  <input type="hidden" name="clave" th:value="${u.key}">
+                  <label class="etiqueta" th:for="'u-' + ${r.id} + '-' + ${u.key}" th:text="${u.key}">clave</label>
+                  <input th:id="'u-' + ${r.id} + '-' + ${u.key}" name="valor" type="number" step="any" class="entrada entrada-corta" th:value="${u.value}">
+                  <button type="submit" class="boton boton-fantasma boton-pequeno">Guardar</button>
+                </form>
+                <span th:if="${#maps.isEmpty(r.umbral)}">—</span>
+              </td>
+              <td>
+                <p th:each="n, i : ${r.niveles}" class="ayuda"
+                   th:text="'N' + ${i.count} + ': ' + (${n.traMin} == 0 ? 'al abrir' : 'a los ' + ${n.traMin} + ' min') + ' · ' + ${#strings.listJoin(n.canales, ', ')}">N1</p>
+              </td>
+              <td class="numeros" th:text="${r.resolverTrasMin} + ' min'">10 min</td>
+              <td><span class="insignia" th:classappend="${r.activa} ? 'estado-ATENDIENDO'" th:text="${r.activa} ? 'Activa' : 'Inactiva'">Activa</span></td>
+              <td>
+                <form method="post" th:action="@{/admin/analitica/reglas/{id}/activa(id=${r.id})}">
+                  <input type="hidden" name="activa" th:value="${!r.activa}">
+                  <button type="submit" class="boton boton-contorno boton-pequeno" th:text="${r.activa} ? 'Desactivar' : 'Activar'">Desactivar</button>
+                </form>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="ayuda">El canal CORREO queda registrado pero no se envía: esta versión no tiene servicio de correo. WHATSAPP se envía al teléfono del local.</p>
+      </section>
+
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Resueltas recientemente</h2>
+        <p th:if="${#lists.isEmpty(historial)}" class="vacio">Aún no hay alertas resueltas.</p>
+        <div class="tabla-contenedor" th:unless="${#lists.isEmpty(historial)}">
+          <table class="tabla">
+            <thead><tr><th>Alerta</th><th>Tipo</th><th>Veces</th><th>Resuelta</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${historial}">
+              <td th:text="${a.titulo}">Alerta</td>
+              <td th:text="${a.nombreTipo}">Tipo</td>
+              <td class="numeros" th:text="${a.ocurrencias}">1</td>
+              <td th:text="${a.resueltaAt != null} ? ${@fmt.fechaHora(a.resueltaAt)} : '—'">—</td>
+              <td>
+                <form method="post" th:action="@{/admin/analitica/alertas/{id}/accion(id=${a.id})}">
+                  <input type="hidden" name="accion" value="REABRIR">
+                  <button type="submit" class="boton boton-fantasma boton-pequeno">Reabrir</button>
+                </form>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </th:block>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Tareas programadas')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Jobs programados</h1>
+        <p>Tareas en segundo plano: expirar llamados, anonimizar datos, reportes… Se actualiza cada 15 s.</p>
+      </div>
+    </div>
+
+    <div id="lista" th:fragment="lista" class="tarjeta tarjeta-sin-relleno"
+         th:attr="hx-get=@{/admin/jobs}" hx-trigger="every 15s" hx-swap="outerHTML">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Job</th><th>Frecuencia</th><th>Última corrida</th><th>Duración</th><th>Resultado</th><th>Próxima</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(tareas)}"><td colspan="7" class="vacio">No hay tareas registradas.</td></tr>
+          <tr th:each="t : ${tareas}">
+            <td><strong class="numeros" th:text="${t.nombre}">expirar-llamados</strong><div class="texto-apagado" style="font-size: .8rem" th:text="${t.descripcion}">…</div></td>
+            <td th:text="${t.frecuencia}">cada 15 s</td>
+            <td class="numeros">
+              <span th:text="${t.ultimaCorrida != null} ? ${@fmt.fechaHora(t.ultimaCorrida)} : 'Nunca'">—</span>
+              <div class="texto-apagado" style="font-size: .75rem" th:text="${t.corridas} + ' corridas' + (${t.fallos > 0} ? ' · ' + ${t.fallos} + ' fallos' : '')">0 corridas</div>
+            </td>
+            <td class="numeros" th:text="${t.duracionMs != null} ? ${t.duracionMs} + ' ms' : '—'">—</td>
+            <td>
+              <span th:if="${t.enCurso}" class="insignia">En curso</span>
+              <div th:unless="${t.enCurso}" class="resultado-job" th:classappend="${t.ultimoError != null} ? 'con-error'"
+                   th:text="${t.ultimoError} ?: (${t.resultado} ?: '—')" th:title="${t.ultimoError} ?: ${t.resultado}">—</div>
+            </td>
+            <td class="numeros" th:text="${t.proxima != null} ? ${@fmt.fechaHora(t.proxima)} : '—'">—</td>
+            <td>
+              <form method="post" th:action="@{/admin/jobs/{n}(n=${t.nombre})}" th:attr="hx-post=@{/admin/jobs/{n}(n=${t.nombre})}"
+                    hx-target="#lista" hx-swap="outerHTML" hx-disabled-elt="find button">
+                <button type="submit" class="boton boton-contorno boton-pequeno" th:disabled="${t.enCurso}">Ejecutar ahora</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

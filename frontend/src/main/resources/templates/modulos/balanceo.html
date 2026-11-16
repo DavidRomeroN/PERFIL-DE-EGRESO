@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Transferencia y balanceo')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Transferencia y balanceo</h1>
+        <p>Las reglas nacen en modo simulación: registran qué harían sin mover a nadie hasta que las actives.</p>
+      </div>
+      <div class="acciones-cabecera">
+        <form method="post" th:action="@{/admin/modulos/balanceo/balancear}">
+          <button type="submit" class="boton boton-contorno">Balancear ahora</button>
+        </form>
+        <button type="button" class="boton" data-abrir="nueva-regla">+ Nueva regla</button>
+      </div>
+    </div>
+
+    <div th:if="${mensaje}" class="alerta alerta-exito" role="status" th:text="${mensaje}">Listo</div>
+    <div th:if="${error}" class="alerta alerta-error" role="alert" th:text="${error}">Error</div>
+
+    <nav class="pestanas" aria-label="Secciones del balanceo">
+      <a th:href="@{/admin/modulos/balanceo}" th:attr="aria-current=${tab == 'carga'} ? 'page'">Carga en vivo</a>
+      <a th:href="@{/admin/modulos/balanceo(tab='reglas')}" th:attr="aria-current=${tab == 'reglas'} ? 'page'">Reglas</a>
+      <a th:href="@{/admin/modulos/balanceo(tab='historial')}" th:attr="aria-current=${tab == 'historial'} ? 'page'">
+        Historial <span th:if="${pendientes > 0}" class="insignia estado-AVISADO" th:text="${pendientes}">1</span>
+      </a>
+      <a th:href="@{/admin/modulos/balanceo(tab='transferencias')}" th:attr="aria-current=${tab == 'transferencias'} ? 'page'">Transferencias</a>
+    </nav>
+
+    <!--/* Carga en vivo */-->
+    <div th:if="${tab == 'carga'}" class="rejilla rejilla-2">
+      <section class="tarjeta">
+        <div class="cabecera-tarjeta">
+          <h2 class="tarjeta-titulo">Por cola</h2>
+          <a class="boton boton-fantasma boton-pequeno" th:href="@{/admin/modulos/balanceo}">Actualizar</a>
+        </div>
+        <p th:if="${#lists.isEmpty(carga.colas)}" class="vacio">No hay colas activas.</p>
+        <div class="tabla-contenedor" th:unless="${#lists.isEmpty(carga.colas)}">
+          <table class="tabla">
+            <thead><tr><th>Cola</th><th>En espera</th><th>Espera máx.</th><th>Espera prom.</th><th>Ventanillas</th><th>Utilización</th></tr></thead>
+            <tbody>
+            <tr th:each="c : ${carga.colas}">
+              <td th:text="${c.cola}">Caja</td>
+              <td class="numeros" th:text="${c.en_espera}">0</td>
+              <td class="numeros" th:text="${c.espera_max_min} + ' min'">0 min</td>
+              <td class="numeros" th:text="${c.espera_prom_min} + ' min'">0 min</td>
+              <td class="numeros" th:text="${c.ventanillas_activas} + ' (' + ${c.ventanillas_libres} + ' libres)'">1</td>
+              <td class="numeros" th:classappend="${c.utilizacion > 0.9} ? 'texto-peligro' : (${c.utilizacion > 0.75} ? 'texto-aviso' : 'texto-exito')"
+                  th:text="${c.utilizacionPct()} + ' %'">0 %</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="ayuda" th:text="'Espera promedio del local: ' + ${carga.local.get('espera_prom_local')} + ' min'">Espera promedio del local</p>
+      </section>
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Por ventanilla</h2>
+        <p th:if="${#lists.isEmpty(carga.ventanillas)}" class="vacio">No hay ventanillas.</p>
+        <div class="tabla-contenedor" th:unless="${#lists.isEmpty(carga.ventanillas)}">
+          <table class="tabla">
+            <thead><tr><th>Ventanilla</th><th>Cola</th><th>Atendiendo</th><th>Atendidos hoy</th></tr></thead>
+            <tbody>
+            <tr th:each="v : ${carga.ventanillas}">
+              <td>
+                <span th:text="${v.nombre}">V1</span>
+                <span th:if="${v.temporal}" class="insignia estado-AVISADO">temporal</span>
+                <span th:unless="${v.activa}" class="insignia">inactiva</span>
+              </td>
+              <td th:text="${v.cola}">Caja</td>
+              <td class="numeros" th:text="${v.atendiendo ?: '—'}">—</td>
+              <td class="numeros" th:text="${v.atendidosHoy}">0</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!--/* Reglas */-->
+    <section th:if="${tab == 'reglas'}">
+      <p th:if="${#lists.isEmpty(reglas)}" class="vacio">Sin reglas. Ejemplo: “si la espera en Medicina supera 20 min por 5 min, mueve una ventanilla de Caja”.</p>
+      <div class="pila-config">
+        <article th:each="r : ${reglas}" class="tarjeta">
+          <div class="cabecera-tarjeta">
+            <h2 class="tarjeta-titulo" th:text="${r.nombre}">Refuerzo</h2>
+            <div class="acciones-fila">
+              <span class="insignia" th:classappend="${r.modo == 'ACTIVA'} ? 'cita-ATENDIDA' : 'cita-CONFIRMADA'"
+                    th:text="${r.modo == 'ACTIVA'} ? 'Activa' : 'Simulación'">Simulación</span>
+              <span th:if="${r.estado != null}" class="insignia" th:text="${r.estado.fase}">INACTIVA</span>
+              <span th:unless="${r.activa}" class="insignia cita-CANCELADA">Apagada</span>
+            </div>
+          </div>
+          <p th:text="${r.descripcion}">Si … ⇒ …</p>
+          <p class="ayuda" th:text="'Enfriamiento ' + ${r.cooldownSeg / 60} + ' min · histéresis ' + ${r.histeresisPct} + ' %' + (${r.requiereConfirmacion} ? ' · requiere confirmación' : '')">Enfriamiento</p>
+          <div class="acciones-fila">
+            <form method="post" th:action="@{/admin/modulos/balanceo/reglas/{id}/probar(id=${r.id})}">
+              <button type="submit" class="boton boton-contorno boton-pequeno">Probar ahora</button>
+            </form>
+            <form method="post" th:action="@{/admin/modulos/balanceo/reglas/{id}/modo(id=${r.id})}"
+                  th:attr="data-confirmar=${r.modo != 'ACTIVA'} ? 'La regla empezará a mover ventanillas y turnos de verdad. ¿Activarla?' : null">
+              <input type="hidden" name="modo" th:value="${r.modo == 'ACTIVA'} ? 'SIMULACION' : 'ACTIVA'">
+              <button type="submit" class="boton boton-pequeno" th:classappend="${r.modo == 'ACTIVA'} ? 'boton-contorno'"
+                      th:text="${r.modo == 'ACTIVA'} ? 'Pasar a simulación' : 'Activar'">Activar</button>
+            </form>
+            <form method="post" th:action="@{/admin/modulos/balanceo/reglas/{id}/encendido(id=${r.id})}">
+              <input type="hidden" name="activa" th:value="${!r.activa}">
+              <button type="submit" class="boton boton-fantasma boton-pequeno" th:text="${r.activa} ? 'Apagar' : 'Encender'">Apagar</button>
+            </form>
+            <form method="post" th:action="@{/admin/modulos/balanceo/reglas/{id}/eliminar(id=${r.id})}" data-confirmar="¿Eliminar la regla? Si está aplicada, se revierte.">
+              <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Eliminar</button>
+            </form>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!--/* Historial de ejecuciones */-->
+    <section th:if="${tab == 'historial'}" class="tarjeta">
+      <div class="cabecera-tarjeta">
+        <h2 class="tarjeta-titulo">Ejecuciones</h2>
+        <a class="boton boton-contorno boton-pequeno" th:href="@{/admin/modulos/balanceo/historial.csv}">Exportar CSV</a>
+      </div>
+      <p th:if="${#lists.isEmpty(ejecuciones)}" class="vacio">Aún no hay ejecuciones.</p>
+      <div class="tabla-contenedor" th:unless="${#lists.isEmpty(ejecuciones)}">
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Regla</th><th>Fase</th><th>Resultado</th><th>Detalle</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:each="e : ${ejecuciones}">
+            <td class="numeros" th:text="${@fmt.fechaHora(e.ts)}">—</td>
+            <td th:text="${e.regla}">Regla</td>
+            <td th:text="${e.fase}">DISPARO</td>
+            <td th:text="${e.resultado}">EJECUTADA</td>
+            <td th:text="${e.textoDetalle()}">—</td>
+            <td>
+              <form th:if="${e.resultado == 'PENDIENTE_CONFIRMACION'}" class="acciones-fila" method="post"
+                    th:action="@{/admin/modulos/balanceo/ejecuciones/{id}/confirmar(id=${e.id})}">
+                <button type="submit" name="aprobar" value="true" class="boton boton-pequeno">Aprobar</button>
+                <button type="submit" name="aprobar" value="false" class="boton boton-fantasma boton-pequeno">Rechazar</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!--/* Transferencias */-->
+    <section th:if="${tab == 'transferencias'}" class="tarjeta">
+      <h2 class="tarjeta-titulo">Transferencias recientes</h2>
+      <p th:if="${#lists.isEmpty(transferencias)}" class="vacio">Aún no hay transferencias.</p>
+      <div class="tabla-contenedor" th:unless="${#lists.isEmpty(transferencias)}">
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Turno</th><th>De</th><th>A</th><th>Motivo</th><th>Origen</th></tr></thead>
+          <tbody>
+          <tr th:each="t : ${transferencias}">
+            <td class="numeros" th:text="${@fmt.fechaHora(t.createdAt)}">—</td>
+            <td class="numeros" th:text="${t.codigoOrigen} + ' → ' + ${t.codigoDestino}">A-001 → B-001</td>
+            <td th:text="${t.deCola}">Caja</td>
+            <td th:text="${t.aCola}">Lab</td>
+            <td th:text="${nombresMotivo.get(t.motivo) ?: t.motivo} + (${t.detalle != null} ? ' · ' + ${t.detalle} : '')">Motivo</td>
+            <td th:text="${t.origen == 'REGLA'} ? 'Regla' : 'Manual'">Manual</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <dialog class="dialogo" id="nueva-regla">
+      <form class="formulario" method="post" th:action="@{/admin/modulos/balanceo/reglas}">
+        <h2>Nueva regla de balanceo</h2>
+        <div class="campo"><label class="etiqueta" for="r-nombre">Nombre</label>
+          <input id="r-nombre" name="nombre" class="entrada" required minlength="3" maxlength="80" value="Refuerzo"></div>
+        <p class="etiqueta">Cuando…</p>
+        <div class="campos-3">
+          <div class="campo"><label class="etiqueta" for="r-metrica">Métrica</label>
+            <select id="r-metrica" name="metrica" class="selector">
+              <option th:each="m : ${metricas}" th:value="${m.key}" th:text="${m.value}">Espera</option>
+            </select></div>
+          <div class="campo"><label class="etiqueta" for="r-op">Operador</label>
+            <select id="r-op" name="op" class="selector">
+              <option th:each="o : ${ {'>', '>=', '<', '<='} }" th:value="${o}" th:text="${o}">&gt;</option>
+            </select></div>
+          <div class="campo"><label class="etiqueta" for="r-valor">Valor</label>
+            <input id="r-valor" name="valor" type="number" step="0.1" class="entrada" value="20" required></div>
+        </div>
+        <div class="campos-3">
+          <div class="campo"><label class="etiqueta" for="r-cola">En la cola</label>
+            <select id="r-cola" name="cola" class="selector">
+              <option th:each="c : ${carga.colas}" th:value="${c.colaId}" th:text="${c.cola}">Caja</option>
+            </select></div>
+          <div class="campo"><label class="etiqueta" for="r-for">Durante (min)</label>
+            <input id="r-for" name="forMin" type="number" min="0" max="60" class="entrada" value="5"></div>
+        </div>
+        <p class="etiqueta">…entonces</p>
+        <div class="campo"><label class="etiqueta" for="r-tipo">Acción</label>
+          <select id="r-tipo" name="tipo" class="selector">
+            <option value="MOVER_OPERADOR">Mover una ventanilla de una cola a otra</option>
+            <option value="DERIVAR_TURNOS">Derivar turnos en espera a otra cola</option>
+            <option value="NOTIFICAR">Solo avisar al administrador</option>
+          </select></div>
+        <div class="campos-3">
+          <div class="campo"><label class="etiqueta" for="r-desde">Desde</label>
+            <select id="r-desde" name="desde" class="selector">
+              <option th:each="c, i : ${carga.colas}" th:value="${c.colaId}" th:text="${c.cola}" th:selected="${i.index == 1}">Caja</option>
+            </select></div>
+          <div class="campo"><label class="etiqueta" for="r-hacia">Hacia</label>
+            <select id="r-hacia" name="hacia" class="selector">
+              <option th:each="c : ${carga.colas}" th:value="${c.colaId}" th:text="${c.cola}">Caja</option>
+            </select></div>
+          <div class="campo"><label class="etiqueta" for="r-cantidad">Turnos (derivar)</label>
+            <input id="r-cantidad" name="cantidad" type="number" min="1" max="20" class="entrada" value="3"></div>
+        </div>
+        <div class="campo"><label class="etiqueta" for="r-mensaje">Mensaje (solo avisar)</label>
+          <input id="r-mensaje" name="mensaje" class="entrada" maxlength="200" placeholder="La espera en Caja está alta"></div>
+        <div class="campos-3">
+          <div class="campo"><label class="etiqueta" for="r-cooldown">Enfriamiento (min)</label>
+            <input id="r-cooldown" name="cooldownMin" type="number" min="2" class="entrada" value="10"></div>
+          <div class="campo"><label class="etiqueta" for="r-hist">Histéresis (%)</label>
+            <input id="r-hist" name="histeresis" type="number" min="0" max="80" class="entrada" value="20"></div>
+        </div>
+        <label class="casilla"><input type="checkbox" name="confirmar" value="true"> Pedir confirmación antes de ejecutar</label>
+        <div class="dialogo-pie">
+          <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+          <button type="submit" class="boton">Crear (en simulación)</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+</div>
+</body>
+</html>

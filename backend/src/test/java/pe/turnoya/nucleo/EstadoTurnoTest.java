@@ -12,7 +12,7 @@ import static pe.turnoya.nucleo.EstadoTurno.TRANSFERIDO;
 import java.util.EnumSet;
 import org.junit.jupiter.api.Test;
 
-/** Diagrama de estados del turno (sección 8.6): las mismas transiciones que legacy/. */
+/** Diagrama de estados del turno (sección 8.6): las mismas transiciones que el sistema anterior. */
 class EstadoTurnoTest {
 
     @Test

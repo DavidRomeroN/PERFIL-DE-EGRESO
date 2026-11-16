@@ -55,6 +55,21 @@
               Posición 3 en la cola
             </p>
           </div>
+          <!--/* M2 (solo cuando el local da rango de espera): aviso por tiempo y mejores horas; js/mi-turno.js llama a la API pública */-->
+          <div th:if="${turno.prediccion != null}" class="extra-espera" th:attr="data-token=${turno.token},data-cola=${turno.cola.id}">
+            <div class="extra-espera-caja">
+              <p class="extra-espera-titulo">Avisarme cuando falten</p>
+              <div class="segmentos" role="group" aria-label="Aviso por tiempo">
+                <button type="button" class="segmento" data-aviso-min="" th:attr="aria-pressed=${turno.avisoMinAntes == null}">No</button>
+                <button th:each="m : ${ {5, 10, 15} }" type="button" class="segmento" th:attr="data-aviso-min=${m},aria-pressed=${turno.avisoMinAntes == m}"
+                        th:text="${m} + ' min'">5 min</button>
+              </div>
+            </div>
+            <div class="extra-espera-caja" data-mejores-horas hidden>
+              <p class="extra-espera-titulo">Mejores horas para venir hoy</p>
+              <ul class="franjas-espera"></ul>
+            </div>
+          </div>
         </th:block>
 
         <!--/* Llamado */-->

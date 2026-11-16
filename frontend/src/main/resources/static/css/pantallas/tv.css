@@ -184,15 +184,14 @@ img.tv-local-logo {
 .tv-cola-titulo .prefijo {
   width: 2.5rem;
 }
-.tv-cola-datos {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-top: 0.75rem;
+.tv-cola-resumen {
+  margin-top: 0.6rem;
+  font-size: 1.15rem;
+  color: rgb(255 255 255 / 0.75);
 }
-.tv-cola-numero {
-  font-size: 2.25rem;
-  font-weight: 700;
+.tv-cola-resumen strong {
+  font-size: 1.75rem;
+  color: white;
 }
 .tv-rotulo-pequeno {
   font-size: 0.7rem;
@@ -203,15 +202,15 @@ img.tv-local-logo {
 .tv-cola-siguientes {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
 }
-.tv-cola-siguientes span {
+.tv-cola-siguientes .mono {
   padding: 0.1rem 0.5rem;
   border-radius: 0.35rem;
   background: rgb(255 255 255 / 0.1);
-  font-family: var(--fuente-mono);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .tv-panel {
@@ -295,6 +294,72 @@ img.tv-local-logo {
   margin-top: 0.25rem;
   color: #475569;
 }
+.tv-qrs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.tv-qrs.uno {
+  grid-template-columns: 1fr;
+}
+.tv-qrs .tv-qr {
+  padding: 1rem;
+  gap: 1rem;
+}
+.tv-qrs .tv-qr > div:first-child {
+  flex-shrink: 0;
+}
+.tv-qrs .tv-qr > div:last-child {
+  min-width: 0;
+}
+.tv-qrs .tv-qr svg {
+  display: block;
+  width: clamp(5.5rem, 8vw, 9rem);
+  height: auto;
+  aspect-ratio: 1;
+}
+.tv-qrs .tv-qr small {
+  overflow-wrap: anywhere;
+}
+.tv-qrs .tv-qr strong {
+  margin-top: 0.35rem;
+  font-size: 1.15rem;
+}
+.tv-qrs .tv-qr p {
+  font-size: 0.85rem;
+}
+/* Canal del turno: así se ve que la app y WhatsApp comparten la misma cola */
+.tv-canal {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.15);
+  color: rgb(255 255 255 / 0.85);
+  font-family: var(--fuente-base, inherit);
+  font-size: 0.65rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.tv-qr .tv-canal {
+  margin-left: 0;
+}
+.tv-canal.canal-whatsapp {
+  background: #16a34a;
+  color: white;
+}
+.tv-canal.canal-app {
+  background: #2563eb;
+  color: white;
+}
+.tv-canal-grande {
+  margin: 0.5rem auto 0;
+  font-size: 1rem;
+  padding: 0.2rem 0.8rem;
+}
 .tv-qr small {
   display: block;
   margin-top: 0.5rem;
@@ -315,3 +380,61 @@ img.tv-local-logo {
   color: rgb(255 255 255 / 0.9);
   animation: cinta 28s linear infinite;
 }
+
+/* PIN de presencia de las citas (M3) */
+.tv-pin { display: inline-flex; align-items: center; gap: .5rem; padding: .375rem .875rem; border-radius: 999px; background: rgb(255 255 255 / .12); font-size: 1rem; }
+.tv-pin b { font-size: 1.5rem; letter-spacing: .2em; }
+.tv-pin[hidden] { display: none; }
+
+/* Diseño simplificado: se lee de lejos */
+.tv-llamado-pase {
+  margin-top: 1.25rem;
+  font-size: 1.5rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.7);
+}
+.tv-llamado-pase + .tv-llamado-ventanilla { margin-top: 0.75rem; }
+.tv-esperando-nota { margin-top: 0.75rem; color: rgb(255 255 255 / 0.4); }
+.tv-atencion-fila { padding: 0.9rem 1.25rem; }
+.tv-atencion-fila .mono { font-size: clamp(2rem, 3.2vw, 3rem); }
+.tv-atencion-fila strong { font-size: clamp(1.25rem, 1.8vw, 1.75rem); }
+.tv-atencion-fila small { font-size: 0.85rem; color: #4ade80; }
+.tv-atencion-fila.pasado { background: transparent; border: 1px solid rgb(255 255 255 / 0.1); opacity: 0.7; }
+.tv-atencion-fila.pasado small { color: rgb(255 255 255 / 0.5); }
+.tv-qrs .tv-qr { padding: 0.75rem; }
+.tv-qrs .tv-qr svg { width: clamp(4rem, 5.5vw, 6rem); }
+.tv-qrs .tv-qr strong { font-size: 1rem; }
+.tv-colas { flex-shrink: 0; }
+.tv-colas.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tv-llamado { min-height: 0; }
+.tv-cola { min-width: 0; padding: 0.85rem 1rem; }
+.tv-cola-titulo span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-cola-titulo .prefijo { flex-shrink: 0; }
+.tv-cola-resumen { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-cola-siguientes { flex-wrap: nowrap; overflow: hidden; }
+.tv-panel { min-height: 0; }
+.tv-qrs { flex-shrink: 0; }
+/* El llamado se adapta al alto de la pantalla para no cortarse en televisores bajos */
+.tv-llamado { padding: 1.25rem; overflow: hidden; }
+.tv-llamado-rotulo { font-size: clamp(0.9rem, 2.2vh, 1.25rem); }
+.tv-llamado-codigo { margin-top: 0.5rem; font-size: clamp(4rem, min(13vw, 24vh), 12rem); }
+.tv-llamado-pase { margin-top: 2vh; font-size: clamp(0.9rem, 2.6vh, 1.5rem); }
+.tv-llamado-ventanilla { padding: 1.4vh 2.5rem; font-size: clamp(1.5rem, min(3vw, 5.5vh), 3rem); }
+.tv-cola-resumen { white-space: normal; }
+.tv-cola-siguientes .mono { white-space: nowrap; }
+.tv-colas.cols-4 .tv-cola-titulo { font-size: 1rem; gap: 0.5rem; }
+.tv-colas.cols-4 .tv-cola-resumen { font-size: 1rem; }
+/* Los textos del llamado se miden contra su propia tarjeta: nunca se cortan, quepa lo que quepa debajo */
+.tv-llamado { container-type: size; }
+.tv-llamado-rotulo { font-size: clamp(0.8rem, 6cqh, 1.25rem); }
+.tv-llamado-codigo { margin-top: 1cqh; font-size: clamp(3rem, min(27cqw, 40cqh), 12rem); }
+.tv-llamado-pase { margin-top: 3cqh; font-size: clamp(0.8rem, 6cqh, 1.5rem); }
+.tv-llamado-pase + .tv-llamado-ventanilla { margin-top: 2cqh; }
+.tv-llamado-ventanilla { padding: 3cqh 2.5rem; font-size: clamp(1.25rem, min(7cqw, 11cqh), 3rem); line-height: 1.1; }
+.tv-llamado-codigo { font-size: clamp(3rem, min(27cqw, 40cqh), 16rem); }
+.tv-llamado-ventanilla { font-size: clamp(1.25rem, min(7cqw, 11cqh), 4rem); }
+/* La lista muestra solo filas completas: la que no cabe pasa a una columna que queda fuera de la vista */
+.tv-panel { display: flex; flex-direction: column; }
+.tv-atencion { display: flex; flex: 1; min-height: 0; flex-flow: column wrap; align-content: flex-start; overflow: hidden; }
+.tv-atencion-fila { width: 100%; box-sizing: border-box; }

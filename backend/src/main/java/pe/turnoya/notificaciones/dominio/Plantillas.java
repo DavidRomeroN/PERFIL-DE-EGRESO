@@ -1,6 +1,6 @@
 package pe.turnoya.notificaciones.dominio;
 
-/** Textos de los avisos (equivalentes a las plantillas aprobadas en Meta). Mismos textos que legacy/. */
+/** Textos de los avisos (equivalentes a las plantillas aprobadas en Meta). Mismos textos que el sistema anterior. */
 public final class Plantillas {
 
     public static final String TURNO_PROXIMO = "turno_proximo";

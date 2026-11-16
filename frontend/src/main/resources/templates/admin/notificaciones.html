@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Avisos WhatsApp')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin" hx-ext="sse" th:attr="sse-connect=@{/api/v1/realtime/{s}(s=${slug})}">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Avisos por WhatsApp</h1>
+        <p>Mensajes automáticos con la plantilla turno_proximo cuando faltan pocas personas, y turno_llamado al llamar.</p>
+      </div>
+      <span class="insignia" th:classappend="${datos.proveedor == 'meta'} ? 'pago-APROBADO' : (${datos.proveedor == 'mock'} ? 'pago-PENDIENTE' : '')"
+            th:text="${datos.proveedor == 'meta'} ? 'WhatsApp Cloud API (Meta) conectado' : (${datos.proveedor == 'openwa'} ? 'Gateway OpenWA (número propio)' : 'Modo simulador: los mensajes no salen a WhatsApp real')">Simulador</span>
+    </div>
+
+    <section th:if="${conexion != null}" th:fragment="conexion" id="conexion" class="tarjeta" style="margin-bottom: 1.25rem"
+             th:attr="hx-get=${conexion.estado == 'qr_ready' or conexion.estado == 'initializing' or conexion.estado == 'authenticating'} ? @{/admin/notificaciones/conexion} : null,
+                      hx-trigger=${conexion.estado == 'qr_ready' or conexion.estado == 'initializing' or conexion.estado == 'authenticating'} ? 'every 4s' : null"
+             hx-swap="outerHTML">
+      <div class="cabecera-tarjeta">
+        <div>
+          <h2 class="tarjeta-titulo">Número de WhatsApp (OpenWA)</h2>
+          <p class="texto-apagado" style="font-size: .85rem">Vincula el número del local escaneando el QR desde WhatsApp → Dispositivos vinculados.</p>
+        </div>
+        <span class="insignia" th:classappend="${conexion.conectado()} ? 'pago-APROBADO' : 'pago-PENDIENTE'" th:text="${conexion.estado}">sin_sesion</span>
+      </div>
+
+      <div th:if="${!conexion.configurado}" class="alerta alerta-aviso">
+        OpenWA no está configurado: define <code>OPENWA_URL</code> y <code>OPENWA_API_KEY</code> y usa <code>WHATSAPP_PROVIDER=openwa</code>.
+      </div>
+      <th:block th:if="${conexion.configurado}">
+        <p th:if="${!conexion.alcanzable}" class="alerta alerta-error" th:text="'No se pudo conectar con ' + ${conexion.url} + (${conexion.error} != null ? ': ' + ${conexion.error} : '')"></p>
+        <p th:if="${conexion.alcanzable and conexion.error != null}" class="alerta alerta-aviso" th:text="${conexion.error}"></p>
+        <div class="conexion-openwa">
+          <div th:if="${conexion.qr != null}" class="qr-caja"><img th:src="${conexion.qr}" alt="Código QR para vincular WhatsApp" width="220" height="220"></div>
+          <dl class="datos-conexion">
+            <dt>Sesión</dt><dd class="numeros" th:text="${conexion.sesion}">turnoya</dd>
+            <dt>Teléfono</dt><dd class="numeros" th:text="${conexion.telefono} ?: '—'">—</dd>
+            <dt>Nombre</dt><dd th:text="${conexion.nombre} ?: '—'">—</dd>
+          </dl>
+        </div>
+        <div class="acciones-cabecera" style="flex-wrap: wrap; margin-top: 1rem">
+          <form th:unless="${conexion.conectado()}" method="post" th:action="@{/admin/notificaciones/conexion}" th:attr="hx-post=@{/admin/notificaciones/conexion}" hx-target="#conexion" hx-swap="outerHTML">
+            <input type="hidden" name="accion" value="iniciar"><button type="submit" class="boton">Vincular número</button></form>
+          <form th:if="${conexion.conectado()}" class="formulario-en-linea" method="post" th:action="@{/admin/notificaciones/conexion}" th:attr="hx-post=@{/admin/notificaciones/conexion}" hx-target="#conexion" hx-swap="outerHTML">
+            <input type="hidden" name="accion" value="prueba">
+            <input name="telefono" class="entrada" inputmode="tel" placeholder="951234567" aria-label="Celular para la prueba" required style="width: 10rem">
+            <button type="submit" class="boton boton-contorno">Enviar prueba</button></form>
+          <form th:if="${conexion.conectado()}" method="post" th:action="@{/admin/notificaciones/conexion}" th:attr="hx-post=@{/admin/notificaciones/conexion}" hx-target="#conexion" hx-swap="outerHTML"
+                hx-confirm="¿Desvincular el número? Los avisos dejarán de salir hasta que vuelvas a escanear el QR.">
+            <input type="hidden" name="accion" value="desvincular"><button type="submit" class="boton boton-fantasma boton-texto-peligro">Desvincular</button></form>
+        </div>
+      </th:block>
+    </section>
+
+    <div th:unless="${datos.whatsappHabilitado}" class="alerta alerta-aviso" style="margin-bottom: 1.25rem">
+      Este local está en un plan sin WhatsApp: los avisos se muestran solo en la web del cliente (RN05). Mejora al plan Emprende o Pro para activarlo.
+    </div>
+
+    <div id="bandeja" th:fragment="bandeja" th:attr="hx-get=@{/admin/notificaciones/bandeja}" hx-trigger="sse:notificacion:nueva delay:500ms, every 60s" hx-swap="outerHTML">
+      <div class="metricas">
+        <div class="metrica"><p class="metrica-etiqueta">Mensajes WhatsApp</p><p class="metrica-valor" th:text="${datos.total()}">0</p><p class="metrica-pista" th:text="'Plan: ' + ${datos.maxAvisos} + ' avisos/mes'"></p></div>
+        <div class="metrica" th:classappend="${datos.tasaEntrega() >= 95} ? 'bien' : 'atencion'"><p class="metrica-etiqueta">Entregados o leídos</p><p class="metrica-valor" th:text="${datos.tasaEntrega()} + '%'">0%</p><p class="metrica-pista">Meta ≥ 95 %</p></div>
+        <div class="metrica bien"><p class="metrica-etiqueta">Leídos</p><p class="metrica-valor" th:text="${datos.leidos()}">0</p></div>
+        <div class="metrica" th:classappend="${datos.fallidos() > 0} ? 'mal'"><p class="metrica-etiqueta">Fallidos</p><p class="metrica-valor" th:text="${datos.fallidos()}">0</p><p class="metrica-pista">Reintentos automáticos</p></div>
+      </div>
+
+      <div class="rejilla rejilla-lateral" style="margin-top: 1.25rem">
+        <section class="tarjeta tarjeta-sin-relleno">
+          <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--borde)">
+            <h2 class="tarjeta-titulo" style="margin: 0">Bandeja de salida</h2>
+            <p class="texto-apagado" style="font-size: .8rem; margin: .25rem 0 0">Se actualiza en tiempo real cuando el proveedor confirma la entrega: enviado → entregado → leído.</p>
+          </div>
+          <p th:if="${#lists.isEmpty(datos.notificaciones)}" class="vacio" style="margin: 1.25rem">Aún no se envió ningún aviso. Cuando una cola avance y falten pocas personas, aparecerán aquí.</p>
+          <ul class="lista-avisos">
+            <li th:each="n : ${datos.notificaciones}">
+              <span class="aviso-canal" th:classappend="${n.tipo == 'WHATSAPP'} ? 'whatsapp'" th:text="${n.tipo == 'WHATSAPP'} ? 'WA' : 'Web'">WA</span>
+              <div class="aviso-cuerpo">
+                <p class="aviso-encabezado">
+                  <strong class="numeros" th:text="${n.codigo} ?: 'Cita'">A-001</strong>
+                  <span class="texto-apagado" th:text="${n.cola}">Cola</span>
+                  <span class="numeros texto-apagado" th:if="${n.destino != null}" th:text="${n.destino}"></span>
+                  <code th:if="${n.plantilla != null}" th:text="${n.plantilla}"></code>
+                  <span class="aviso-estado" th:classappend="'aviso-' + ${n.estado}" th:text="${#strings.toLowerCase(n.estado)} + ' · ' + ${@fmt.fechaHora(n.createdAt)}">enviado</span>
+                </p>
+                <p class="aviso-mensaje" th:utext="${mensajesHtml[n.id]}">Mensaje</p>
+                <p th:if="${n.error != null}" class="aviso-error" th:text="${n.error}"></p>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <aside class="tarjeta">
+          <h2 class="tarjeta-titulo">Plantillas aprobadas</h2>
+          <div class="plantilla-wa"><code>turno_proximo</code>
+            <p>Hola {{1}} 👋, tu turno <b>{{2}}</b> en <b>{{3}}</b> está por llegar: faltan {{4}} personas. Acércate a la sala. Sigue tu turno aquí: {{5}}</p></div>
+          <div class="plantilla-wa"><code>turno_llamado</code>
+            <p>🔔 {{1}}, es tu turno <b>{{2}}</b>. Acércate a <b>{{3}}</b>.</p></div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

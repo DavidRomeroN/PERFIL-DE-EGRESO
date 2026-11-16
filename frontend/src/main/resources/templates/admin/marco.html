@@ -1,32 +1,65 @@
 <!DOCTYPE html>
 <!--/*
-  Menú lateral de la administración. Las secciones que todavía viven en legacy/ (sistema anterior) aparecen
-  como "en migración" hasta que su módulo pase a Spring Boot.
+  Menú lateral de la administración (mismas secciones que el sistema anterior). Uso:
+    <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+  "marco" lo agrega MarcoAdminVista: local actual, plan, módulos encendidos y, para el super admin, los locales.
+  Las entradas de módulos (M1–M8) solo aparecen si el módulo está activo en el local.
 */-->
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <body>
 <aside th:fragment="menu(seccion)" class="menu-admin">
-  <a th:replace="~{fragmentos/base :: logo('/admin/colas', true)}"></a>
+  <a th:replace="~{fragmentos/base :: logo('/admin', true)}"></a>
+
+  <!--/* Super admin: elige sobre qué local trabaja (cookie turnoya_local) */-->
+  <form th:if="${marco != null and !#lists.isEmpty(marco.locales)}" class="menu-admin-local" method="post" th:action="@{/admin/local-activo}">
+    <label class="solo-lectores" for="local-activo">Local</label>
+    <select id="local-activo" name="localId" class="entrada" data-autoenviar>
+      <option th:each="l : ${marco.locales}" th:value="${l.id}" th:text="${l.nombreComercial}"
+              th:selected="${marco.local != null and marco.local.id == l.id}">Local</option>
+    </select>
+    <noscript><button type="submit" class="boton boton-pequeno">Cambiar</button></noscript>
+  </form>
+  <p th:if="${marco != null and marco.local != null and #lists.isEmpty(marco.locales)}" class="menu-admin-actual">
+    <strong th:text="${marco.local.nombreComercial}">Local</strong>
+    <span th:if="${marco.plan != null}" th:text="'Plan ' + ${marco.plan.nombre}">Plan</span>
+  </p>
+
   <nav aria-label="Administración">
     <p class="menu-admin-grupo">Operación</p>
+    <a th:href="@{/admin}" th:attr="aria-current=${seccion == 'dashboard'} ? 'page'">Dashboard</a>
     <a th:href="@{/panel}">Panel de ventanilla</a>
-    <a th:if="${sesion.localSlug != null}" target="_blank" th:href="@{/l/{s}/tv(s=${sesion.localSlug})}">Pantalla TV</a>
+    <a th:if="${marco != null and marco.local != null}" target="_blank" th:href="@{/l/{s}/tv(s=${marco.local.slug})}">Pantalla TV ↗</a>
 
-    <p class="menu-admin-grupo">Configuración</p>
-    <a th:href="@{/admin/colas}" th:attr="aria-current=${seccion == 'colas'} ? 'page'">Colas</a>
+    <p class="menu-admin-grupo">Local</p>
+    <a th:href="@{/admin/colas}" th:attr="aria-current=${seccion == 'colas'} ? 'page'">Colas y servicios</a>
     <a th:href="@{/admin/ventanillas}" th:attr="aria-current=${seccion == 'ventanillas'} ? 'page'">Ventanillas</a>
-    <span class="pendiente">Usuarios <small>en migración</small></span>
-    <span class="pendiente">Local y pantalla <small>en migración</small></span>
+    <a th:href="@{/admin/usuarios}" th:attr="aria-current=${seccion == 'usuarios'} ? 'page'">Usuarios</a>
+    <a th:href="@{/admin/reportes}" th:attr="aria-current=${seccion == 'reportes'} ? 'page'">Reportes</a>
+    <a th:href="@{/admin/notificaciones}" th:attr="aria-current=${seccion == 'notificaciones'} ? 'page'">Avisos WhatsApp</a>
+    <a th:href="@{/admin/pantalla}" th:attr="aria-current=${seccion == 'pantalla'} ? 'page'">Pantalla TV y QR</a>
+    <a th:href="@{/admin/operacion}" th:attr="aria-current=${seccion == 'operacion'} ? 'page'">Horario y ausencias</a>
+    <a th:href="@{/admin/configuracion}" th:attr="aria-current=${seccion == 'configuracion'} ? 'page'">Configuración</a>
+    <a th:href="@{/admin/plan}" th:attr="aria-current=${seccion == 'plan'} ? 'page'">Mi plan</a>
+    <a th:href="@{/admin/auditoria}" th:attr="aria-current=${seccion == 'auditoria'} ? 'page'">Auditoría</a>
+    <a th:href="@{/admin/modulos}" th:attr="aria-current=${seccion == 'modulos'} ? 'page'">Módulos</a>
 
-    <p class="menu-admin-grupo">Módulos</p>
-    <span class="pendiente">Prioridades (M1) <small>en migración</small></span>
-    <span class="pendiente">Predicción (M2) <small>en migración</small></span>
-    <span class="pendiente">Citas (M3) <small>en migración</small></span>
-    <span class="pendiente">Chatbot (M4) <small>en migración</small></span>
-    <span class="pendiente">Kiosco (M5) <small>en migración</small></span>
-    <span class="pendiente">Balanceo (M6) <small>en migración</small></span>
-    <span class="pendiente">Analítica (M7) <small>en migración</small></span>
-    <span class="pendiente">Simulador (M8) <small>en migración</small></span>
+    <th:block th:if="${marco != null and !#sets.isEmpty(marco.modulos)}">
+      <p class="menu-admin-grupo">Módulos activos</p>
+      <a th:if="${marco.modulo('M1')}" th:href="@{/admin/modulos/prioridades}" th:attr="aria-current=${seccion == 'M1'} ? 'page'">Prioridades</a>
+      <a th:if="${marco.modulo('M2')}" th:href="@{/admin/modulos/prediccion}" th:attr="aria-current=${seccion == 'M2'} ? 'page'">Predicción</a>
+      <a th:if="${marco.modulo('M3')}" th:href="@{/admin/modulos/citas}" th:attr="aria-current=${seccion == 'M3'} ? 'page'">Citas</a>
+      <a th:if="${marco.modulo('M5')}" th:href="@{/admin/modulos/kiosco}" th:attr="aria-current=${seccion == 'M5'} ? 'page'">Kiosco</a>
+      <a th:if="${marco.modulo('M6')}" th:href="@{/admin/modulos/balanceo}" th:attr="aria-current=${seccion == 'M6'} ? 'page'">Balanceo</a>
+      <a th:if="${marco.modulo('M7')}" th:href="@{/admin/analitica}" th:attr="aria-current=${seccion == 'M7'} ? 'page'">Analítica y alertas</a>
+      <a th:if="${marco.modulo('M8')}" th:href="@{/admin/simulador}" th:attr="aria-current=${seccion == 'M8'} ? 'page'">Simulador</a>
+    </th:block>
+
+    <th:block th:if="${sesion != null and sesion.esSuperAdmin()}">
+      <p class="menu-admin-grupo">Plataforma</p>
+      <a th:href="@{/admin/locales}" th:attr="aria-current=${seccion == 'locales'} ? 'page'">Locales</a>
+      <a th:href="@{/admin/planes}" th:attr="aria-current=${seccion == 'planes'} ? 'page'">Planes y módulos</a>
+      <a th:href="@{/admin/jobs}" th:attr="aria-current=${seccion == 'jobs'} ? 'page'">Tareas programadas</a>
+    </th:block>
   </nav>
   <div class="menu-admin-pie">
     <p><strong th:text="${sesion.nombre}">Nombre</strong><br><span th:text="${sesion.rol.etiqueta()}">Rol</span></p>

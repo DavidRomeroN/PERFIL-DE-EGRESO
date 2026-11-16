@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Ticket ' + ${codigo})}"></head>
+<body class="pagina-cliente">
+<!--/* M5 · QR del ticket provisional: js/provisional.js consulta cada 10 s y redirige al turno definitivo apenas el kiosco sincroniza. */-->
+<main class="cliente-main">
+  <div class="tarjeta tarjeta-flotante entrar provisional"
+       th:attr="data-provisional=@{/api/v1/public/k/{d}/{f}/{s}(d=${dispositivo},f=${fecha},s=${seq})}">
+    <span class="provisional-espera" data-icono aria-hidden="true"></span>
+    <h1>Ticket <span class="numeros" th:text="${codigo}">K1-0001</span></h1>
+    <p class="texto-apagado" data-pendiente aria-live="polite">Tu turno se está registrando. Esta página se actualizará sola cuando tenga su número definitivo.</p>
+    <p class="alerta alerta-aviso" data-revision hidden>Tu ticket está en revisión. Acércate al mostrador con tu ticket impreso.</p>
+  </div>
+</main>
+<script defer th:src="@{/js/provisional.js}"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Kiosco')}"></head>
+<!--/*
+  M5 · App del kiosco (offline-first). Pantallas: emparejar · inicio · servicio · tipo de atención · cita · ticket · mantenimiento.
+  Todo el comportamiento vive en js/kiosco.js: cada "Imprimir" se guarda primero en la cola local (con su clave de
+  idempotencia) y recién después se intenta la red; sin red el ticket es provisional y se sincroniza al volver.
+*/-->
+<body class="pagina-kiosco">
+<main class="kiosco" id="kiosco" data-pantalla="cargando">
+
+  <section class="kiosco-emparejar" data-vista="emparejar" hidden>
+    <h1 data-titulo-emparejar>Emparejar kiosco</h1>
+    <p class="texto-apagado">Ingresa el código de 6 dígitos generado en Admin → Kiosco.</p>
+    <input id="k-codigo-par" class="kiosco-entrada numeros" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="Código de emparejamiento">
+    <p class="kiosco-error" role="alert" data-error></p>
+    <button type="button" class="kiosco-boton" data-accion="emparejar">Emparejar</button>
+  </section>
+
+  <th:block>
+    <p class="kiosco-offline" data-aviso-offline hidden role="status">Sin conexión: tu ticket es provisional; tu número definitivo aparecerá en la pantalla.</p>
+    <header class="kiosco-cabecera" data-cabecera hidden>
+      <button type="button" class="kiosco-local" data-accion="toque-local">TurnoYa</button>
+      <span class="kiosco-conexion" role="status" aria-label="Estado de conexión"><span class="punto"></span> <span data-texto-conexion>En línea</span></span>
+    </header>
+
+    <section class="kiosco-pantalla" data-vista="inicio" hidden>
+      <p class="kiosco-cerrado" data-cerrado hidden></p>
+      <button type="button" class="kiosco-boton kiosco-boton-gigante" data-accion="servicio">Toque para sacar turno</button>
+      <button type="button" class="kiosco-opcion kiosco-opcion-baja" data-accion="cita" data-solo-citas hidden>Tengo una cita</button>
+    </section>
+
+    <section class="kiosco-pantalla" data-vista="servicio" hidden>
+      <h1>Elige el servicio</h1>
+      <div class="kiosco-lista" data-lista-colas></div>
+      <button type="button" class="kiosco-volver" data-accion="inicio">Volver</button>
+    </section>
+
+    <section class="kiosco-pantalla" data-vista="tipo" hidden>
+      <h1>Tipo de atención</h1>
+      <div class="kiosco-lista" data-lista-categorias></div>
+      <p class="texto-apagado">La atención preferente se verifica en ventanilla.</p>
+      <button type="button" class="kiosco-volver" data-accion="servicio">Volver</button>
+    </section>
+
+    <section class="kiosco-pantalla" data-vista="cita" hidden>
+      <h1>Check-in de cita</h1>
+      <input id="k-codigo-cita" class="kiosco-entrada numeros" maxlength="16" autocomplete="off" aria-label="Código de la cita">
+      <p class="kiosco-error" role="alert" data-error></p>
+      <button type="button" class="kiosco-boton" data-accion="checkin">Confirmar llegada</button>
+      <button type="button" class="kiosco-volver" data-accion="inicio">Volver</button>
+    </section>
+
+    <section class="kiosco-pantalla" data-vista="ticket" hidden>
+      <div id="ticket" class="kiosco-ticket">
+        <p class="kiosco-ticket-cola" data-ticket-cola></p>
+        <p class="kiosco-ticket-codigo numeros" data-ticket-codigo></p>
+        <p class="kiosco-ticket-provisional" data-ticket-provisional hidden>Ticket provisional: tu número definitivo aparecerá en la pantalla. Conserva este papel.</p>
+        <div class="kiosco-ticket-qr" data-ticket-qr></div>
+        <p data-ticket-qr-texto>Escanea para seguir tu turno</p>
+      </div>
+      <button type="button" class="kiosco-volver no-imprimir" data-accion="inicio">Listo</button>
+    </section>
+
+    <section class="kiosco-pantalla" data-vista="mantenimiento" hidden>
+      <h1>Mantenimiento</h1>
+      <input id="k-pin" class="kiosco-entrada numeros" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="PIN">
+      <button type="button" class="kiosco-opcion" data-accion="validar-pin">Validar PIN</button>
+      <p class="kiosco-error" role="alert" data-error></p>
+      <div class="kiosco-lista" data-menu-mantenimiento hidden>
+        <p data-diagnostico></p>
+        <button type="button" class="kiosco-opcion" data-accion="sincronizar">Forzar sincronización</button>
+        <button type="button" class="kiosco-opcion" data-accion="reimprimir">Reimprimir último</button>
+        <button type="button" class="kiosco-opcion texto-peligro" data-accion="desemparejar">Desemparejar</button>
+      </div>
+      <button type="button" class="kiosco-volver" data-accion="inicio">Salir</button>
+    </section>
+  </th:block>
+</main>
+<script defer th:src="@{/js/kiosco.js}"></script>
+</body>
+</html>

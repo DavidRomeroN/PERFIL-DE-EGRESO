@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<!--/* M3 en el panel del operador: citas de los próximos 60 min y PIN de presencia. Se carga con hx-get y se refresca solo. */-->
+<section th:fragment="widget" class="tarjeta widget-citas" th:attr="hx-get=@{/panel/citas}" hx-trigger="every 30s, sse:cita:estado delay:300ms" hx-swap="outerHTML">
+  <div class="cabecera-tarjeta">
+    <h2 class="tarjeta-titulo">Citas próximas</h2>
+    <span class="pin-presencia" th:title="'Cambia en ' + ${pin.segundosRestantes} + ' s'">PIN <b class="numeros" th:text="${pin.pin}">1234</b></span>
+  </div>
+  <p th:if="${#lists.isEmpty(proximas)}" class="texto-apagado">Sin citas en la próxima hora.</p>
+  <ul class="lista-citas-panel">
+    <li th:each="c : ${proximas}">
+      <strong class="numeros" th:text="${c.hora}">09:00</strong>
+      <span th:text="${c.nombre ?: '—'}">Ana</span>
+      <span class="insignia" th:classappend="'cita-' + ${c.estado}" th:text="${c.estado}">RESERVADA</span>
+      <span class="texto-apagado numeros" th:text="${c.codigoCheckin}">ABC123</span>
+    </li>
+  </ul>
+</section>
+</body>
+</html>

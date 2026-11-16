@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Auditoría')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Auditoría</h1>
+        <p>Quién hizo qué y cuándo: cada cambio queda con usuario, IP y request_id.</p>
+      </div>
+      <a class="boton boton-contorno boton-pequeno" th:href="@{/admin/auditoria.csv} + '?' + ${filtros.consulta()}" download>Exportar CSV</a>
+    </div>
+
+    <form class="tarjeta filtros" method="get" th:action="@{/admin/auditoria}" th:attr="hx-get=@{/admin/auditoria}"
+          hx-target="#tabla" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit, change, keyup changed delay:500ms from:input[type=search]">
+      <div class="campo"><label class="etiqueta" for="desde">Desde</label><input id="desde" class="entrada" type="date" name="desde" th:value="${filtros.desde}"></div>
+      <div class="campo"><label class="etiqueta" for="hasta">Hasta</label><input id="hasta" class="entrada" type="date" name="hasta" th:value="${filtros.hasta}"></div>
+      <div class="campo"><label class="etiqueta" for="accion">Acción</label><input id="accion" class="entrada" type="search" name="accion" th:value="${filtros.accion}" placeholder="CREAR, EDITAR, TRANSFERIR…"></div>
+      <div class="campo"><label class="etiqueta" for="entidad">Entidad</label><input id="entidad" class="entrada" type="search" name="entidad" th:value="${filtros.entidad}" placeholder="turno, cola, usuario…"></div>
+      <div class="campo"><label class="etiqueta" for="texto">Descripción</label><input id="texto" class="entrada" type="search" name="texto" th:value="${filtros.texto}" placeholder="Buscar en la descripción"></div>
+      <div class="campo"><label class="etiqueta" for="requestId">Request ID</label><input id="requestId" class="entrada" type="search" name="requestId" th:value="${filtros.requestId}" placeholder="request_id"></div>
+      <button type="submit" class="boton">Filtrar</button>
+    </form>
+
+    <div id="tabla" th:fragment="tabla" style="margin-top: 1.25rem">
+      <div class="tarjeta tarjeta-sin-relleno">
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>Descripción</th><th><span class="solo-lectores">Detalle</span></th></tr></thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(pagina.items)}"><td colspan="6" class="vacio">No hay eventos con esos filtros.</td></tr>
+            <tr th:each="a : ${pagina.items}">
+              <td class="numeros" th:text="${@fmt.fechaHora(a.createdAt)}">—</td>
+              <td th:text="${a.usuarioNombre} ?: 'sistema'">sistema</td>
+              <td><code th:text="${a.accion}">CREAR</code></td>
+              <td th:text="${a.entidad} + (${a.entidadId} != null ? ' #' + ${a.entidadId} : '')">turno</td>
+              <td th:text="${a.accionHumana} ?: '—'">—</td>
+              <td>
+                <th:block th:if="${a.datosJson != null}">
+                  <button type="button" class="boton boton-fantasma boton-pequeno" th:attr="data-abrir='auditoria-' + ${a.id}">Ver cambio</button>
+                  <dialog class="dialogo" th:id="'auditoria-' + ${a.id}">
+                    <h2 th:text="${a.accion} + ' · ' + ${a.entidad}">Detalle</h2>
+                    <p class="texto-apagado" th:text="${@fmt.fechaHora(a.createdAt)} + ' · ' + (${a.usuarioEmail} ?: 'sistema') + ' · IP ' + (${a.ip} ?: '—') + ' · ' + (${a.requestId} ?: 'sin request_id')"></p>
+                    <pre class="bloque-codigo" th:text="${a.datosJson}">{}</pre>
+                    <div class="dialogo-pie"><button type="button" class="boton boton-contorno" data-cerrar>Cerrar</button></div>
+                  </dialog>
+                </th:block>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="acciones-cabecera" style="justify-content: flex-end; margin-top: .75rem">
+        <a th:if="${filtros.cursor != null}" class="boton boton-contorno boton-pequeno" th:href="@{/admin/auditoria} + '?' + ${filtros.consulta()}">Inicio</a>
+        <a th:if="${pagina.cursor != null}" class="boton boton-contorno boton-pequeno"
+           th:href="@{/admin/auditoria} + '?' + ${filtros.consulta()} + (${filtros.consulta().isEmpty()} ? '' : '&amp;') + 'cursor=' + ${pagina.cursor}">Más antiguos</a>
+      </div>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

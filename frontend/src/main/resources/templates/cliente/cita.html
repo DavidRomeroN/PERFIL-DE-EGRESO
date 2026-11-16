@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Tu cita · ' + ${cita.local.nombreComercial})}"></head>
+<body class="pagina-cliente">
+
+<header th:replace="~{fragmentos/base :: cabeceraLocal(${cita.local.nombreComercial}, 'Tu cita en', ${cita.local.direccion}, null)}"></header>
+
+<!--/* M3 · Detalle de la cita: confirmar, cancelar, reprogramar, check-in con el PIN de la pantalla y enlace al turno. */-->
+<main class="cliente-main">
+  <div class="tarjeta tarjeta-flotante entrar cita-detalle">
+    <div th:if="${mensaje}" class="alerta alerta-exito" role="status" th:text="${mensaje}">Listo</div>
+    <div th:if="${error}" class="alerta alerta-error sacudir" role="alert" th:text="${error}">Error</div>
+
+    <p class="cita-servicio" th:text="${cita.cola.nombre}">Consulta</p>
+    <p class="cita-fecha" th:text="${cita.inicioLocal}">lunes, 3 de noviembre, 09:00</p>
+    <p><span class="insignia" th:classappend="'cita-' + ${cita.estado}" th:text="${cita.estado.name() == 'RESERVADA'} ? 'Reservada' : (${cita.estado.name() == 'CONFIRMADA'} ? 'Confirmada' : (${cita.estado.name() == 'CHECKIN'} ? 'Ya llegaste' : (${cita.estado.name() == 'ATENDIDA'} ? 'Atendida' : (${cita.estado.name() == 'NO_SHOW'} ? 'No asististe' : 'Cancelada'))))">Reservada</span></p>
+
+    <a th:if="${cita.turno != null}" class="boton boton-local boton-grande boton-bloque" th:href="@{/t/{t}(t=${cita.turno.token})}"
+       th:text="'Ver mi turno ' + ${cita.turno.codigo}">Ver mi turno</a>
+
+    <th:block th:if="${activa}">
+      <div class="cita-qr" th:utext="${qr}"></div>
+      <p>Código para el kiosco: <b class="numeros cita-codigo" th:text="${cita.codigoCheckin}">ABC123</b></p>
+
+      <p th:if="${cita.checkin.ventana == 'TEMPRANO' and cita.checkin.disponibleDesde != null}" class="texto-apagado"
+         th:text="'El check-in se habilita desde las ' + ${@fmt.hora(cita.checkin.disponibleDesde)} + ' (' + ${cita.checkin.antesMin} + ' min antes).'">Desde las 08:50</p>
+
+      <form th:if="${cita.checkin.ventana == 'DENTRO' or cita.checkin.ventana == 'TARDE'}" class="formulario cita-checkin" method="post"
+            th:action="@{/c/{t}/checkin(t=${cita.token})}">
+        <p><strong>¿Ya llegaste? Escribe el PIN que aparece en la pantalla del local</strong></p>
+        <p th:if="${cita.checkin.ventana == 'TARDE'}" class="ayuda" style="color: var(--aviso)">Llegaste tarde: entrarás a la fila como turno general.</p>
+        <input name="pin" class="entrada entrada-grande numeros cita-pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required aria-label="PIN de presencia">
+        <button type="submit" class="boton boton-local boton-grande boton-bloque">Hacer check-in</button>
+      </form>
+
+      <div class="cita-acciones">
+        <form th:if="${cita.estado.name() == 'RESERVADA'}" method="post" th:action="@{/c/{t}/confirmar(t=${cita.token})}">
+          <button type="submit" class="boton boton-contorno">Confirmar asistencia</button>
+        </form>
+        <a class="boton boton-contorno" th:href="@{/api/v1/public/citas/{t}/ics(t=${cita.token})}">Agregar al calendario</a>
+        <a class="boton boton-contorno" th:href="@{/l/{s}/citas(s=${cita.local.slug})}">Reservar otra cita</a>
+      </div>
+
+      <details th:if="${cita.puedeCancelar and dias != null}" class="cita-reprogramar" th:open="${fecha != null}">
+        <summary>Cambiar de horario</summary>
+        <div class="dias-cita">
+          <th:block th:each="d : ${dias}">
+            <a th:if="${d.abierto and d.libres > 0}" class="dia-cita" th:classappend="${fecha == d.fecha} ? 'elegido'"
+               th:href="@{/c/{t}(t=${cita.token},fecha=${d.fecha})}"><span th:text="${d.etiqueta}">lun</span><small th:text="${d.libres} + ' cupos'">4</small></a>
+          </th:block>
+        </div>
+        <form th:if="${slots != null}" class="horarios-cita" method="post" th:action="@{/c/{t}/reprogramar(t=${cita.token})}">
+          <th:block th:each="s : ${slots}">
+            <button th:if="${s.disponible}" type="submit" name="slotId" th:value="${s.id}" class="horario-cita numeros" th:text="${s.hora}">09:00</button>
+          </th:block>
+          <p th:if="${#lists.isEmpty(slots)}" class="texto-apagado">No hay horarios ese día.</p>
+        </form>
+      </details>
+
+      <form th:if="${cita.puedeCancelar}" method="post" th:action="@{/c/{t}/cancelar(t=${cita.token})}" class="cita-cancelar"
+            data-confirmar="El horario quedará libre para otra persona. ¿Cancelar la cita?">
+        <button type="submit" class="boton boton-fantasma boton-texto-peligro">Cancelar cita</button>
+      </form>
+    </th:block>
+  </div>
+</main>
+</body>
+</html>

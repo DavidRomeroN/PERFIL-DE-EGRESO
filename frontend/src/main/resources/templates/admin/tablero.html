@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Dashboard')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin" hx-ext="sse" th:attr="sse-connect=@{/api/v1/realtime/{s}(s=${snap.local.slug})}">
+    <div class="cabecera-pagina">
+      <div>
+        <h1 th:text="'Hola, ' + ${snap.local.nombreComercial}">Hola</h1>
+        <p th:text="'Resumen de hoy, ' + ${@fmt.fechaLarga(snap.fecha)} + '.'">Resumen de hoy.</p>
+      </div>
+      <div class="acciones-cabecera">
+        <span th:replace="~{fragmentos/base :: enVivo}"></span>
+        <a class="boton boton-contorno boton-pequeno" target="_blank" th:href="@{/l/{s}/tv(s=${snap.local.slug})}">Pantalla TV ↗</a>
+        <a class="boton boton-pequeno" th:href="@{/panel}">Panel de ventanilla</a>
+      </div>
+    </div>
+
+    <!--/* Se vuelve a pedir con cada evento del local y cada 30 s */-->
+    <div id="tablero" th:fragment="contenido" th:attr="hx-get=@{/admin/tablero/contenido}"
+         hx-trigger="sse:turno:llamado, sse:cola:actualizada delay:600ms, sse:turno:estado delay:600ms, every 30s" hx-swap="outerHTML">
+      <th:block th:with="s=${snap.stats}">
+        <div class="metricas">
+          <div class="metrica"><p class="metrica-etiqueta">Turnos hoy</p><p class="metrica-valor" th:text="${s.total}">0</p>
+            <p class="metrica-pista" th:text="${s.pctQR} + '% tomados por QR'">0%</p></div>
+          <div class="metrica atencion"><p class="metrica-etiqueta">En espera ahora</p><p class="metrica-valor" th:text="${s.enEspera}">0</p>
+            <p class="metrica-pista" th:text="${s.llamados} + ' en atención'">0</p></div>
+          <div class="metrica bien"><p class="metrica-etiqueta">Espera promedio</p><p class="metrica-valor" th:text="${s.esperaPromedioMin} + ' min'">0</p>
+            <p class="metrica-pista" th:text="'Atención: ' + ${s.atencionPromedioMin} + ' min por turno'">0</p></div>
+          <div class="metrica" th:classappend="${s.tasaAbandono > 5} ? 'mal' : 'bien'"><p class="metrica-etiqueta">Tasa de abandono</p>
+            <p class="metrica-valor" th:text="${s.tasaAbandono} + '%'">0%</p>
+            <p class="metrica-pista" th:text="${s.noPresentados} + ' no se presentaron · ' + ${s.cancelados} + ' cancelados'">0</p></div>
+        </div>
+      </th:block>
+
+      <div class="rejilla rejilla-3">
+        <section class="tarjeta">
+          <div class="cabecera-tarjeta"><h2 class="tarjeta-titulo">Colas en vivo</h2><a th:href="@{/admin/colas}">Administrar</a></div>
+          <div class="colas-vivo">
+            <div th:each="c : ${snap.colas}" class="cola-vivo">
+              <div class="cola-vivo-titulo"><span class="prefijo" th:text="${c.prefijo}">A</span><span th:text="${c.nombre}">Caja</span></div>
+              <div class="cola-vivo-datos">
+                <div><p class="numero" th:text="${c.enEspera}">0</p><p class="tarjeta-sub">en espera</p></div>
+                <div style="text-align: right">
+                  <p><strong th:text="${c.enEspera > 0} ? '~ ' + ${@fmt.duracion(c.tiempoEstimadoSeg)} : 'Sin espera'">Sin espera</strong></p>
+                  <p class="tarjeta-sub" th:text="${#lists.size(c.ventanillas)} + (${#lists.size(c.ventanillas) == 1} ? ' ventanilla' : ' ventanillas')">1 ventanilla</p>
+                </div>
+              </div>
+              <p th:each="l : ${c.llamados}" class="cola-vivo-llamado"><span class="mono" th:text="${l.codigo}">A-001</span><span th:text="${l.ventanilla}">V1</span></p>
+            </div>
+            <p th:if="${#lists.isEmpty(snap.colas)}" class="vacio">No hay colas activas. <a th:href="@{/admin/colas}">Crea la primera</a>.</p>
+          </div>
+
+          <h3 class="tarjeta-sub" style="margin-top: 1.5rem">Últimos llamados</h3>
+          <ul class="lista-llamados">
+            <li th:each="l, i : ${snap.ultimosLlamados}" th:if="${i.index < 6}">
+              <span class="mono"><strong th:text="${l.codigo}">A-001</strong></span>
+              <span class="texto-apagado" th:text="${l.ventanilla}">V1</span>
+              <span th:replace="~{fragmentos/base :: insignia(${l.estado})}"></span>
+              <span class="numeros tarjeta-sub" th:text="${@fmt.hora(l.llamadoAt)}">10:00</span>
+            </li>
+            <li th:if="${#lists.isEmpty(snap.ultimosLlamados)}" class="vacio" style="display: block">Aún no hay llamados hoy.</li>
+          </ul>
+        </section>
+
+        <section class="tarjeta">
+          <h2 class="tarjeta-titulo">Resultado de turnos</h2>
+          <p class="tarjeta-sub" th:text="'Últimos 7 días · ' + ${semana.resumen.total} + ' turnos'">Últimos 7 días</p>
+          <div class="barras-horizontales" style="margin-top: 1rem">
+            <div th:each="e : ${semana.porEstado}" th:if="${e.cantidad > 0}" class="fila-barra"
+                 th:style="'--color:' + (${e.estado.name() == 'ATENDIDO'} ? 'var(--exito)' : (${e.estado.name() == 'NO_SE_PRESENTO'} ? 'var(--error)' : (${e.estado.name() == 'CANCELADO'} ? '#94a3b8' : '#f59e0b')))">
+              <span th:text="${e.estado.etiqueta()}">Atendido</span>
+              <span class="pista"><span class="relleno" th:style="'--valor:' + ${e.cantidad * 100 / semana.resumen.total} + '%'"></span></span>
+              <span class="cifra" th:text="${e.cantidad}">0</span>
+            </div>
+            <p th:if="${semana.resumen.total == 0}" class="vacio">Sin turnos en la semana.</p>
+          </div>
+
+          <h3 class="tarjeta-titulo" style="margin-top: 1.5rem">Canales</h3>
+          <p class="tarjeta-sub">Cómo toman turno los clientes (7 días)</p>
+          <div class="barras-horizontales" style="margin-top: 0.75rem">
+            <div th:each="c : ${semana.porCanal}" class="fila-barra"
+                 th:style="'--color:' + (${c.canal.name() == 'APP'} ? '#2563eb' : (${c.canal.name() == 'WHATSAPP'} ? '#16a34a' : 'var(--primario)'))">
+              <span th:text="${c.canal.corto()}">App</span>
+              <span class="pista"><span class="relleno" th:style="'--valor:' + ${c.porcentaje} + '%'"></span></span>
+              <span class="cifra" th:text="${c.porcentaje} + '%'">0%</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="rejilla rejilla-2">
+        <section class="tarjeta">
+          <div class="cabecera-tarjeta">
+            <div><h2 class="tarjeta-titulo">Turnos por día</h2><p class="tarjeta-sub">Últimos 7 días</p></div>
+            <a th:href="@{/admin/reportes}">Ver reportes</a>
+          </div>
+          <div class="grafico-columnas doble">
+            <div th:each="d : ${semana.porDia}" class="columna" th:title="${d.turnos} + ' turnos, ' + ${d.atendidos} + ' atendidos'">
+              <span class="columna-valor" th:text="${d.turnos}">0</span>
+              <div class="pila">
+                <span class="barra" th:style="'--valor:' + ${d.turnos * 100 / semana.maxTurnosDia()} + '%'"></span>
+                <span class="barra secundaria" th:style="'--valor:' + ${d.atendidos * 100 / semana.maxTurnosDia()} + '%'"></span>
+              </div>
+              <span class="columna-etiqueta" th:text="${@fmt.diaMes(d.fecha)}">01/01</span>
+            </div>
+            <p th:if="${#lists.isEmpty(semana.porDia)}" class="vacio" style="flex: 1">Sin datos todavía.</p>
+          </div>
+          <p class="leyenda"><span>Turnos</span><span style="--color: oklch(0.7 0.12 230)">Atendidos</span></p>
+        </section>
+
+        <section class="tarjeta">
+          <h2 class="tarjeta-titulo">Demanda por hora</h2>
+          <p class="tarjeta-sub">Llegadas acumuladas (7 días) · para planificar personal por franja</p>
+          <div class="grafico-columnas">
+            <div th:each="h : ${semana.porHora}" class="columna" th:title="${h.etiqueta} + ': ' + ${h.turnos} + ' turnos'">
+              <span class="columna-valor" th:text="${h.turnos > 0} ? ${h.turnos} : ''"></span>
+              <span class="barra secundaria" th:style="'--valor:' + ${h.turnos * 100 / semana.maxTurnosHora()} + '%'"></span>
+              <span class="columna-etiqueta" th:text="${h.hora % 2 == 0} ? ${h.hora} + 'h' : ''">8h</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="accesos">
+      <a class="acceso" th:href="@{/admin/pantalla}"><strong>Imprimir QR del local</strong><span>Afiche con los códigos QR para la sala.</span></a>
+      <a class="acceso" th:href="@{/admin/notificaciones}"><strong>Avisos WhatsApp</strong><span>Entregas, lecturas y fallos de los mensajes.</span></a>
+      <a class="acceso" th:href="@{/admin/usuarios}"><strong>Operadores</strong><span>Cuentas para recepción y consultorios.</span></a>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

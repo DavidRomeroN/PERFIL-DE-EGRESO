@@ -5,6 +5,17 @@ plugins {
     alias(libs.plugins.spring.boot)
 }
 
+allprojects {
+    group = "pe.turnoya"
+    version = "0.3.0"
+
+    tasks.withType<JavaCompile>().configureEach {
+        options.encoding = "UTF-8"
+        // -parameters: Spring resuelve @PathVariable/@RequestParam por nombre sin repetirlo en la anotación
+        options.compilerArgs.addAll(listOf("-parameters", "-Xlint:unchecked", "-Xlint:deprecation"))
+    }
+}
+
 java {
     toolchain {
         // Java 21: virtual threads para las conexiones SSE (pantallas TV y celulares)
@@ -16,7 +27,7 @@ dependencies {
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
     implementation(platform(libs.spring.modulith.bom))
 
-    // Plantillas, CSS y JS (subproyecto frontend/)
+    // Plantillas, CSS y JS (../frontend)
     implementation(project(":frontend"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
@@ -33,7 +44,7 @@ dependencies {
     implementation("org.springframework.modulith:spring-modulith-starter-core")
     implementation("org.springframework.modulith:spring-modulith-starter-jdbc")
 
-    // Sesión compatible con la de legacy/ (JWT HS256 en cookie)
+    // Sesión JWT HS256 en cookie (mismo formato que el sistema anterior)
     implementation(libs.nimbus.jose.jwt)
     // Códigos QR en SVG generados en el servidor (TV y ticket impreso)
     implementation(libs.zxing.core)

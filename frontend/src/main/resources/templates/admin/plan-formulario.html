@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<!-- Campos del plan (crear y editar) para admin/planes. -->
+<body>
+    <th:block th:fragment="formulario(p)">
+      <div class="rejilla-campos">
+        <div class="campo"><label class="etiqueta">Código <input name="codigo" class="entrada numeros" required pattern="[A-Za-z0-9_]{3,20}" maxlength="20" th:value="${p?.codigo}" placeholder="PRO"></label></div>
+        <div class="campo"><label class="etiqueta">Nombre <input name="nombre" class="entrada" required minlength="2" maxlength="40" th:value="${p?.nombre}" placeholder="Profesional"></label></div>
+        <div class="campo"><label class="etiqueta">Precio mensual (S/) <input name="precioMensual" type="number" class="entrada numeros" required min="0" max="100000" step="0.01" th:value="${p != null} ? ${p.precioMensual} : '0'"></label></div>
+        <div class="campo"><label class="etiqueta">Turnos por mes <input name="maxTurnosMes" type="number" class="entrada numeros" required min="1" th:value="${p != null} ? ${p.maxTurnosMes} : '1000'"></label></div>
+        <div class="campo"><label class="etiqueta">Colas <input name="maxColas" type="number" class="entrada numeros" required min="1" th:value="${p != null} ? ${p.maxColas} : '3'"></label></div>
+        <div class="campo"><label class="etiqueta">Ventanillas <input name="maxVentanillas" type="number" class="entrada numeros" required min="1" th:value="${p != null} ? ${p.maxVentanillas} : '3'"></label></div>
+        <div class="campo"><label class="etiqueta">Avisos de WhatsApp por mes <input name="maxAvisosWhatsapp" type="number" class="entrada numeros" min="0" th:value="${p != null} ? ${p.maxAvisosWhatsapp} : '0'"></label></div>
+        <div class="campo" style="align-self: end; display: flex; gap: .5rem; flex-wrap: wrap">
+          <label class="casilla"><input type="checkbox" name="whatsappHabilitado" value="true" th:checked="${p?.whatsappHabilitado}"> <span>WhatsApp</span></label>
+          <label class="casilla"><input type="checkbox" name="reportes" value="true" th:checked="${p?.reportes}"> <span>Reportes</span></label>
+        </div>
+        <div class="campo ancho-completo"><label class="etiqueta">Descripción <input name="descripcion" class="entrada" maxlength="200" th:value="${p?.descripcion}"></label></div>
+        <p class="subtitulo-dialogo">Módulos incluidos</p>
+        <div class="matriz-modulos">
+          <label class="casilla" th:each="m : ${modulos}">
+            <input type="checkbox" name="modulos" th:value="${m.name()}" th:checked="${p != null and p.incluye(m.name())}">
+            <span><strong th:text="${m.name()} + ' · ' + ${m.nombre()}">M1 · Prioridades</strong><small th:text="${m.descripcion()}">…</small></span>
+          </label>
+        </div>
+      </div>
+    </th:block>
+</body>
+</html>

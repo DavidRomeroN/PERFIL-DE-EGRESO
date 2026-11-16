@@ -18,10 +18,11 @@ services:
       retries: 10
 
   # Aplicación TurnoYa (Spring Boot). Arranque: docker compose --profile prod up -d --build
-  # La BD la migra Flyway al arrancar. Para datos de demostración, siembra una vez con legacy/ (ver README).
+  # La BD la migra Flyway al arrancar.
   app:
     build:
       context: .
+      dockerfile: backend/Dockerfile
     container_name: turnoya-app
     restart: unless-stopped
     profiles: ["prod"]
@@ -32,7 +33,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://turnoya:turnoya@db:5432/turnoya?schema=public
-      # Mismos secretos que legacy/: así comparten sesiones y pueden leer los teléfonos ya cifrados
+      # Deben ser los mismos que cifraron los datos existentes (teléfonos) y firmaron las sesiones
       JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion-32-chars}
       DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
       ALLOW_INSECURE_SECRETS: ${ALLOW_INSECURE_SECRETS:-false}
@@ -63,39 +64,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
-  # Sistema anterior (Next.js), mientras dure la migración. Arranque: docker compose --profile legacy up -d --build
-  legacy:
-    build:
-      context: ./legacy
-      args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-    container_name: turnoya-legacy
-    restart: unless-stopped
-    profiles: ["legacy"]
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://turnoya:turnoya@db:5432/turnoya?schema=public
-      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion-32-chars}
-      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-mock}
-      # OpenWA (WHATSAPP_PROVIDER=openwa): el gateway corre en el mismo compose como servicio "openwa"
-      OPENWA_URL: ${OPENWA_URL_INTERNAL:-http://openwa:2785}
-      OPENWA_API_KEY: ${OPENWA_API_KEY:-turnoya-openwa-master-key-cambiar}
-      OPENWA_SESSION: ${OPENWA_SESSION:-turnoya}
-      OPENWA_WEBHOOK_SECRET: ${OPENWA_WEBHOOK_SECRET:-turnoya-webhook-secret-cambiar}
-      OPENWA_WEBHOOK_BASE_URL: ${OPENWA_WEBHOOK_BASE_URL_INTERNAL:-http://legacy:3000}
-      # Meta Cloud API (WHATSAPP_PROVIDER=meta)
-      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
-      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
-      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-turnoya-verify}
-      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
-      SEED_ON_START: ${SEED_ON_START:-true}
-    ports:
-      - "3000:3000"
 
   # Gateway de WhatsApp open source (https://github.com/rmyndharis/OpenWA).
   # Arranque: docker compose --profile whatsapp up -d
@@ -133,7 +101,7 @@ services:
       PUPPETEER_ARGS: --no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu
       PUPPETEER_EXECUTABLE_PATH: /usr/local/bin/puppeteer-chrome
       # Permite que el webhook apunte a TurnoYa (host o contenedor), que son hosts "internos"
-      SSRF_ALLOWED_HOSTS: host.docker.internal,app,legacy,localhost,127.0.0.1
+      SSRF_ALLOWED_HOSTS: host.docker.internal,app,localhost,127.0.0.1
       WEBHOOK_TIMEOUT: 10000
       WEBHOOK_RETRY_DELAY: 5000
       ENABLE_SWAGGER: "true"

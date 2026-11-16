@@ -7,46 +7,54 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import pe.turnoya.nucleo.dominio.Cola;
+import pe.turnoya.nucleo.dominio.RepositorioColas;
 
 /** Acceso a la tabla {@code cola}. */
 @Repository
-public class ColasJdbc {
+class ColasJdbc implements RepositorioColas {
 
     private static final String COLUMNAS = "id, local_id, prefijo, nombre, descripcion, activa, tiempo_atencion_base, orden";
 
     private final JdbcClient jdbc;
 
-    public ColasJdbc(JdbcClient jdbc) {
+    ColasJdbc(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
 
+    @Override
     public Optional<Cola> porId(int id) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM cola WHERE id = :id").param("id", id).query(ColasJdbc::cola).optional();
     }
 
+    @Override
     public Optional<Cola> porIdEnLocal(int id, int localId) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM cola WHERE id = :id AND local_id = :local")
                 .param("id", id).param("local", localId).query(ColasJdbc::cola).optional();
     }
 
+    @Override
     public List<Cola> delLocal(int localId) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM cola WHERE local_id = :local ORDER BY orden, id")
                 .param("local", localId).query(ColasJdbc::cola).list();
     }
 
+    @Override
     public List<Cola> activasDelLocal(int localId) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM cola WHERE local_id = :local AND activa ORDER BY orden, id")
                 .param("local", localId).query(ColasJdbc::cola).list();
     }
 
+    @Override
     public int contar(int localId) {
         return jdbc.sql("SELECT COUNT(*) FROM cola WHERE local_id = :local").param("local", localId).query(Integer.class).single();
     }
 
+    @Override
     public int contarTurnos(int colaId) {
         return jdbc.sql("SELECT COUNT(*) FROM turno WHERE cola_id = :cola").param("cola", colaId).query(Integer.class).single();
     }
 
+    @Override
     public int crear(int localId, String prefijo, String nombre, String descripcion, int tiempoAtencionBase, boolean activa, int orden) {
         return jdbc.sql("""
                         INSERT INTO cola (local_id, prefijo, nombre, descripcion, tiempo_atencion_base, activa, orden)
@@ -56,6 +64,7 @@ public class ColasJdbc {
                 .query(Integer.class).single();
     }
 
+    @Override
     public void actualizar(Cola c) {
         jdbc.sql("""
                         UPDATE cola SET prefijo = :prefijo, nombre = :nombre, descripcion = :descripcion,
@@ -66,6 +75,7 @@ public class ColasJdbc {
                 .update();
     }
 
+    @Override
     public void eliminar(int id) {
         jdbc.sql("DELETE FROM cola WHERE id = :id").param("id", id).update();
     }

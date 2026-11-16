@@ -12,13 +12,14 @@ import pe.turnoya.compartido.datos.Sql;
 import pe.turnoya.nucleo.CanalTurno;
 import pe.turnoya.nucleo.EstadoTurno;
 import pe.turnoya.nucleo.dominio.Turno;
+import pe.turnoya.nucleo.dominio.RepositorioTurnos;
 
 /**
  * Acceso a la tabla {@code turno}. La selección del siguiente turno y la numeración viven en funciones SQL
  * ({@code siguiente_turno} con {@code FOR UPDATE SKIP LOCKED}, {@code emitir_turno}): aquí solo se llaman.
  */
 @Repository
-public class TurnosJdbc {
+class TurnosJdbc implements RepositorioTurnos {
 
     static final String COLUMNAS = """
             t.id, t.local_id, t.cola_id, t.numero, t.codigo, t.token, t.cliente_id, t.estado::text AS estado, t.ventanilla_id,
@@ -29,26 +30,45 @@ public class TurnosJdbc {
 
     private final JdbcClient jdbc;
 
-    public TurnosJdbc(JdbcClient jdbc) {
+    TurnosJdbc(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
 
+    @Override
     public Optional<Turno> porToken(String token) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t WHERE t.token = :token")
                 .param("token", token).query(TurnosJdbc::turno).optional();
     }
 
+    @Override
     public Optional<Turno> porId(int id) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t WHERE t.id = :id")
                 .param("id", id).query(TurnosJdbc::turno).optional();
     }
 
+    @Override
     public Optional<Turno> porIdEnLocal(int id, int localId) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t WHERE t.id = :id AND t.local_id = :local")
                 .param("id", id).param("local", localId).query(TurnosJdbc::turno).optional();
     }
 
+    @Override
+    public Optional<Turno> bloquearEnLocal(int id, int localId) {
+        return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t WHERE t.id = :id AND t.local_id = :local FOR UPDATE")
+                .param("id", id).param("local", localId).query(TurnosJdbc::turno).optional();
+    }
+
+    @Override
+    public void marcarTransferido(int id, int sucesorId, Instant ahora, boolean liberarVentanilla) {
+        jdbc.sql("""
+                        UPDATE turno SET estado = 'TRANSFERIDO', finalizado_at = :ahora, sucesor_id = :sucesor,
+                               ventanilla_id = CASE WHEN :liberar THEN NULL ELSE ventanilla_id END
+                         WHERE id = :id""")
+                .param("ahora", Sql.utc(ahora)).param("sucesor", sucesorId).param("liberar", liberarVentanilla).param("id", id).update();
+    }
+
     /** Llama a {@code emitir_turno} (numeración diaria por cola, clave de prioridad y contexto para M2). */
+    @Override
     public int emitir(int colaId, Integer clienteId, CanalTurno canal, String token, LocalDate fecha, Integer categoriaId,
                       Instant emitidoAt, String origenJson) {
         return jdbc.sql("""
@@ -67,17 +87,20 @@ public class TurnosJdbc {
                 .single();
     }
 
+    @Override
     public void marcarPrioridadVerificada(int id) {
         jdbc.sql("UPDATE turno SET prioridad_verificada = true WHERE id = :id").param("id", id).update();
     }
 
     /** RN05: turnos emitidos en el mes (las transferencias no cuentan). */
+    @Override
     public int contarDesde(int localId, LocalDate desde) {
         return jdbc.sql("SELECT COUNT(*) FROM turno WHERE local_id = :local AND fecha >= :desde AND transferido_de_turno_id IS NULL")
                 .param("local", localId).param("desde", desde).query(Integer.class).single();
     }
 
     /** RN03: turno activo del cliente en la cola. */
+    @Override
     public Optional<CodigoYToken> activoDeCliente(int colaId, int clienteId) {
         return jdbc.sql("""
                         SELECT codigo, token FROM turno
@@ -88,21 +111,25 @@ public class TurnosJdbc {
                 .optional();
     }
 
+    @Override
     public int posicion(int turnoId) {
         return jdbc.sql("SELECT posicion_turno(CAST(:id AS int))").param("id", turnoId).query(Integer.class).optional().orElse(1);
     }
 
+    @Override
     public int tiempoEstimadoBase(int colaId, int posicion) {
         return jdbc.sql("SELECT tiempo_estimado(CAST(:cola AS int), CAST(:pos AS int))")
                 .param("cola", colaId).param("pos", posicion).query(Integer.class).optional().orElse(0);
     }
 
+    @Override
     public int enEspera(int colaId, LocalDate fecha) {
         return jdbc.sql("SELECT COUNT(*) FROM turno WHERE cola_id = :cola AND fecha = :fecha AND estado IN ('EMITIDO', 'AVISADO')")
                 .param("cola", colaId).param("fecha", fecha).query(Integer.class).single();
     }
 
     /** Los primeros {@code limite} en espera de la cola, en el orden en que serán llamados. */
+    @Override
     public List<Turno> primerosEnEspera(int colaId, LocalDate fecha, int limite) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t WHERE t.cola_id = :cola AND t.fecha = :fecha"
                         + " AND t.estado IN ('EMITIDO', 'AVISADO') ORDER BY " + ORDEN_FILA + " LIMIT :limite")
@@ -111,6 +138,7 @@ public class TurnosJdbc {
     }
 
     /** Todos los turnos del día del local con los datos que muestran el panel y la TV. */
+    @Override
     public List<TurnoDelDia> delDia(int localId, LocalDate fecha) {
         return jdbc.sql("SELECT " + COLUMNAS + """
                         , c.nombre AS cliente_nombre, v.nombre AS ventanilla_nombre, cp.nombre AS categoria_nombre, cp.codigo AS categoria_codigo
@@ -126,6 +154,7 @@ public class TurnosJdbc {
                 .list();
     }
 
+    @Override
     public List<LlamadoEnCola> llamandoAhora(int colaId, LocalDate fecha) {
         return jdbc.sql("""
                         SELECT t.codigo, t.codigo_provisional, v.nombre AS ventanilla FROM turno t LEFT JOIN ventanilla v ON v.id = t.ventanilla_id
@@ -137,12 +166,14 @@ public class TurnosJdbc {
                 .list();
     }
 
+    @Override
     public Optional<Turno> llamadoEnVentanilla(int ventanillaId) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t WHERE t.ventanilla_id = :v AND t.estado = 'LLAMADO' LIMIT 1")
                 .param("v", ventanillaId).query(TurnosJdbc::turno).optional();
     }
 
     /** Elige el siguiente turno (prioridad, antigüedad y tope de adelantos) y lo bloquea dentro de la transacción. */
+    @Override
     public Optional<Integer> siguiente(int localId, Integer colaId, LocalDate fecha) {
         // La función devuelve NULL si no hay nadie en espera
         return jdbc.sql("SELECT siguiente_turno(CAST(:local AS int), CAST(:cola AS int), CAST(:fecha AS date))")
@@ -150,6 +181,7 @@ public class TurnosJdbc {
                 .query(Integer.class).list().stream().filter(java.util.Objects::nonNull).findFirst();
     }
 
+    @Override
     public void marcarLlamado(int id, int ventanillaId, Instant ahora) {
         jdbc.sql("""
                         UPDATE turno SET estado = 'LLAMADO', ventanilla_id = :v, llamado_at = :ahora, avisado_at = COALESCE(avisado_at, :ahora)
@@ -161,6 +193,7 @@ public class TurnosJdbc {
      * Cambia el estado solo si el turno sigue en {@code desde} (guarda optimista: si otro proceso lo cambió, por
      * ejemplo la expiración RN04, no se pisa). Ajusta las fechas y el contador de rellamadas según el destino.
      */
+    @Override
     public boolean transicionar(int id, EstadoTurno desde, EstadoTurno hacia, Instant ahora) {
         return jdbc.sql("""
                         UPDATE turno SET
@@ -179,11 +212,19 @@ public class TurnosJdbc {
     }
 
     /** RN04: llamados que superaron el tiempo de presentación del local. */
+    @Override
     public List<Turno> llamadosVencidos(int localId, Instant limite) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t WHERE t.local_id = :local AND t.estado = 'LLAMADO' AND t.llamado_at <= :limite")
                 .param("local", localId).param("limite", Sql.utc(limite)).query(TurnosJdbc::turno).list();
     }
 
+    @Override
+    public List<Turno> enEsperaAntesDe(int localId, LocalDate fecha) {
+        return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t WHERE t.local_id = :local AND t.estado IN ('EMITIDO', 'AVISADO') AND t.fecha < :fecha")
+                .param("local", localId).param("fecha", fecha).query(TurnosJdbc::turno).list();
+    }
+
+    @Override
     public Optional<Sucesor> sucesor(int sucesorId) {
         return jdbc.sql("SELECT t.token, t.codigo, c.nombre AS cola FROM turno t JOIN cola c ON c.id = t.cola_id WHERE t.id = :id")
                 .param("id", sucesorId)
@@ -192,6 +233,7 @@ public class TurnosJdbc {
     }
 
     /** Historial del operador (N02): página de 50 por id descendente. */
+    @Override
     public List<FilaHistorial> historial(int localId, LocalDate fecha, Integer ventanillaId, EstadoTurno estado, Integer cursor) {
         return jdbc.sql("""
                         SELECT t.id, t.codigo, t.codigo_provisional, t.estado::text AS estado, t.canal::text AS canal, t.emitido_at,
@@ -215,6 +257,7 @@ public class TurnosJdbc {
     }
 
     /** Tiempos del día para los KPI del historial. */
+    @Override
     public List<Turno> delDiaFiltrado(int localId, LocalDate fecha, Integer ventanillaId, EstadoTurno estado) {
         return jdbc.sql("SELECT " + COLUMNAS + " FROM turno t " + """
                          WHERE t.local_id = :local AND t.fecha = :fecha
@@ -252,19 +295,8 @@ public class TurnosJdbc {
                 Sql.entero(rs, "aviso_min_antes"));
     }
 
-    public record CodigoYToken(String codigo, String token) {
-    }
 
-    public record TurnoDelDia(Turno turno, String clienteNombre, String ventanillaNombre, String categoriaNombre, String categoriaCodigo) {
-    }
 
-    public record LlamadoEnCola(String codigo, String codigoProvisional, String ventanilla) {
-    }
 
-    public record Sucesor(String token, String codigo, String cola) {
-    }
 
-    public record FilaHistorial(int id, String codigo, String codigoProvisional, EstadoTurno estado, CanalTurno canal, Instant emitidoAt,
-                                Instant llamadoAt, Instant finalizadoAt, int rellamadas, String cola, String ventanilla, String cliente) {
-    }
 }

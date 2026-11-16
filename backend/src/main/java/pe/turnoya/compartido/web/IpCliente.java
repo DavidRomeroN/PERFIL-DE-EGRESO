@@ -2,7 +2,7 @@ package pe.turnoya.compartido.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-/** IP del cliente detrás de un proxy (primer valor de X-Forwarded-For), como en legacy/. */
+/** IP del cliente detrás de un proxy (primer valor de X-Forwarded-For), como en el sistema anterior. */
 public final class IpCliente {
 
     private IpCliente() {

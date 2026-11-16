@@ -246,6 +246,10 @@
 /* --- Diálogo nativo ---------------------------------------------------- */
 .dialogo {
   width: min(28rem, calc(100vw - 2rem));
+  /* el reset global (margin: 0) quita el centrado nativo del <dialog> modal */
+  margin: auto;
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
   border: 1px solid var(--borde);
   border-radius: var(--radio-xl);
   padding: 1.5rem;

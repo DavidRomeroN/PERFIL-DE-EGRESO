@@ -5,9 +5,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import pe.turnoya.compartido.tiempo.Fechas;
+import pe.turnoya.plataforma.dominio.Horario;
+import pe.turnoya.plataforma.dominio.RepositorioHorarios;
 
 /**
  * N05: ¿está abierto el local ahora? Sin horarios definidos está siempre abierto (comportamiento original).
@@ -18,16 +19,16 @@ public class HorarioAtencion {
 
     private static final String[] DIAS = {"domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"};
 
-    private final JdbcClient jdbc;
+    private final RepositorioHorarios horarios;
     private final Clock reloj;
 
-    HorarioAtencion(JdbcClient jdbc, Clock reloj) {
-        this.jdbc = jdbc;
+    HorarioAtencion(RepositorioHorarios horarios, Clock reloj) {
+        this.horarios = horarios;
         this.reloj = reloj;
     }
 
     public EstadoHorario estado(Local local) {
-        return calcular(horarios(local.id()), local, reloj.instant());
+        return calcular(horarios.activosDe(local.id()), local, reloj.instant());
     }
 
     /** Regla pura: separada del acceso a datos para probarla con cualquier hora. */
@@ -54,16 +55,6 @@ public class HorarioAtencion {
             return new EstadoHorario(false, "Estamos cerrados. Abrimos " + cuando + " a las " + h.get().apertura() + ".", proxima);
         }
         return new EstadoHorario(false, "Hoy no atendemos.", null);
-    }
-
-    private List<Horario> horarios(int localId) {
-        return jdbc.sql("SELECT dia_semana, apertura, cierre FROM horario_local WHERE local_id = :local AND activo")
-                .param("local", localId)
-                .query((rs, i) -> new Horario(rs.getInt("dia_semana"), rs.getString("apertura"), rs.getString("cierre")))
-                .list();
-    }
-
-    record Horario(int diaSemana, String apertura, String cierre) {
     }
 
     public record EstadoHorario(boolean abierto, String mensaje, Instant proximaApertura) {

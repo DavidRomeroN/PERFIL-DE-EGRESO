@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Mi plan y pagos')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Mi plan y pagos</h1>
+        <p>Renueva o cambia de plan pagando con tarjeta de crédito o débito, procesado por Mercado Pago.</p>
+      </div>
+    </div>
+
+    <div class="metricas">
+      <div class="metrica"><p class="metrica-etiqueta">Plan actual</p><p class="metrica-valor" th:text="${mp.plan.nombre}">Básico</p>
+        <p class="metrica-pista" th:text="${mp.plan.precioMensual.signum() > 0} ? 'S/ ' + ${#numbers.formatDecimal(mp.plan.precioMensual, 1, 2)} + ' /mes' : 'Sin costo'"></p></div>
+      <div class="metrica" th:classappend="${mp.vencido} ? 'mal'"><p class="metrica-etiqueta">Vigente hasta</p>
+        <p class="metrica-valor" th:text="${mp.venceAt != null} ? ${@fmt.fecha(mp.venceAt)} : '—'">—</p>
+        <p class="metrica-pista" th:if="${mp.vencido}">Vencido: renueva para mantener los módulos</p></div>
+      <div class="metrica"><p class="metrica-etiqueta">Pagos aprobados</p><p class="metrica-valor" th:text="${mp.aprobados()}">0</p></div>
+    </div>
+
+    <section class="tarjeta" style="margin-top: 1.25rem">
+      <h2 class="tarjeta-titulo">Cambiar o renovar plan</h2>
+      <div class="alerta alerta-aviso" th:unless="${mp.pagosHabilitados}" style="margin-bottom: 1rem">
+        Los pagos con tarjeta no están configurados en el servidor (MERCADOPAGO_ACCESS_TOKEN y MERCADOPAGO_PUBLIC_KEY).
+      </div>
+      <form id="pago-plan" class="formulario" th:attr="data-clave-publica=${mp.clavePublica},data-habilitado=${mp.pagosHabilitados}">
+        <div class="planes-venta">
+          <label class="plan-venta" th:each="p : ${mp.planes}" th:if="${p.precio.signum() > 0}">
+            <input type="radio" name="plan" th:value="${p.codigo}" th:attr="data-precio=${p.precio}">
+            <span class="plan-venta-nombre"><strong th:text="${p.nombre}">Emprende</strong>
+              <small th:if="${p.codigo == mp.plan.codigo}" class="texto-apagado">(actual · renovar)</small></span>
+            <span class="plan-venta-precio">S/ <span th:text="${#numbers.formatDecimal(p.precio, 1, 2)}">0</span> <small class="texto-apagado">/mes</small></span>
+            <span class="texto-apagado plan-venta-modulos" th:unless="${#lists.isEmpty(p.modulos)}" th:text="'Módulos: ' + ${#strings.listJoin(p.modulos, ', ')}"></span>
+          </label>
+        </div>
+
+        <div class="pago-detalle" hidden data-pago-detalle>
+          <div class="formulario-en-linea">
+            <div class="campo"><label class="etiqueta" for="meses">Meses</label>
+              <select id="meses" name="meses" class="entrada"><option value="1">1</option><option value="3">3</option><option value="6">6</option><option value="12">12</option></select></div>
+            <p class="pago-total">Total: S/ <span data-pago-total>0.00</span></p>
+          </div>
+          <div id="mp-brick" class="pago-brick"></div>
+          <p class="alerta alerta-error" hidden data-pago-error></p>
+          <button type="button" class="boton boton-fantasma" data-pago-cancelar>Cancelar</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="tarjeta tarjeta-sin-relleno" style="margin-top: 1.25rem">
+      <h2 class="tarjeta-titulo" style="padding: 1rem 1.25rem 0">Historial de pagos</h2>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Plan</th><th>Meses</th><th>Monto</th><th>Tarjeta</th><th>Estado</th></tr></thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(mp.pagos)}"><td colspan="6" class="vacio">Aún no hay pagos registrados.</td></tr>
+          <tr th:each="p : ${mp.pagos}">
+            <td class="numeros" th:text="${@fmt.fechaHora(p.creadoAt)}">—</td>
+            <td th:text="${p.plan}">Emprende</td>
+            <td class="numeros" th:text="${p.meses}">1</td>
+            <td class="numeros" th:text="'S/ ' + ${#numbers.formatDecimal(p.monto, 1, 2)}">S/ 0</td>
+            <td th:text="${p.ultimos4 != null} ? (${p.metodo} ?: '') + ' •••• ' + ${p.ultimos4} : '—'">—</td>
+            <td><span class="insignia" th:classappend="'pago-' + ${p.estado}" th:title="${p.detalle}" th:text="${@fmt.estadoPago(p.estado)}">Aprobado</span></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+<script th:src="@{/js/pago-plan.js}" defer></script>
+</body>
+</html>

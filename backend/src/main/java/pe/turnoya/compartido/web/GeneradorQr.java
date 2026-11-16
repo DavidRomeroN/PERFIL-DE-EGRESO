@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 /**
  * Códigos QR en SVG generados en el servidor. El controlador lo deja en el modelo ({@code qrSvg}) y la plantilla lo
  * inserta con {@code th:utext="${qrSvg}"} (Thymeleaf 3.1 no permite llamar beans dentro de {@code th:utext}).
- * Reemplaza a qrcode.react de legacy/ sin JavaScript en el navegador.
+ * Reemplaza a qrcode.react del sistema anterior sin JavaScript en el navegador.
  */
 @Component("qr")
 public class GeneradorQr {

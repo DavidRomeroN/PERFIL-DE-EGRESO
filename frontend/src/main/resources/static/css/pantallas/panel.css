@@ -276,3 +276,103 @@
   font-weight: 600;
   color: var(--local);
 }
+
+/* Historial del día (N02) */
+.contenido-historial { width: 100%; max-width: 72rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+
+/* Vista "Todas las ventanillas": una tarjeta por ventanilla con su turno y sus botones */
+.puestos {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+.puesto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.puesto.con-turno {
+  border-color: color-mix(in oklch, var(--local) 45%, transparent);
+}
+.puesto-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.puesto-cabecera strong,
+.puesto-cabecera .ayuda {
+  display: block;
+}
+.puesto-codigo {
+  font-family: var(--fuente-mono);
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.puesto-cliente {
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.puesto-libre {
+  flex: 1;
+  padding: 1.1rem 0;
+  color: #64748b;
+  font-size: 1.1rem;
+}
+.puesto-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.puesto-acciones form {
+  flex: 1;
+}
+.puesto-acciones .boton {
+  width: 100%;
+  white-space: nowrap;
+}
+.puesto > form:last-of-type {
+  margin-top: auto;
+}
+.puesto-llamar .siguiente {
+  margin-left: 0.35rem;
+  font-family: var(--fuente-mono);
+  font-weight: 700;
+}
+.puesto-pie {
+  text-align: center;
+}
+.puesto-cabecera-acciones {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+}
+.puesto-siguientes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.puesto-siguientes .codigo {
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.35rem;
+  background: rgb(15 23 42 / 0.06);
+  font-family: var(--fuente-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+/* Sin nadie en espera el botón sigue ahí, pero en gris */
+.puesto-llamar.sin-espera,
+.puesto-llamar.sin-espera:hover {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #64748b;
+  box-shadow: none;
+  opacity: 1;
+  cursor: not-allowed;
+}

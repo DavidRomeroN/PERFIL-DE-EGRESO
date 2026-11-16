@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Historial del día')}"></head>
+<body class="pagina-panel" th:style="'--local:' + ${local.colorPrimario}">
+
+<header class="barra-app">
+  <div class="barra-app-contenido">
+    <div class="barra-app-titulo">
+      <a th:replace="~{fragmentos/base :: logo('/panel', false)}"></a>
+      <div class="barra-app-local">
+        <strong th:text="${local.nombreComercial}">Local</strong>
+        <span>Historial del día</span>
+      </div>
+    </div>
+    <div class="barra-app-acciones">
+      <a class="boton boton-contorno boton-pequeno" th:href="@{/panel}">← Volver al panel</a>
+    </div>
+  </div>
+</header>
+
+<main class="contenido-historial">
+  <form class="tarjeta filtros" method="get" th:action="@{/panel/historial}" th:attr="hx-get=@{/panel/historial}"
+        hx-target="#resultados" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change, submit">
+    <div class="campo"><label class="etiqueta" for="fecha">Fecha</label><input id="fecha" class="entrada" type="date" name="fecha" th:value="${fecha}"></div>
+    <div class="campo"><label class="etiqueta" for="estado">Estado</label>
+      <select id="estado" name="estado" class="entrada">
+        <option value="">Todos los estados</option>
+        <option th:each="e : ${estados}" th:value="${e.name()}" th:text="${e.etiqueta()}" th:selected="${e == estado}">Emitido</option>
+      </select></div>
+    <div class="campo"><label class="etiqueta" for="ventanilla">Ventanilla</label>
+      <select id="ventanilla" name="ventanilla" class="entrada">
+        <option value="todas">Todas</option>
+        <option th:each="v : ${ventanillas}" th:value="${v.id}" th:text="${v.nombre}" th:selected="${ventanillaId != null and v.id == ventanillaId}">Ventanilla 1</option>
+      </select></div>
+    <noscript><button type="submit" class="boton">Filtrar</button></noscript>
+  </form>
+
+  <div id="resultados" th:fragment="resultados" th:with="k=${pagina.kpis}">
+    <div class="metricas-5" style="margin-top: 1.25rem">
+      <div class="metrica"><p class="metrica-etiqueta">Turnos</p><p class="metrica-valor" th:text="${k.total}">0</p></div>
+      <div class="metrica bien"><p class="metrica-etiqueta">Atendidos</p><p class="metrica-valor" th:text="${k.atendidos}">0</p></div>
+      <div class="metrica" th:classappend="${k.noPresentados > 0} ? 'mal'"><p class="metrica-etiqueta">No se presentaron</p><p class="metrica-valor" th:text="${k.noPresentados}">0</p></div>
+      <div class="metrica"><p class="metrica-etiqueta">Espera prom.</p><p class="metrica-valor" th:text="${k.esperaPromMin} + ' min'">0</p></div>
+      <div class="metrica"><p class="metrica-etiqueta">Atención prom.</p><p class="metrica-valor" th:text="${k.atencionPromMin} + ' min'">0</p></div>
+    </div>
+
+    <div class="acciones-cabecera" style="justify-content: flex-end; margin: 1rem 0 .5rem">
+      <a class="boton boton-contorno boton-pequeno" download
+         th:href="@{/panel/historial.csv(fecha=${fecha},estado=${estado},ventanilla=${ventanillaId})}">Exportar CSV</a>
+    </div>
+
+    <div class="tarjeta tarjeta-sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Turno</th><th>Cola</th><th>Estado</th><th>Emitido</th><th>Llamado</th><th>Fin</th><th>Ventanilla</th><th>Cliente</th></tr></thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(pagina.items)}"><td colspan="8" class="vacio">No hay turnos con esos filtros.</td></tr>
+          <tr th:each="t : ${pagina.items}">
+            <td><strong class="numeros" th:text="${t.codigo} + (${t.codigoProvisional} != null ? ' (' + ${t.codigoProvisional} + ')' : '')">A-001</strong></td>
+            <td th:text="${t.cola}">Cola</td>
+            <td><span class="insignia" th:classappend="'estado-' + ${t.estado.name()}" th:text="${t.estado.etiqueta()}">Atendido</span></td>
+            <td class="numeros" th:text="${@fmt.hora(t.emitidoAt)}">—</td>
+            <td class="numeros" th:text="${@fmt.hora(t.llamadoAt)}">—</td>
+            <td class="numeros" th:text="${@fmt.hora(t.finalizadoAt)}">—</td>
+            <td th:text="${t.ventanilla} ?: '—'">—</td>
+            <td th:text="${t.cliente} ?: '—'">—</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="acciones-cabecera" style="justify-content: flex-end; margin-top: .75rem" th:if="${pagina.cursor != null}">
+      <a class="boton boton-contorno boton-pequeno"
+         th:href="@{/panel/historial(fecha=${fecha},estado=${estado},ventanilla=${ventanillaId} ?: 'todas',cursor=${pagina.cursor})}">Más antiguos</a>
+    </div>
+  </div>
+</main>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

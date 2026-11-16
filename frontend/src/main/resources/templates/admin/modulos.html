@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Módulos')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Módulos</h1>
+        <p th:text="'Plan ' + ${plan} + '. Un módulo apagado deja el sistema exactamente como el núcleo original.'">Plan</p>
+      </div>
+    </div>
+
+    <ul class="modulos-hub">
+      <li th:each="m : ${modulos}" class="tarjeta modulo-tarjeta" th:classappend="${m.habilitado} ? 'activo'">
+        <div class="cabecera-tarjeta">
+          <div>
+            <p class="texto-apagado modulo-codigo" th:text="${m.codigo}">M1</p>
+            <h2 class="tarjeta-titulo" th:text="${m.nombre}">Prioridades</h2>
+          </div>
+          <form th:if="${m.incluido}" method="post" th:action="@{/admin/modulos/{c}(c=${m.codigo})}" th:attr="hx-post=@{/admin/modulos/{c}(c=${m.codigo})}" hx-swap="none">
+            <input type="hidden" name="habilitado" th:value="${!m.habilitado}">
+            <button type="submit" class="interruptor" role="switch" th:attr="aria-checked=${m.habilitado},aria-label=(${m.habilitado} ? 'Desactivar ' : 'Activar ') + ${m.nombre}"><span></span></button>
+          </form>
+          <span th:unless="${m.incluido}" class="insignia">🔒 No incluido</span>
+        </div>
+        <p class="texto-apagado modulo-descripcion" th:text="${m.descripcion}">Descripción</p>
+        <div class="acciones-cabecera" style="justify-content: space-between">
+          <span class="insignia" th:classappend="${m.habilitado} ? 'pago-APROBADO'" th:text="${m.habilitado} ? 'Activo' : (${m.incluido} ? 'Apagado' : 'Requiere otro plan')">Apagado</span>
+          <a th:if="${m.habilitado}" th:href="@{${m.ruta}}" class="enlace-accion">Configurar →</a>
+        </div>
+      </li>
+    </ul>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

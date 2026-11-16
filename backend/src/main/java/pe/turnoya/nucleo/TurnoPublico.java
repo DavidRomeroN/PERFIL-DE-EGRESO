@@ -6,7 +6,7 @@ import pe.turnoya.nucleo.puertos.AvisosDelTurno.AvisoEnviado;
 
 /**
  * Estado de un turno tal como lo ve el cliente ({@code GET /api/v1/public/turnos/:token} y la página "mi turno").
- * Mismos campos que {@code obtenerTurnoPorToken} de legacy/.
+ * Mismos campos que {@code obtenerTurnoPorToken} del sistema anterior.
  */
 public record TurnoPublico(
         int id,
@@ -48,7 +48,7 @@ public record TurnoPublico(
         return estado.finalizado();
     }
 
-    /** Avance para la barra de progreso (8–100 %), misma fórmula que legacy/. */
+    /** Avance para la barra de progreso (8–100 %), misma fórmula que el sistema anterior. */
     public int progreso() {
         if (!enEspera()) {
             return 100;

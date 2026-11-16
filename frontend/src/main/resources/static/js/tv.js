@@ -13,6 +13,23 @@
   setInterval(tic, 10000);
   tic();
 
+  // PIN de presencia de las citas (M3), solo si la pantalla se abrió con el enlace firmado
+  var pin = document.getElementById("tv-pin");
+  if (pin) {
+    var cargarPin = function () {
+      fetch(pin.getAttribute("data-pin-url"), { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (b) {
+          var d = b && b.ok ? b.data : null;
+          pin.hidden = !d;
+          if (d) pin.querySelector("b").textContent = d.pin;
+        })
+        .catch(function () { pin.hidden = true; });
+    };
+    cargarPin();
+    setInterval(cargarPin, 30000);
+  }
+
   var conSonido = window.Sonido.interruptor(document.getElementById("tv-sonido"), "turnoya:tv:sonido");
 
   var completa = document.getElementById("tv-completa");
@@ -27,10 +44,16 @@
   var destellar = false;
   document.addEventListener("htmx:sseMessage", function (e) {
     if (!e.detail || e.detail.type !== "turno:llamado") return;
+    var turno;
+    try {
+      turno = JSON.parse(e.detail.data).turno;
+    } catch (ignorado) { return; /* evento sin datos */ }
+    // Pantalla de una sala: los llamados de otras colas no suenan ni destellan aquí
+    var colas = [].map.call(document.querySelectorAll("[data-tv-cola]"), function (c) { return c.getAttribute("data-tv-cola"); });
+    if (colas.length && colas.indexOf(turno.cola) === -1) return;
     destellar = true;
     if (!conSonido()) return;
     try {
-      var turno = JSON.parse(e.detail.data).turno;
       window.Sonido.timbre();
       setTimeout(function () {
         window.Sonido.hablar("Turno " + window.Sonido.deletrear(turno.codigo) + ", " + turno.ventanilla);

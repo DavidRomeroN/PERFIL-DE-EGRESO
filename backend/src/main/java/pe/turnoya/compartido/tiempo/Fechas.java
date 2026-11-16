@@ -9,7 +9,7 @@ import java.time.ZonedDateTime;
 
 /**
  * Fechas en la zona horaria del local. En la BD todo está en UTC; la conversión ocurre solo en el borde.
- * Equivale a {@code backend/src/fechas.ts} de legacy/.
+ * Equivale a {@code backend/src/fechas.ts} del sistema anterior.
  */
 public final class Fechas {
 

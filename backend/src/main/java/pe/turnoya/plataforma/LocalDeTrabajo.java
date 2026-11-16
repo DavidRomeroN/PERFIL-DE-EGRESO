@@ -9,7 +9,7 @@ import pe.turnoya.compartido.ErrorNegocio;
 /**
  * Aislamiento multi-tenant (§9.2): el local sobre el que actúa el personal sale SIEMPRE de la sesión, nunca del
  * cuerpo de la petición. Solo el super administrador elige el local ({@code ?localId=}, luego la cookie
- * {@code turnoya_local}, luego el primer local activo). Equivale a {@code localDeSesion} de legacy/.
+ * {@code turnoya_local}, luego el primer local activo). Equivale a {@code localDeSesion} del sistema anterior.
  */
 @Service
 public class LocalDeTrabajo {

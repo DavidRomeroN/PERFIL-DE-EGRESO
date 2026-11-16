@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 import pe.turnoya.compartido.config.PropiedadesTurnoYa;
 
 /**
- * Cifrado de datos personales (Ley N.° 29733) compatible con legacy/ ({@code backend/src/crypto.ts}).
+ * Cifrado de datos personales (Ley N.° 29733) compatible con el sistema anterior ({@code backend/src/crypto.ts}).
  *
  * <p>Formato guardado: {@code base64(iv) . base64(tag) . base64(cifrado)} con AES-256-GCM, IV de 12 bytes y tag de
  * 16. Java espera el tag pegado al final del cifrado, así que se separa y se une aquí. La clave es la
@@ -28,7 +28,7 @@ public class CifradoDatos {
     private static final String ALGORITMO = "AES/GCM/NoPadding";
     private static final int BITS_TAG = 128;
     private static final int BYTES_IV = 12;
-    /** Clave de desarrollo de legacy/ cuando no hay DATA_ENCRYPTION_KEY (nunca en producción: lo impide ValidadorSecretos). */
+    /** Clave de desarrollo del sistema anterior cuando no hay DATA_ENCRYPTION_KEY (nunca en producción: lo impide ValidadorSecretos). */
     private static final String CLAVE_POR_DEFECTO = "0123456789abcdef0123456789abcdef";
 
     private final SecretKeySpec clave;

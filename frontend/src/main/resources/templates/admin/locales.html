@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Locales')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Locales y planes</h1>
+        <p>Negocios que usan TurnoYa. Cada local tiene sus colas, ventanillas, personal y plan; la baja es lógica.</p>
+      </div>
+      <button type="button" class="boton" data-abrir="nuevo-local">Nuevo local</button>
+    </div>
+
+    <dialog class="dialogo dialogo-ancho" id="nuevo-local">
+      <form class="formulario" method="post" th:action="@{/admin/locales}" th:attr="hx-post=@{/admin/locales}" hx-target="#lista" hx-swap="outerHTML" data-limpiar-al-enviar>
+        <h2>Nuevo local</h2>
+        <div class="rejilla-campos">
+          <div class="campo"><label class="etiqueta">Nombre comercial <input name="nombreComercial" class="entrada" required minlength="2" maxlength="80" placeholder="Policlínico San Juan"></label></div>
+          <div class="campo"><label class="etiqueta">Identificador (URL) <input name="slug" class="entrada numeros" required minlength="3" maxlength="40" pattern="[a-z0-9\-]+" placeholder="policlinico-san-juan"></label></div>
+          <div class="campo"><label class="etiqueta">Razón social <input name="razonSocial" class="entrada" required minlength="2" maxlength="120"></label></div>
+          <div class="campo"><label class="etiqueta">RUC <input name="ruc" class="entrada numeros" inputmode="numeric" pattern="\d{11}" maxlength="11"></label></div>
+          <div class="campo"><label class="etiqueta">Plan
+            <select name="planId" class="entrada" required>
+              <option th:each="p : ${planes}" th:value="${p.id}" th:text="${p.nombre} + ' · S/ ' + ${#numbers.formatDecimal(p.precioMensual, 1, 2)}">Básico</option>
+            </select></label></div>
+          <div class="campo"><label class="etiqueta">Rubro <input name="rubro" class="entrada" maxlength="40" value="Salud"></label></div>
+          <div class="campo"><label class="etiqueta">Ciudad <input name="ciudad" class="entrada" maxlength="60" value="Juliaca"></label></div>
+          <div class="campo"><label class="etiqueta">Teléfono <input name="telefono" class="entrada" maxlength="20"></label></div>
+          <div class="campo ancho-completo"><label class="etiqueta">Dirección <input name="direccion" class="entrada" maxlength="160"></label></div>
+          <div class="campo"><label class="etiqueta">Color <input name="colorPrimario" type="color" class="entrada" value="#0f766e"></label></div>
+          <p class="subtitulo-dialogo">Administrador inicial (opcional)</p>
+          <div class="campo"><label class="etiqueta">Nombre <input name="adminNombre" class="entrada" maxlength="80" placeholder="Administrador"></label></div>
+          <div class="campo"><label class="etiqueta">Correo <input name="adminEmail" type="email" class="entrada" placeholder="admin@local.pe"></label></div>
+          <div class="campo"><label class="etiqueta">Contraseña <input name="adminPassword" type="password" class="entrada" minlength="6" maxlength="72" autocomplete="new-password" placeholder="Mínimo 6"></label></div>
+        </div>
+        <p class="texto-apagado" style="font-size: .85rem; margin-top: 1rem">Se crea con la cola «A · Atención general», la «Ventanilla 1» y los módulos del plan encendidos.</p>
+        <div class="dialogo-pie">
+          <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+          <button type="submit" class="boton">Crear local</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="lista" th:fragment="lista" class="tarjeta tarjeta-sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Local</th><th>Plan</th><th>Turnos/mes</th><th>Colas · vent. · usuarios</th><th>Estado</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(locales)}"><td colspan="6" class="vacio">Todavía no hay locales.</td></tr>
+          <tr th:each="r : ${locales}" th:with="l=${r.local}">
+            <td>
+              <strong><span class="muestra-color" th:style="'background:' + ${l.colorPrimario}"></span><span th:text="${l.nombreComercial}">Local</span></strong>
+              <div class="texto-apagado numeros" style="font-size: .8rem" th:text="'/l/' + ${l.slug} + ' · ' + ${l.ciudad}">/l/slug</div>
+            </td>
+            <td><span class="insignia" th:text="${r.plan}">Básico</span></td>
+            <td class="numeros" th:text="${r.turnosMes}">0</td>
+            <td class="numeros" th:text="${r.colas} + ' · ' + ${r.ventanillas} + ' · ' + ${r.usuarios}">1 · 1 · 1</td>
+            <td><span th:class="${l.activo} ? 'estado-activo' : 'estado-inactivo'" th:text="${l.activo} ? 'Activo' : 'Inactivo'">Activo</span></td>
+            <td>
+              <div class="tabla-acciones">
+                <form method="post" th:action="@{/admin/local-activo}">
+                  <input type="hidden" name="localId" th:value="${l.id}">
+                  <button type="submit" class="boton boton-contorno boton-pequeno">Administrar</button>
+                </form>
+                <a class="boton boton-fantasma boton-pequeno" th:href="@{/l/{slug}/tv(slug=${l.slug})}" target="_blank" rel="noopener">TV</a>
+                <button type="button" class="boton boton-contorno boton-pequeno" th:attr="data-abrir='editar-local-' + ${l.id}">Editar</button>
+                <form th:if="${l.activo}" method="post" th:action="@{/admin/locales/{id}/desactivar(id=${l.id})}"
+                      th:attr="hx-post=@{/admin/locales/{id}/desactivar(id=${l.id})},hx-confirm='¿Desactivar ' + ${l.nombreComercial} + '? Su personal ya no podrá entrar y su página pública dejará de emitir turnos.'"
+                      hx-target="#lista" hx-swap="outerHTML">
+                  <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Desactivar</button>
+                </form>
+              </div>
+              <dialog class="dialogo dialogo-ancho" th:id="'editar-local-' + ${l.id}">
+                <form class="formulario" method="post" th:action="@{/admin/locales/{id}(id=${l.id})}" th:attr="hx-post=@{/admin/locales/{id}(id=${l.id})}" hx-target="#lista" hx-swap="outerHTML">
+                  <h2 th:text="'Editar ' + ${l.nombreComercial}">Editar</h2>
+                  <div class="rejilla-campos">
+                    <div class="campo"><label class="etiqueta">Nombre comercial <input name="nombreComercial" class="entrada" required minlength="2" maxlength="80" th:value="${l.nombreComercial}"></label></div>
+                    <div class="campo"><label class="etiqueta">Identificador (URL) <input name="slug" class="entrada numeros" required minlength="3" maxlength="40" pattern="[a-z0-9\-]+" th:value="${l.slug}"></label></div>
+                    <div class="campo"><label class="etiqueta">Razón social <input name="razonSocial" class="entrada" required minlength="2" maxlength="120" th:value="${l.razonSocial}"></label></div>
+                    <div class="campo"><label class="etiqueta">RUC <input name="ruc" class="entrada numeros" inputmode="numeric" pattern="\d{11}" maxlength="11" th:value="${r.ruc}"></label></div>
+                    <div class="campo"><label class="etiqueta">Plan
+                      <select name="planId" class="entrada" required>
+                        <option th:each="p : ${planes}" th:value="${p.id}" th:text="${p.nombre}" th:selected="${p.id == l.planId}">Básico</option>
+                      </select></label></div>
+                    <div class="campo"><label class="etiqueta">Rubro <input name="rubro" class="entrada" maxlength="40" th:value="${l.rubro}"></label></div>
+                    <div class="campo"><label class="etiqueta">Ciudad <input name="ciudad" class="entrada" maxlength="60" th:value="${l.ciudad}"></label></div>
+                    <div class="campo"><label class="etiqueta">Teléfono <input name="telefono" class="entrada" maxlength="20" th:value="${l.telefono}"></label></div>
+                    <div class="campo ancho-completo"><label class="etiqueta">Dirección <input name="direccion" class="entrada" maxlength="160" th:value="${l.direccion}"></label></div>
+                    <div class="campo"><label class="etiqueta">Color <input name="colorPrimario" type="color" class="entrada" th:value="${l.colorPrimario}"></label></div>
+                    <div class="campo" style="align-self: end"><label class="casilla"><input type="checkbox" name="activo" value="true" th:checked="${l.activo}"> <span>Local activo</span></label></div>
+                  </div>
+                  <div class="dialogo-pie">
+                    <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+                    <button type="submit" class="boton">Guardar</button>
+                  </div>
+                </form>
+              </dialog>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Planes y módulos')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Planes y módulos</h1>
+        <p>Límites de cada plan y qué módulos incluye. Un cambio en la matriz afecta en el acto a los locales del plan.</p>
+      </div>
+      <button type="button" class="boton" data-abrir="nuevo-plan">Nuevo plan</button>
+    </div>
+
+
+    <dialog class="dialogo dialogo-ancho" id="nuevo-plan">
+      <form class="formulario" method="post" th:action="@{/admin/planes}" th:attr="hx-post=@{/admin/planes}" hx-target="#lista" hx-swap="outerHTML" data-limpiar-al-enviar>
+        <h2>Nuevo plan</h2>
+        <th:block th:replace="~{admin/plan-formulario :: formulario(null)}"></th:block>
+        <div class="dialogo-pie">
+          <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+          <button type="submit" class="boton">Crear plan</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="lista" th:fragment="lista" class="tarjeta tarjeta-sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Plan</th><th>Precio</th><th>Turnos/mes</th><th>Colas</th><th>Ventanillas</th><th>WhatsApp</th><th>Módulos</th><th>Locales</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(planes)}"><td colspan="9" class="vacio">Todavía no hay planes.</td></tr>
+          <tr th:each="p : ${planes}">
+            <td><strong th:text="${p.nombre}">Básico</strong><div class="texto-apagado numeros" style="font-size: .8rem" th:text="${p.codigo}">BASICO</div></td>
+            <td class="numeros" style="white-space: nowrap" th:text="${p.precioMensual.signum() == 0} ? 'Gratis' : 'S/ ' + ${#numbers.formatDecimal(p.precioMensual, 1, 2)}">S/ 0</td>
+            <td class="numeros" th:text="${p.maxTurnosMes}">1000</td>
+            <td class="numeros" th:text="${p.maxColas}">3</td>
+            <td class="numeros" th:text="${p.maxVentanillas}">3</td>
+            <td th:text="${p.whatsappHabilitado} ? ${p.maxAvisosWhatsapp} + ' avisos' : '—'">—</td>
+            <td><div class="chips-modulos"><span class="chip-modulo" th:each="m : ${p.modulos}" th:text="${m.name()}" th:title="${m.nombre()}">M1</span><span th:if="${#sets.isEmpty(p.modulos)}" class="texto-apagado">Solo núcleo</span></div></td>
+            <td class="numeros" th:text="${p.locales}">0</td>
+            <td>
+              <div class="tabla-acciones">
+                <button type="button" class="boton boton-contorno boton-pequeno" th:attr="data-abrir='editar-plan-' + ${p.id}">Editar</button>
+                <form th:if="${p.locales == 0}" method="post" th:action="@{/admin/planes/{id}/eliminar(id=${p.id})}"
+                      th:attr="hx-post=@{/admin/planes/{id}/eliminar(id=${p.id})},hx-confirm='¿Eliminar el plan ' + ${p.nombre} + '?'"
+                      hx-target="#lista" hx-swap="outerHTML">
+                  <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Eliminar</button>
+                </form>
+              </div>
+              <dialog class="dialogo dialogo-ancho" th:id="'editar-plan-' + ${p.id}">
+                <form class="formulario" method="post" th:action="@{/admin/planes/{id}(id=${p.id})}" th:attr="hx-post=@{/admin/planes/{id}(id=${p.id})}" hx-target="#lista" hx-swap="outerHTML">
+                  <h2 th:text="'Editar ' + ${p.nombre}">Editar</h2>
+                  <th:block th:replace="~{admin/plan-formulario :: formulario(${p})}"></th:block>
+                  <div class="dialogo-pie">
+                    <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+                    <button type="submit" class="boton">Guardar</button>
+                  </div>
+                </form>
+              </dialog>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

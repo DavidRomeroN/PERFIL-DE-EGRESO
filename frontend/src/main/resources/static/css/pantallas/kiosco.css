@@ -1,0 +1,45 @@
+/* M5 · App del kiosco: pantalla táctil a pantalla completa, botones grandes, ticket de 80 mm al imprimir */
+.pagina-kiosco { min-height: 100dvh; margin: 0; background: #fff; user-select: none; -webkit-user-select: none; }
+.kiosco { display: flex; flex-direction: column; min-height: 100dvh; }
+.kiosco-offline { margin: 0; padding: .75rem; background: #fcd34d; color: #451a03; font-size: 1.125rem; font-weight: 500; text-align: center; }
+.kiosco-cabecera { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; background: var(--local, var(--primario)); }
+.kiosco-local { border: 0; background: transparent; color: #fff; font: inherit; font-size: 1.5rem; font-weight: 700; text-align: left; cursor: pointer; }
+.kiosco-conexion { display: inline-flex; align-items: center; gap: .5rem; padding: .25rem .75rem; border-radius: 999px; background: rgb(255 255 255 / .15); color: rgb(255 255 255 / .9); font-size: .875rem; }
+.kiosco-conexion .punto { width: .5rem; height: .5rem; border-radius: 999px; background: #6ee7b7; }
+.kiosco[data-conexion="OFFLINE"] .kiosco-conexion .punto { background: #fda4af; }
+.kiosco[data-conexion="DEGRADADO"] .kiosco-conexion .punto, .kiosco[data-conexion="SINCRONIZANDO"] .kiosco-conexion .punto { background: #fcd34d; }
+.kiosco-pantalla, .kiosco-emparejar { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; padding: 2rem; text-align: center; animation: entrar-kiosco 350ms ease-out backwards; }
+.kiosco-pantalla[hidden], .kiosco-emparejar[hidden] { display: none; }
+.kiosco-pantalla h1, .kiosco-emparejar h1 { margin: 0; font-size: 2rem; }
+.kiosco-emparejar { max-width: 28rem; margin: 0 auto; }
+@keyframes entrar-kiosco { from { opacity: 0; transform: translateY(8px); } }
+.kiosco-boton { min-height: 4rem; padding: 0 1.5rem; border: 0; border-radius: 1.5rem; background: var(--local, var(--primario)); color: #fff; font: inherit; font-size: 1.5rem; font-weight: 600; cursor: pointer; box-shadow: 0 10px 25px -10px rgb(0 0 0 / .35); transition: transform 150ms ease-out; }
+.kiosco-boton:active, .kiosco-opcion:active { transform: scale(.98); }
+.kiosco-boton-gigante { width: 100%; max-width: 36rem; height: 12rem; font-size: 2.25rem; }
+.kiosco-lista { display: grid; gap: 1rem; width: 100%; max-width: 42rem; }
+.kiosco-opcion { min-height: 5rem; padding: 1rem 1.25rem; border: 2px solid var(--borde); border-radius: 1.5rem; background: #fff; color: inherit; font: inherit; font-size: 1.5rem; cursor: pointer; transition: transform 150ms ease-out, background-color 150ms; }
+.kiosco-opcion-alta { min-height: 6rem; font-size: 1.875rem; font-weight: 600; text-align: left; }
+.kiosco-opcion span { display: block; color: var(--apagado-texto); font-size: 1.125rem; font-weight: 400; }
+.kiosco-opcion-baja { min-height: 4rem; padding: 0 2rem; }
+.kiosco-volver { border: 0; background: transparent; color: inherit; font: inherit; font-size: 1.25rem; text-decoration: underline; cursor: pointer; }
+.kiosco-entrada { width: 100%; min-width: 0; height: 5rem; border: 1px solid var(--borde); border-radius: 1rem; font-size: 2.25rem; letter-spacing: .35em; text-align: center; }
+.kiosco-error { min-height: 1.5rem; margin: 0; color: var(--error, #be123c); font-size: 1.125rem; }
+.kiosco-cerrado { margin: 0; color: var(--apagado-texto); font-size: 1.5rem; }
+.kiosco-ticket { display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+.kiosco-ticket-cola { margin: 0; font-size: 1.5rem; }
+.kiosco-ticket-codigo { margin: 0; color: var(--local, var(--primario)); font-size: 6rem; font-weight: 700; line-height: 1; }
+.kiosco-ticket-provisional { max-width: 24rem; margin: 0; color: #92400e; font-size: 1.125rem; }
+.kiosco-ticket-qr svg { display: block; width: 180px; height: 180px; }
+@media print {
+  .pagina-kiosco * { animation: none !important; transition: none !important; }
+  .pagina-kiosco * { visibility: hidden; }
+  #ticket, #ticket * { visibility: visible; }
+  #ticket { position: absolute; top: 0; left: 0; width: 72mm; }
+  @page { size: 80mm auto; margin: 0; }
+}
+.datos-kiosco { display: grid; grid-template-columns: auto 1fr; gap: .25rem 1rem; margin: .75rem 0; font-size: .875rem; }
+.datos-kiosco dt { color: var(--apagado-texto); }
+.datos-kiosco dd { margin: 0; }
+.texto-peligro { color: var(--error, #be123c); }
+.codigo-emparejamiento { margin-bottom: 1rem; text-align: center; }
+.codigo-grande { margin: .25rem 0; font-size: 3rem; font-weight: 700; letter-spacing: .2em; }

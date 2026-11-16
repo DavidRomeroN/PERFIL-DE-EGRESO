@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Horario y ausencias')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div id="operacion" th:fragment="contenido">
+      <div class="cabecera-pagina">
+        <div>
+          <h1>Horario y ausencias</h1>
+          <p th:text="${op.estado.abierto} ? 'Ahora el local está abierto.' : (${op.estado.mensaje} ?: 'Cerrado')">Ahora el local está abierto.</p>
+        </div>
+      </div>
+
+      <section class="tarjeta">
+        <div class="cabecera-tarjeta">
+          <div>
+            <h2 class="tarjeta-titulo">Horario de atención</h2>
+            <p class="texto-apagado" style="font-size: .85rem">Sin ningún día configurado, el local se considera siempre abierto.</p>
+          </div>
+        </div>
+        <form class="formulario" method="post" th:action="@{/admin/operacion/horario}" th:attr="hx-post=@{/admin/operacion/horario}" hx-target="#operacion" hx-swap="outerHTML">
+          <div class="horario-dias">
+            <div class="horario-dia" th:each="d : ${op.horarios}">
+              <label class="casilla"><input type="checkbox" th:name="'activo_' + ${d.diaSemana}" value="true" th:checked="${d.activo}"> <span th:text="${d.nombre}">Lunes</span></label>
+              <input type="time" class="entrada" th:name="'apertura_' + ${d.diaSemana}" th:value="${d.apertura}" th:attr="aria-label='Apertura ' + ${d.nombre}">
+              <span class="texto-apagado">a</span>
+              <input type="time" class="entrada" th:name="'cierre_' + ${d.diaSemana}" th:value="${d.cierre}" th:attr="aria-label='Cierre ' + ${d.nombre}">
+            </div>
+          </div>
+          <div class="acciones-cabecera" style="justify-content: flex-end"><button type="submit" class="boton">Guardar horario</button></div>
+        </form>
+      </section>
+
+      <section class="tarjeta" style="margin-top: 1.25rem">
+        <h2 class="tarjeta-titulo">Expiración automática de llamados (RN04)</h2>
+        <p class="texto-apagado" style="font-size: .85rem">Si un turno llamado no se presenta en este tiempo pasa a “No se presentó” y se avisa al cliente. Es opcional.</p>
+        <form class="formulario-en-linea" method="post" th:action="@{/admin/operacion/ausencia}" th:attr="hx-post=@{/admin/operacion/ausencia}" hx-target="#operacion" hx-swap="outerHTML">
+          <label class="casilla"><input type="checkbox" name="activada" value="true" th:checked="${op.tiempoAusenciaSeg != null}"> <span>Activada</span></label>
+          <div class="campo"><label class="etiqueta" for="aus">Segundos</label>
+            <input id="aus" name="segundos" type="number" min="30" max="900" class="entrada" style="width: 7rem" th:value="${op.tiempoAusenciaSeg} ?: 180"></div>
+          <button type="submit" class="boton boton-contorno">Guardar</button>
+        </form>
+      </section>
+    </div>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

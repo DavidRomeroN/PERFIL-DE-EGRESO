@@ -1,4 +1,8 @@
 # Desarrollo (./gradlew :backend:bootRun lo activa por defecto)
+turnoya:
+  # La pantalla de ingreso muestra las cuentas del seed de demostración
+  mostrar-cuentas-demo: true
+
 spring:
   thymeleaf:
     cache: false

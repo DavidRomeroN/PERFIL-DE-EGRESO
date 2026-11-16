@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Reportes')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin" th:with="r=${reporte}, s=${reporte.resumen}">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Reportes de espera y atención</h1>
+        <p>Indicadores por día, hora, cola y canal para decidir cuánto personal poner por franja horaria (RF09).</p>
+      </div>
+      <a class="boton boton-contorno boton-pequeno" th:href="@{/admin/reportes.csv(desde=${r.rango.desde},hasta=${r.rango.hasta})}" download>Exportar CSV</a>
+    </div>
+
+    <form class="tarjeta filtros" method="get" th:action="@{/admin/reportes}">
+      <div class="campo"><label class="etiqueta" for="desde">Desde</label><input id="desde" class="entrada" type="date" name="desde" th:value="${r.rango.desde}" required></div>
+      <div class="campo"><label class="etiqueta" for="hasta">Hasta</label><input id="hasta" class="entrada" type="date" name="hasta" th:value="${r.rango.hasta}" required></div>
+      <button type="submit" class="boton">Ver reporte</button>
+    </form>
+
+    <div class="metricas-5" style="margin-top: 1.25rem">
+      <div class="metrica"><p class="metrica-etiqueta">Turnos</p><p class="metrica-valor" th:text="${s.total}">0</p><p class="metrica-pista" th:text="${s.atendidos} + ' atendidos'"></p></div>
+      <div class="metrica bien"><p class="metrica-etiqueta">Espera promedio</p><p class="metrica-valor" th:text="${s.esperaPromMin} + ' min'">0</p><p class="metrica-pista" th:text="'Máxima: ' + ${s.esperaMaxMin} + ' min'"></p></div>
+      <div class="metrica"><p class="metrica-etiqueta">Atención promedio</p><p class="metrica-valor" th:text="${s.atencionPromMin} + ' min'">0</p><p class="metrica-pista">Por turno atendido</p></div>
+      <div class="metrica" th:classappend="${s.tasaAbandono > 5} ? 'mal' : 'bien'"><p class="metrica-etiqueta">Abandono</p><p class="metrica-valor" th:text="${s.tasaAbandono} + '%'">0</p>
+        <p class="metrica-pista" th:text="${s.noPresentados} + ' no se presentaron · ' + ${s.cancelados} + ' cancelados'"></p></div>
+      <div class="metrica" th:classappend="${s.pctQR >= 60} ? 'bien' : 'atencion'"><p class="metrica-etiqueta">Por QR web</p><p class="metrica-valor" th:text="${s.pctQR} + '%'">0</p><p class="metrica-pista">Meta ≥ 60 % al mes 2</p></div>
+    </div>
+
+    <div class="rejilla rejilla-2">
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Turnos y abandonos por día</h2>
+        <div class="grafico-columnas doble">
+          <div th:each="d : ${r.porDia}" class="columna" th:title="${d.fecha} + ': ' + ${d.turnos} + ' turnos, ' + ${d.abandonos} + ' abandonos'">
+            <span class="columna-valor" th:text="${d.turnos}">0</span>
+            <div class="pila">
+              <span class="barra" th:style="'--valor:' + ${d.turnos * 100 / r.maxTurnosDia()} + '%'"></span>
+              <span class="barra alerta" th:style="'--valor:' + ${d.abandonos * 100 / r.maxTurnosDia()} + '%'"></span>
+            </div>
+            <span class="columna-etiqueta" th:text="${@fmt.diaMes(d.fecha)}">01/01</span>
+          </div>
+          <p th:if="${#lists.isEmpty(r.porDia)}" class="vacio" style="flex: 1">Sin turnos en el rango.</p>
+        </div>
+        <p class="leyenda"><span>Turnos</span><span style="--color: var(--error)">Abandonos</span></p>
+      </section>
+
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Espera promedio por día (min)</h2>
+        <div class="grafico-columnas" th:with="maxEspera=${r.maxEsperaDia()}">
+          <div th:each="d : ${r.porDia}" class="columna" th:title="${d.esperaPromMin} + ' min'">
+            <span class="columna-valor" th:text="${d.esperaPromMin}">0</span>
+            <span class="barra secundaria" th:style="'--valor:' + (${maxEspera != null and maxEspera > 0} ? ${d.esperaPromMin * 100 / maxEspera} : 0) + '%'"></span>
+            <span class="columna-etiqueta" th:text="${@fmt.diaMes(d.fecha)}">01/01</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Demanda por hora del día</h2>
+        <div class="grafico-columnas">
+          <div th:each="h : ${r.porHora}" class="columna" th:title="${h.etiqueta} + ': ' + ${h.turnos} + ' turnos · espera ' + ${h.esperaPromMin} + ' min'">
+            <span class="columna-valor" th:text="${h.turnos > 0} ? ${h.turnos} : ''"></span>
+            <span class="barra" th:style="'--valor:' + ${h.turnos * 100 / r.maxTurnosHora()} + '%'"></span>
+            <span class="columna-etiqueta" th:text="${h.hora % 2 == 0} ? ${h.hora} + 'h' : ''">8h</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Por canal</h2>
+        <p class="tarjeta-sub">App móvil, WhatsApp, QR web, ticket, kiosco y citas comparten las mismas colas.</p>
+        <div class="barras-horizontales" style="margin-top: 1rem">
+          <div th:each="c : ${r.porCanal}" class="fila-barra"
+               th:style="'--color:' + (${c.canal.name() == 'APP'} ? '#2563eb' : (${c.canal.name() == 'WHATSAPP'} ? '#16a34a' : 'var(--primario)'))">
+            <span th:text="${c.canal.corto()}">App</span>
+            <span class="pista"><span class="relleno" th:style="'--valor:' + ${c.cantidad * 100 / r.maxCanal()} + '%'"></span></span>
+            <span class="cifra" th:text="${c.cantidad} + ' · ' + ${c.porcentaje} + '%'">0</span>
+          </div>
+          <p th:if="${#lists.isEmpty(r.porCanal)}" class="vacio">Sin turnos en el rango.</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="tarjeta tarjeta-sin-relleno" style="margin-top: 1.25rem">
+      <h2 class="tarjeta-titulo" style="padding: 1.25rem 1.25rem 0">Por cola</h2>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Cola</th><th>Turnos</th><th>Atendidos</th><th>Abandono</th><th>Espera prom.</th><th>Atención prom.</th></tr></thead>
+          <tbody>
+          <tr th:each="c : ${r.porCola}">
+            <td><span class="prefijo" th:text="${c.prefijo}">A</span> <span th:text="${c.cola}">Caja</span></td>
+            <td class="numeros" th:text="${c.turnos}">0</td>
+            <td class="numeros" th:text="${c.atendidos}">0</td>
+            <td class="numeros" th:text="${c.tasaAbandono} + '%'">0%</td>
+            <td class="numeros" th:text="${c.esperaPromMin} + ' min'">0</td>
+            <td class="numeros" th:text="${c.atencionPromMin} + ' min'">0</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(r.porCola)}"><td colspan="6" class="vacio">Sin turnos en el rango.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tarjeta tarjeta-sin-relleno" style="margin-top: 1.25rem">
+      <div class="cabecera-tarjeta" style="padding: 1.25rem 1.25rem 0">
+        <h2 class="tarjeta-titulo">Detalle de turnos</h2>
+        <span class="tarjeta-sub" th:text="${#lists.size(r.detalle) > 200} ? 'Últimos 200 de ' + ${#lists.size(r.detalle)} + ' (el CSV trae todos)' : ${#lists.size(r.detalle)} + ' turnos'"></span>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Código</th><th>Cola</th><th>Canal</th><th>Estado</th><th>Ventanilla</th><th>Emitido</th><th>Espera</th><th>Atención</th></tr></thead>
+          <tbody>
+          <tr th:each="d, i : ${r.detalle}" th:if="${i.index >= #lists.size(r.detalle) - 200}">
+            <td class="numeros" th:text="${@fmt.diaMes(d.fecha)}">01/01</td>
+            <td class="mono" th:text="${d.codigo}">A-001</td>
+            <td th:text="${d.cola}">Caja</td>
+            <td><span class="canal-etiqueta" th:classappend="'canal-' + ${d.canal.name()}" th:text="${d.canal.corto()}">QR</span></td>
+            <td><span th:replace="~{fragmentos/base :: insignia(${d.estado})}"></span></td>
+            <td th:text="${d.ventanilla}">V1</td>
+            <td class="numeros" th:text="${@fmt.hora(d.emitidoAt)}">10:00</td>
+            <td class="numeros" th:text="${d.esperaMin != null} ? ${d.esperaMin} + ' min' : '—'">—</td>
+            <td class="numeros" th:text="${d.atencionMin != null} ? ${d.atencionMin} + ' min' : '—'">—</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

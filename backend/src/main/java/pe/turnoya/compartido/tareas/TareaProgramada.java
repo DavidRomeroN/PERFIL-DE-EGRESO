@@ -17,7 +17,7 @@ import pe.turnoya.compartido.tiempo.Fechas;
  * }
  * }</pre>
  *
- * El {@link PlanificadorTareas} las reclama en {@code job_estado}: aunque haya varias réplicas (o legacy/
+ * El {@link PlanificadorTareas} las reclama en {@code job_estado}: aunque haya varias réplicas (o el sistema anterior
  * conviviendo con el mismo nombre de tarea), cada corrida la ejecuta una sola instancia.
  */
 public record TareaProgramada(String nombre, String descripcion, Duration cada, LocalTime diaria, ZoneId zona, Supplier<?> accion) {

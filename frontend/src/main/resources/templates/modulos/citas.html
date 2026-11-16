@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Citas')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Citas</h1>
+        <p>Reservas por horario sin sobrecupo. Al llegar, la cita se vuelve un turno con prioridad CITA (check-in con el PIN de la pantalla o el kiosco).</p>
+      </div>
+      <div class="acciones-cabecera">
+        <span class="pin-presencia" th:title="'Cambia en ' + ${pin.segundosRestantes} + ' s'">PIN <b class="numeros" th:text="${pin.pin}">1234</b></span>
+        <a class="boton boton-contorno" th:href="@{/l/{s}/citas(s=${slug})}" target="_blank" rel="noopener">Página de reservas ↗</a>
+      </div>
+    </div>
+
+    <div th:if="${mensaje}" class="alerta alerta-exito" role="status" th:text="${mensaje}">Listo</div>
+    <div th:if="${error}" class="alerta alerta-error" role="alert" th:text="${error}">Error</div>
+
+    <nav class="pestanas" aria-label="Secciones de citas">
+      <a th:href="@{/admin/modulos/citas}" th:attr="aria-current=${tab == 'agenda'} ? 'page'">Agenda</a>
+      <a th:href="@{/admin/modulos/citas(tab='config')}" th:attr="aria-current=${tab == 'config'} ? 'page'">Configuración</a>
+      <a th:href="@{/admin/modulos/citas(tab='bloqueos')}" th:attr="aria-current=${tab == 'bloqueos'} ? 'page'">Bloqueos</a>
+    </nav>
+
+    <!--/* Agenda del día */-->
+    <section th:if="${tab == 'agenda'}" class="tarjeta">
+      <form class="filtros-agenda" method="get" th:action="@{/admin/modulos/citas}">
+        <label class="etiqueta">Fecha <input type="date" name="fecha" class="entrada" th:value="${fecha}" data-autoenviar></label>
+        <label class="etiqueta">Servicio
+          <select name="colaId" class="entrada" data-autoenviar>
+            <option value="">Todos</option>
+            <option th:each="c : ${configs}" th:value="${c.cola.id}" th:text="${c.cola.nombre}" th:selected="${colaId == c.cola.id}">Consulta</option>
+          </select>
+        </label>
+        <noscript><button type="submit" class="boton">Ver</button></noscript>
+      </form>
+
+      <div id="agenda" th:fragment="agenda">
+        <div class="metricas kpis-agenda">
+          <div class="metrica"><span class="metrica-etiqueta">Horarios</span><strong class="metrica-valor numeros" th:text="${#lists.size(agenda.slots)}">0</strong></div>
+          <div class="metrica"><span class="metrica-etiqueta">Citas</span><strong class="metrica-valor numeros" th:text="${#lists.size(agenda.citas)}">0</strong></div>
+          <div class="metrica"><span class="metrica-etiqueta">Ocupación</span><strong class="metrica-valor numeros" th:text="${ocupacion} + ' %'">0 %</strong></div>
+        </div>
+
+        <p th:if="${#lists.isEmpty(agenda.citas)}" class="vacio">No hay citas este día.</p>
+        <div th:unless="${#lists.isEmpty(agenda.citas)}" class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Estado</th><th>Código</th><th>Turno</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+            <tbody>
+            <tr th:each="c : ${agenda.citas}">
+              <td class="numeros"><strong th:text="${c.hora}">09:00</strong></td>
+              <td><span th:text="${c.nombre ?: '—'}">Ana</span><span th:if="${c.telefono}" class="texto-apagado bloque-pequeno numeros" th:text="${c.telefono}">9••</span></td>
+              <td th:text="${c.cola.nombre}">Consulta</td>
+              <td><span class="insignia" th:classappend="'cita-' + ${c.estado}" th:text="${c.estado}">RESERVADA</span>
+                <span th:if="${c.tarde}" class="insignia insignia-categoria">tarde</span></td>
+              <td class="numeros" th:text="${c.codigoCheckin}">ABC123</td>
+              <td class="numeros" th:text="${c.turno != null} ? ${c.turno.codigo} + ' · ' + ${c.turno.estado} : '—'">—</td>
+              <td class="acciones-fila">
+                <th:block th:if="${c.estado.name() == 'RESERVADA' or c.estado.name() == 'CONFIRMADA' or c.estado.name() == 'CHECKIN'}">
+                  <form th:action="@{/admin/modulos/citas/{id}/accion(id=${c.id})}" method="post" th:attr="hx-post=@{/admin/modulos/citas/{id}/accion(id=${c.id})}"
+                        hx-target="#agenda" hx-swap="outerHTML">
+                    <input type="hidden" name="fecha" th:value="${fecha}"><input type="hidden" name="colaId" th:value="${colaId}">
+                    <button type="submit" name="accion" value="ASISTIO" class="boton boton-fantasma boton-pequeno">Atendida</button>
+                    <button type="submit" name="accion" value="NO_SHOW" class="boton boton-fantasma boton-pequeno">No vino</button>
+                  </form>
+                </th:block>
+                <th:block th:if="${c.activa()}">
+                  <form th:action="@{/admin/modulos/citas/{id}/accion(id=${c.id})}" method="post" th:attr="hx-post=@{/admin/modulos/citas/{id}/accion(id=${c.id})}"
+                        hx-target="#agenda" hx-swap="outerHTML" class="mover-cita">
+                    <input type="hidden" name="fecha" th:value="${fecha}"><input type="hidden" name="colaId" th:value="${colaId}">
+                    <input type="hidden" name="accion" value="MOVER">
+                    <select name="slotId" class="entrada entrada-corta" required th:attr="aria-label='Mover la cita de ' + ${c.hora}">
+                      <option value="">Mover a…</option>
+                      <option th:each="s : ${libres}" th:if="${s.colaId == c.cola.id}" th:value="${s.id}" th:text="${s.hora}">10:00</option>
+                    </select>
+                    <button type="submit" class="boton boton-fantasma boton-pequeno">Mover</button>
+                  </form>
+                  <form th:action="@{/admin/modulos/citas/{id}/accion(id=${c.id})}" method="post" th:attr="hx-post=@{/admin/modulos/citas/{id}/accion(id=${c.id})}"
+                        hx-target="#agenda" hx-swap="outerHTML" hx-confirm="¿Cancelar la cita? Se avisará al cliente y el cupo quedará libre.">
+                    <input type="hidden" name="fecha" th:value="${fecha}"><input type="hidden" name="colaId" th:value="${colaId}">
+                    <button type="submit" name="accion" value="CANCELAR" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Cancelar</button>
+                  </form>
+                </th:block>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 class="tarjeta-titulo" style="margin-top: 1.25rem">Horarios del día</h2>
+        <p th:if="${#lists.isEmpty(agenda.slots)}" class="texto-apagado">Sin horarios: activa las citas en Configuración o revisa el horario del local.</p>
+        <div class="slots-agenda">
+          <div th:each="s : ${agenda.slots}" class="slot-agenda" th:classappend="${s.reservados >= s.capacidad} ? 'lleno'">
+            <span class="numeros" th:text="${s.hora}">09:00</span>
+            <small th:text="${s.reservados} + '/' + ${s.capacidad}">0/2</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!--/* Configuración por servicio */-->
+    <section th:if="${tab == 'config'}" class="pila-config">
+      <form th:each="c : ${configs}" class="tarjeta formulario" method="post" th:action="@{/admin/modulos/citas/config}" th:with="k=${c.config}"
+            th:id="'cfg-' + ${c.cola.id}">
+        <input type="hidden" name="colaId" th:value="${c.cola.id}">
+        <div class="cabecera-tarjeta">
+          <h2 class="tarjeta-titulo" th:text="${c.cola.nombre}">Consulta</h2>
+          <label class="casilla casilla-fila"><input type="checkbox" name="activo" value="true" th:checked="${k.activo}"> <span>Atiende con cita</span></label>
+        </div>
+        <div class="rejilla-campos-4">
+          <label class="etiqueta">Duración (min) <input type="number" name="duracionSlotMin" class="entrada numeros" min="5" max="240" required th:value="${k.duracionSlotMin}"></label>
+          <label class="etiqueta">Cuota citas (%) <input type="number" name="cuotaCitasPct" class="entrada numeros" min="1" max="100" required th:value="${k.cuotaCitasPct}"></label>
+          <label class="etiqueta">Capacidad fija <input type="number" name="capacidadFija" class="entrada numeros" min="1" max="50" th:value="${k.capacidadFija}" placeholder="auto"></label>
+          <label class="etiqueta">Peso de la cita <input type="number" name="pesoCita" class="entrada numeros" min="0" max="1000" required th:value="${k.pesoCita}"></label>
+          <label class="etiqueta">Anticipación mín. (min) <input type="number" name="anticipacionMinMin" class="entrada numeros" min="0" max="10080" required th:value="${k.anticipacionMinMin}"></label>
+          <label class="etiqueta">Anticipación máx. (días) <input type="number" name="anticipacionMaxDias" class="entrada numeros" min="1" max="60" required th:value="${k.anticipacionMaxDias}"></label>
+          <label class="etiqueta">Check-in desde (min antes) <input type="number" name="checkinAntesMin" class="entrada numeros" min="0" max="120" required th:value="${k.checkinAntesMin}"></label>
+          <label class="etiqueta">Check-in hasta (min después) <input type="number" name="checkinDespuesMin" class="entrada numeros" min="0" max="120" required th:value="${k.checkinDespuesMin}"></label>
+          <label class="etiqueta">Gracia no-show (min) <input type="number" name="graciaNoShowMin" class="entrada numeros" min="0" max="120" required th:value="${k.graciaNoShowMin}"></label>
+          <label class="etiqueta">Inasistencias para bloquear <input type="number" name="maxNoShow" class="entrada numeros" min="0" max="20" required th:value="${k.maxNoShow}"></label>
+          <label class="etiqueta">Días de bloqueo <input type="number" name="bloqueoDias" class="entrada numeros" min="0" max="365" required th:value="${k.bloqueoDias}"></label>
+        </div>
+        <div class="acciones-cabecera" style="justify-content: flex-end"><button type="submit" class="boton">Guardar</button></div>
+      </form>
+      <p th:if="${#lists.isEmpty(configs)}" class="vacio">No hay colas activas.</p>
+    </section>
+
+    <!--/* Bloqueos */-->
+    <th:block th:if="${tab == 'bloqueos'}">
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Bloquear la agenda (feriado, capacitación…)</h2>
+        <form class="formulario rejilla-campos-4" method="post" th:action="@{/admin/modulos/citas/bloqueos}">
+          <label class="etiqueta">Servicio
+            <select name="colaId" class="entrada"><option value="">Todos</option>
+              <option th:each="c : ${configs}" th:value="${c.cola.id}" th:text="${c.cola.nombre}">Consulta</option></select>
+          </label>
+          <label class="etiqueta">Desde <input type="datetime-local" name="inicio" class="entrada" required></label>
+          <label class="etiqueta">Hasta <input type="datetime-local" name="fin" class="entrada" required></label>
+          <label class="etiqueta">Motivo <input name="motivo" class="entrada" required minlength="2" maxlength="120"></label>
+          <div><button type="submit" class="boton">Bloquear</button></div>
+        </form>
+        <div class="tabla-contenedor" th:unless="${#lists.isEmpty(bloqueos.agenda)}">
+          <table class="tabla">
+            <thead><tr><th>Servicio</th><th>Desde</th><th>Hasta</th><th>Motivo</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+            <tbody><tr th:each="b : ${bloqueos.agenda}">
+              <td th:text="${b.cola ?: 'Todos'}">Todos</td>
+              <td class="numeros" th:text="${@fmt.fechaHora(b.inicio)}">—</td>
+              <td class="numeros" th:text="${@fmt.fechaHora(b.fin)}">—</td>
+              <td th:text="${b.motivo}">Feriado</td>
+              <td><form method="post" th:action="@{/admin/modulos/citas/bloqueos/{id}/eliminar(id=${b.id})}">
+                <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Eliminar</button></form></td>
+            </tr></tbody>
+          </table>
+        </div>
+        <p th:if="${#lists.isEmpty(bloqueos.agenda)}" class="texto-apagado">Sin bloqueos vigentes.</p>
+      </section>
+
+      <section class="tarjeta" style="margin-top: 1.25rem">
+        <h2 class="tarjeta-titulo">Clientes bloqueados por inasistencias</h2>
+        <p th:if="${#lists.isEmpty(bloqueos.clientes)}" class="texto-apagado">Ningún cliente bloqueado.</p>
+        <div class="tabla-contenedor" th:unless="${#lists.isEmpty(bloqueos.clientes)}">
+          <table class="tabla">
+            <thead><tr><th>Cliente</th><th>Hasta</th><th>Motivo</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+            <tbody><tr th:each="b : ${bloqueos.clientes}">
+              <td th:text="${b.nombre ?: 'Cliente ' + b.clienteId}">Ana</td>
+              <td class="numeros" th:text="${@fmt.fechaHora(b.hasta)}">—</td>
+              <td th:text="${b.motivo}">3 inasistencias</td>
+              <td><form method="post" th:action="@{/admin/modulos/citas/bloqueos-cliente/{id}/liberar(id=${b.id})}">
+                <button type="submit" class="boton boton-fantasma boton-pequeno">Liberar</button></form></td>
+            </tr></tbody>
+          </table>
+        </div>
+      </section>
+    </th:block>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

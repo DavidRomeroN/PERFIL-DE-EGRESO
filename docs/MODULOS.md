@@ -10,7 +10,7 @@
 | M1 | Motor de prioridades con aging | 1 · Nick | [`modulos/M1-prioridades.md`](modulos/M1-prioridades.md) | 40 | ●●●○○ |
 | M2 | Predicción de espera | 1 · Nick | [`modulos/M2-prediccion-espera.md`](modulos/M2-prediccion-espera.md) | 56 | ●●●●○ |
 | M3 | Citas y reservas con check-in QR | 2 · Jhan | [`modulos/M3-citas-reservas.md`](modulos/M3-citas-reservas.md) | 64 | ●●●●○ |
-| M4 | Chatbot de WhatsApp | 2 · Jhan | [`modulos/M4-chatbot-whatsapp.md`](modulos/M4-chatbot-whatsapp.md) | 56 | ●●●●○ |
+| M4 | ~~Chatbot de WhatsApp~~ | — | **Retirado** (nov. 2026): no aportaba frente a la app y la web. WhatsApp se usa solo para avisos. | — | — |
 | M5 | Kiosco autoservicio offline-first | 3 · David | [`modulos/M5-kiosco-offline.md`](modulos/M5-kiosco-offline.md) | 72 | ●●●●● |
 | M6 | Transferencia de turnos y balanceo automático | 3 · David | [`modulos/M6-transferencia-balanceo.md`](modulos/M6-transferencia-balanceo.md) | 56 | ●●●●○ |
 | M7 | Analítica avanzada y SLA con alertas | 4 · Henyelrey | [`modulos/M7-analitica-sla.md`](modulos/M7-analitica-sla.md) | 60 | ●●●●○ |
@@ -26,7 +26,7 @@ La asignación de personas es una propuesta y puede intercambiarse (ver §2 del 
 ## Dependencias
 ```
 F5 (emitir_turno extendido) ──► M1 ──► M3, M5, M6
-F1 (jobs) ──► M2, M3, M4, M5, M6, M7
+F1 (jobs) ──► M2, M3, M5, M6, M7
 F2 (bus multi-instancia) ──► M5, M6, M7
 M2 + M7 ──► M8
 ```

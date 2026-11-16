@@ -7,7 +7,7 @@
 
 | Fase | Estado | Notas |
 |---|---|---|
-| 0. Preparación | ✅ Hecha en parte | Vectores dorados de cifrado, celulares, bcrypt y JWT (`legacy/backend/scripts/generar-vectores.ts`). Falta la batería de contrato HTTP completa. |
+| 0. Preparación | ✅ Hecha en parte | Vectores dorados de cifrado, celulares, bcrypt y JWT (`legacy/backend/scripts/generar-vectores.ts`, commit `bce0774`). Falta la batería de contrato HTTP completa. |
 | 1. Esqueleto y compatibilidad | ✅ Hecha | Proyecto Gradle (`backend/`, `frontend/`), Spring Modulith, Flyway sobre las migraciones de Prisma, sesión JWT compartida, cifrado compatible. |
 | 2. Infraestructura distribuida | ✅ Hecha | SSE con hilos virtuales y bus en memoria o Redis; tareas reclamadas en `job_estado`; registro de eventos (outbox). Falta la prueba de carga. |
 | 3. Núcleo | ✅ Migrado | Colas, ventanillas, turnos, panel, TV, "mi turno", ticket, login, admin de colas y ventanillas. API `/api/v1` del núcleo con el mismo contrato. |
@@ -17,9 +17,10 @@
 **Cambios respecto de este plan**, decididos al implementar (detalle en `ARQUITECTURA_JAVA.md` §1):
 
 - El **frontend también pasa a Java**: Thymeleaf + htmx en `frontend/` (antes se pensaba mantener Next.js como frontend).
-- El sistema anterior vive en **`legacy/`**; `backend/` y `frontend/` son el proyecto Java.
+- El sistema anterior ya no está en la rama `migracion`: su última versión está en el commit **`bce0774`** (carpeta `legacy/`); aquí solo
+  quedan `backend/` y `frontend/` (el proyecto Java).
 - Acceso a datos con **JdbcClient y SQL explícito** en lugar de jOOQ + JPA.
-- Las rutas de esta guía que dicen `backend/src/…` o `frontend/src/…` se refieren al código Node, que ahora está en
+- Las rutas de esta guía que dicen `backend/src/…` o `frontend/src/…` se refieren al código Node, que está en el commit `bce0774`, en
   `legacy/backend/src/…` y `legacy/frontend/src/…`.
 
 ## 1. Estrategia
@@ -154,7 +155,7 @@ Ambos backends comparten **la misma base PostgreSQL** durante la convivencia, as
 | 4 | **M7 Analítica y reportes** | JasperReports u OpenPDF, archivos a S3/R2 en vez de `REPORTES_DIR`, refresco de `mv_turno_franja` |
 | 5 | **M2 Predicción** | Portar los modelos y comparar las predicciones contra Node con un replay del histórico (tolerancia de ±1 %) |
 | 6 | **Pagos** | Cambiar la URL del webhook en Mercado Pago. `clave_idem` es única: una notificación repetida no se aplica dos veces |
-| 7 | **M4 Chatbot** | Cambiar la URL del webhook de Meta u OpenWA. La tabla compartida `evento_bot_procesado` evita procesar dos veces el mismo mensaje durante el cambio |
+| 7 | ~~M4 Chatbot~~ | **Retirado** (nov. 2026): se eliminó el módulo y sus tablas (`V16__eliminar_chatbot.sql`). |
 | 8 | **M5 Kiosco** | R4, ver §6.1 |
 | 9 | **M8 Simulador** | R4, ver §6.2 |
 
@@ -166,6 +167,11 @@ Ambos backends comparten **la misma base PostgreSQL** durante la convivencia, as
 - **El contrato de `/kiosco/sync` no cambia.** Un kiosco puede llevar hasta `KIOSCO_VENTANA_OFFLINE_H` (12 h) sin conexión con eventos del formato anterior, así que Java debe aceptar ese formato durante por lo menos esa ventana después del cambio. Más adelante conviene versionar el endpoint (`/v2`).
 
 ### 6.2 M8 Simulador (R4)
+
+> **Estado (nov. 2026): migrado** en `pe.turnoya.simulador` (`/admin/simulador`). Erlang C, el motor DES, la calibración
+> con el histórico, la validación con días pasados y los escenarios guardados corren en Java. Por ahora la simulación es
+> **síncrona** dentro de la petición (500 réplicas tardan menos de un segundo); el trabajo asíncrono con avance por SSE
+> queda para cuando haga falta. Los escenarios nuevos se guardan con `VERSION_MOTOR = "des-1.0"`.
 
 **Decisión recomendada:** una sola fuente de verdad para el motor DES, en Java.
 

@@ -6,6 +6,7 @@
  *  - Envía un formulario al cambiar un selector marcado con data-autoenviar.
  *  - Limpia los formularios marcados con data-limpiar-al-enviar después de un envío correcto.
  *  - Refleja el estado de la conexión en vivo (SSE) en los indicadores .en-vivo.
+ *  - data-imprimir abre el diálogo de impresión; [data-vista-previa-tv] actualiza la vista previa de la TV.
  */
 (function () {
   "use strict";
@@ -106,12 +107,47 @@
     if (cerrar) {
       var d = cerrar.closest("dialog");
       if (d) d.close();
+      return;
+    }
+    if (e.target.closest("[data-imprimir]")) window.print();
+  });
+
+  // Vista previa de la pantalla TV mientras se edita el color y el mensaje
+  document.addEventListener("input", function (e) {
+    var form = e.target.closest("[data-vista-previa-tv]");
+    var previa = document.getElementById("tv-previa");
+    if (!form || !previa) return;
+    if (e.target.matches("[data-tv-color]")) previa.style.setProperty("--local", e.target.value);
+    if (e.target.matches("[data-tv-mensaje]")) {
+      var cinta = previa.querySelector("[data-tv-cinta]");
+      if (cinta) cinta.textContent = e.target.value || "Bienvenido. Por favor espere su llamado.";
     }
   });
+
+  // Formularios que piden confirmación antes de enviarse: <form data-confirmar="¿Seguro?">
+  document.addEventListener("submit", function (e) {
+    var form = e.target.closest && e.target.closest("form[data-confirmar]");
+    if (form && !window.confirm(form.getAttribute("data-confirmar"))) e.preventDefault();
+  }, true);
 
   document.addEventListener("change", function (e) {
     if (e.target.matches("[data-autoenviar]") && e.target.form) e.target.form.requestSubmit();
   });
+
+  // Muestra el valor de un control deslizante: <output data-valor-de="alfa" data-cero="sin tope" data-decimales="1">
+  function mostrarValores(raiz) {
+    (raiz || document).querySelectorAll("output[data-valor-de]").forEach(function (o) {
+      var control = document.getElementById(o.getAttribute("data-valor-de"));
+      if (!control) return;
+      var v = Number(control.value);
+      var dec = Number(o.getAttribute("data-decimales") || 0);
+      o.textContent = v === 0 && o.hasAttribute("data-cero") ? o.getAttribute("data-cero") : v.toFixed(dec);
+    });
+  }
+  document.addEventListener("input", function (e) {
+    if (e.target.matches('input[type="range"]')) mostrarValores();
+  });
+  document.addEventListener("DOMContentLoaded", function () { mostrarValores(); });
 
   window.TurnoYa = { aviso: aviso };
 })();

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Predicción de espera')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Predicción de espera</h1>
+        <p>Le dice a cada cliente cuánto le falta (por ejemplo «entre 14 y 22 min»). Aprende de cómo se atiende en tu local y se actualiza sola cada noche.</p>
+      </div>
+      <div class="acciones-cabecera" th:if="${!#lists.isEmpty(colas)}">
+        <form method="get" th:action="@{/admin/modulos/prediccion}">
+          <label class="solo-lectores" for="cola">Cola</label>
+          <select id="cola" name="colaId" class="entrada" data-autoenviar>
+            <option th:each="c : ${colas}" th:value="${c.id}" th:text="${c.nombre}" th:selected="${c.id == colaId}">Cola</option>
+          </select>
+        </form>
+        <form method="post" th:action="@{/admin/modulos/prediccion/reentrenar}" th:attr="hx-post=@{/admin/modulos/prediccion/reentrenar}"
+              hx-target="#metricas" hx-swap="outerHTML" hx-disabled-elt="find button">
+          <input type="hidden" name="colaId" th:value="${colaId}">
+          <button type="submit" class="boton">Actualizar ahora</button>
+        </form>
+      </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(colas)}" class="vacio">El local no tiene colas activas.</p>
+
+    <section class="tarjeta esperas-por-cola" th:unless="${#lists.isEmpty(esperas)}">
+      <h2 class="tarjeta-titulo">¿Cuánto esperan tus clientes?</h2>
+      <p class="texto-apagado">Tiempo desde que sacan su turno hasta que los llaman, en cada cola.</p>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Cola</th><th>Esperando ahora</th><th>Hoy, en promedio</th>
+            <th th:text="'Últimos ' + ${diasEsperas} + ' días, en promedio'">Últimos 7 días</th><th>9 de cada 10 esperan menos de</th></tr></thead>
+          <tbody>
+          <tr th:each="e : ${esperas}">
+            <td><strong th:text="${e.cola}">Medicina General</strong></td>
+            <td class="numeros" th:text="${e.esperandoAhora == 1} ? '1 persona' : ${e.esperandoAhora} + ' personas'">0 personas</td>
+            <td>
+              <span class="numeros" th:text="${e.promedioHoyMin != null} ? ${#numbers.formatInteger(e.promedioHoyMin, 1)} + ' min' : '—'">—</span>
+              <span class="texto-apagado bloque-pequeno" th:text="${e.atendidosHoy == 0} ? 'nadie atendido aún' : (${e.atendidosHoy == 1} ? '1 cliente' : ${e.atendidosHoy} + ' clientes')"></span>
+            </td>
+            <td>
+              <span class="numeros" th:text="${e.promedioPeriodoMin != null} ? ${#numbers.formatInteger(e.promedioPeriodoMin, 1)} + ' min' : '—'">—</span>
+              <span class="texto-apagado bloque-pequeno" th:text="${e.atendidosPeriodo == 0} ? 'sin atenciones' : (${e.atendidosPeriodo == 1} ? '1 cliente' : ${e.atendidosPeriodo} + ' clientes')"></span>
+            </td>
+            <td class="numeros" th:text="${e.p90PeriodoMin != null} ? ${#numbers.formatInteger(e.p90PeriodoMin, 1)} + ' min' : '—'">—</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div id="metricas" th:fragment="metricas" th:if="${m != null}">
+      <p th:if="${#lists.isEmpty(m.modelos)}" class="vacio tarjeta">Todavía no hay suficientes datos de esta cola. Pulsa «Actualizar ahora» cuando ya se hayan atendido varios clientes;
+        mientras tanto se calcula de forma simple: personas delante × tiempo promedio de atención.</p>
+
+      <th:block th:unless="${#lists.isEmpty(m.modelos)}">
+        <p th:if="${m.activo != null and m.activo.deriva}" role="alert" class="alerta alerta-aviso">Últimamente las estimaciones fallaban más de lo normal, así que se volvió al
+          cálculo simple hasta la próxima actualización (se hace sola cada noche).</p>
+
+        <div class="metricas-5">
+          <div class="metrica"><p class="metrica-etiqueta">Cómo calcula ahora</p>
+            <p class="metrica-valor metrica-texto" th:text="${activo != null} ? ${nombres.get(activo.tipo.name())} : '—'">—</p>
+            <p class="metrica-pista" th:if="${m.activo != null}" th:text="'Actualizado ' + ${@fmt.fechaHora(m.activo.entrenadoAt)}"></p></div>
+          <div class="metrica" th:classappend="${mejora != null and mejora > 0} ? 'bien'"><p class="metrica-etiqueta">Se equivoca en promedio</p>
+            <p class="metrica-valor" th:text="${activo != null and activo.maeMin != null} ? ${#numbers.formatDecimal(activo.maeMin, 1, 1)} + ' min' : '—'">—</p>
+            <p class="metrica-pista" th:if="${mejora != null and mejora > 0}" th:text="${mejora} + ' % mejor que el cálculo simple'"></p></div>
+          <div class="metrica"><p class="metrica-etiqueta">Le atina por 5 min o menos</p>
+            <p class="metrica-valor" th:text="${activo != null and activo.acierto5 != null} ? ${#numbers.formatInteger(activo.acierto5 * 100, 1)} + ' %' : '—'">—</p>
+            <p class="metrica-pista">de los clientes</p></div>
+          <div class="metrica"><p class="metrica-etiqueta">La espera real cayó dentro del rango</p>
+            <p class="metrica-valor" th:text="${activo != null and activo.cobertura != null} ? ${#numbers.formatInteger(activo.cobertura * 100, 1)} + ' %' : '—'">—</p>
+            <p class="metrica-pista" th:text="'lo ideal: ' + ${#numbers.formatInteger(cfg.nivelConfianza * 100, 1)} + ' %'"></p></div>
+          <div class="metrica"><p class="metrica-etiqueta">Últimos 14 días</p>
+            <p class="metrica-valor" th:text="${m.produccion != null} ? ${#numbers.formatDecimal(m.produccion.maeMin, 1, 1)} + ' min' : '—'">—</p>
+            <p class="metrica-pista" th:text="${m.produccion != null} ? 'de error con ' + ${m.produccion.n} + ' clientes reales' : 'aún no hay clientes atendidos'"></p></div>
+        </div>
+
+        <div class="rejilla rejilla-lateral-ancha" style="margin-top: 1.25rem">
+          <section class="tarjeta">
+            <h2 class="tarjeta-titulo">Lo que esperaron vs. lo que les dijimos</h2>
+            <p class="texto-apagado">Cada punto es un cliente. La línea es la espera que se le anunció y la franja, el rango que vio. Mientras más puntos caigan dentro de la franja, mejor.</p>
+            <figure th:if="${grafico != null}" class="grafico-serie" role="img" aria-label="Gráfico de la espera real frente a la anunciada">
+              <svg viewBox="-36 -8 644 244" preserveAspectRatio="none">
+                <g class="guias">
+                  <th:block th:each="g : ${grafico.guias}">
+                    <line x1="0" x2="600" th:attr="y1=${g[0]},y2=${g[0]}"/>
+                    <text x="-6" th:attr="y=${g[0] + 4}" text-anchor="end" th:text="${#numbers.formatInteger(g[1], 1)}">0</text>
+                  </th:block>
+                </g>
+                <polygon class="banda" th:attr="points=${grafico.banda}"/>
+                <polyline class="prediccion" th:attr="points=${grafico.linea}"/>
+                <circle th:each="p : ${grafico.puntos}" class="real" r="2.5" th:attr="cx=${p[0]},cy=${p[1]}"/>
+              </svg>
+              <figcaption class="leyenda"><span style="--color: var(--primario)">Anunciado (min)</span><span style="--color: #f59e0b">Real</span>
+                <span style="--color: #99f6e4">Rango mostrado</span></figcaption>
+            </figure>
+            <p th:if="${grafico == null}" class="vacio">Aparecerá cuando se llame a los clientes que recibieron una estimación.</p>
+          </section>
+
+          <section class="tarjeta">
+            <h2 class="tarjeta-titulo">Qué influye más en la espera</h2>
+            <p class="texto-apagado">Lo que más pesa al calcular cuánto le falta a cada cliente en esta cola.</p>
+            <div class="barras-horizontales barras-anchas" style="margin-top: 1rem" th:if="${activo != null and activo.importancia != null}">
+              <div th:each="v : ${activo.importancia}" class="fila-barra">
+                <!--/* Los modelos entrenados antes guardaron los nombres viejos */-->
+                <span th:text="${v.variable == 'Ventanillas operativas'} ? 'Ventanillas abiertas' : (${v.variable == 'Franja horaria'} ? 'Hora del día' : ${v.variable})">Personas delante</span>
+                <span class="pista"><span class="relleno" th:style="'--valor:' + ${v.importancia} + '%'"></span></span>
+                <span class="cifra" th:text="${v.importancia} + ' %'">0 %</span>
+              </div>
+            </div>
+            <p th:unless="${activo != null and activo.importancia != null}" class="vacio">Aparecerá cuando haya suficientes datos.</p>
+          </section>
+        </div>
+
+        <details class="tarjeta detalle-tecnico" style="margin-top: 1.25rem">
+          <summary class="tarjeta-titulo">Ver cómo le fue a cada forma de calcular</summary>
+          <p class="texto-apagado">El sistema prueba las tres formas con los últimos 7 días y usa la que menos se equivoca.</p>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Forma de calcular</th><th>Clientes revisados</th><th>Error promedio</th><th>Atina ±5 min</th><th>Suele calcular</th><th>Cae en el rango</th></tr></thead>
+              <tbody>
+              <tr th:each="x : ${m.modelos}">
+                <td><span th:text="${nombres.get(x.tipo.name())}">Simple</span> <span th:if="${x.activo}" class="insignia">en uso</span></td>
+                <td class="numeros" th:text="${x.n}">0</td>
+                <td class="numeros" th:text="${x.maeMin != null} ? ${#numbers.formatDecimal(x.maeMin, 1, 1)} + ' min' : '—'">—</td>
+                <td class="numeros" th:text="${x.acierto5 != null} ? ${#numbers.formatInteger(x.acierto5 * 100, 1)} + ' %' : '—'">—</td>
+                <td th:text="${x.sesgoMin == null} ? '—' : (${x.sesgoMin >= 0.5} ? ${#numbers.formatDecimal(x.sesgoMin, 1, 1)} + ' min de más' : (${x.sesgoMin <= -0.5} ? ${#numbers.formatDecimal(-x.sesgoMin, 1, 1)} + ' min de menos' : 'justo'))">justo</td>
+                <td class="numeros" th:text="${x.cobertura != null} ? ${#numbers.formatInteger(x.cobertura * 100, 1)} + ' %' : '—'">—</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </th:block>
+    </div>
+
+    <section class="tarjeta" style="margin-top: 1.25rem">
+      <h2 class="tarjeta-titulo">Configuración</h2>
+      <form class="formulario rejilla-campos-4" method="post" th:action="@{/admin/modulos/prediccion/config}"
+            th:attr="hx-post=@{/admin/modulos/prediccion/config}" hx-swap="none">
+        <div class="campo">
+          <label class="etiqueta" for="modelo">Forma de calcular</label>
+          <select id="modelo" name="modelo" class="entrada">
+            <option value="AUTO" th:selected="${cfg.modelo == 'AUTO'}">Automática (la que menos se equivoca)</option>
+            <option th:each="n : ${nombres}" th:value="${n.key}" th:text="${n.value}" th:selected="${cfg.modelo == n.key}">Simple</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label class="etiqueta" for="alfaEma">Cuánto pesa lo más reciente</label>
+          <input id="alfaEma" name="alfaEma" type="range" min="0.05" max="0.5" step="0.05" th:value="${cfg.alfaEma}" class="deslizador" aria-describedby="ema-escala">
+          <p id="ema-escala" class="escala-deslizador texto-apagado"><span>Poco: mira todo el historial</span><span>Mucho: mira lo último</span></p>
+          <p class="texto-apagado ayuda">Solo se usa en «Según lo más reciente».</p>
+        </div>
+        <div class="campo">
+          <label class="etiqueta" for="nivelConfianza">Rango que ve el cliente</label>
+          <select id="nivelConfianza" name="nivelConfianza" class="entrada">
+            <option value="0.8" th:selected="${cfg.nivelConfianza == 0.8}">Más corto (acierta 8 de cada 10)</option>
+            <option value="0.9" th:selected="${cfg.nivelConfianza == 0.9}">Más amplio (acierta 9 de cada 10)</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label class="etiqueta" for="diasEntrenamiento">Días de historial que usa</label>
+          <select id="diasEntrenamiento" name="diasEntrenamiento" class="entrada">
+            <option th:each="d : ${ {30, 60, 90, 120} }" th:value="${d}" th:text="${d} + ' días'" th:selected="${cfg.diasEntrenamiento == d}">60 días</option>
+          </select>
+        </div>
+        <div class="acciones-cabecera" style="grid-column: 1 / -1; justify-content: flex-end"><button type="submit" class="boton boton-contorno">Guardar</button></div>
+      </form>
+    </section>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

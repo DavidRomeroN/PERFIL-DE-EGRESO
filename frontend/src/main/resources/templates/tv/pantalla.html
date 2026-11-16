@@ -10,10 +10,13 @@
       <span th:unless="${snap.local.logoUrl}" class="tv-local-logo" th:text="${#strings.substring(snap.local.nombreComercial, 0, 1)}">P</span>
       <div>
         <h1 th:text="${snap.local.nombreComercial}">Local</h1>
-        <p th:text="${snap.local.direccion}">Dirección</p>
+        <p th:text="${sala} ? ${nombreSala} : ${snap.local.direccion}">Dirección</p>
       </div>
     </div>
     <div class="tv-herramientas">
+      <!--/* PIN de presencia de las citas (M3): solo con el enlace firmado ?k= del admin; tv.js lo pide cada 30 s */-->
+      <span th:if="${param.k != null}" id="tv-pin" class="tv-pin" hidden
+            th:attr="data-pin-url=@{/api/v1/public/locales/{s}/pin-presencia(s=${snap.local.slug},k=${param.k[0]})}">PIN citas <b class="numeros"></b></span>
       <span id="tv-reloj" class="tv-reloj" th:text="${@fmt.horaActual()}">10:00</span>
       <button type="button" id="tv-sonido" class="tv-boton no-imprimir" aria-pressed="false" title="Activar sonido y voz">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
@@ -27,94 +30,81 @@
     </div>
   </header>
 
+  <!--/* Sala: con ?colas= la pantalla solo anuncia (timbre y voz) los llamados de estas colas; tv.js las lee de aquí */-->
+  <span th:if="${sala}" th:each="c : ${snap.colas}" hidden th:attr="data-tv-cola=${c.nombre}"></span>
+
   <!--/* Contenido en vivo: se vuelve a pedir con cada evento del local y cada 20 s */-->
   <div id="tv-contenido" class="tv-contenido" th:fragment="contenido"
-       th:attr="hx-get=@{/l/{s}/tv/contenido(s=${snap.local.slug})}"
+       th:attr="hx-get=@{/l/{s}/tv/contenido(s=${snap.local.slug},colas=${colasParam})}"
        hx-trigger="sse:turno:llamado, sse:cola:actualizada delay:400ms, sse:turno:estado delay:400ms, every 20s" hx-swap="outerHTML">
-
     <main class="tv-cuerpo">
+      <!--/* Lo principal: a quién se llama y a dónde va */-->
       <section class="tv-columna">
         <div class="tv-llamado" th:with="ultimo=${#lists.isEmpty(snap.ultimosLlamados) ? null : snap.ultimosLlamados[0]}">
           <th:block th:if="${ultimo != null}">
-            <p class="tv-llamado-rotulo">🔔 Llamando a</p>
+            <p class="tv-llamado-rotulo">Turno</p>
             <p class="tv-llamado-codigo" th:text="${ultimo.codigo}">A-001</p>
+            <p class="tv-llamado-pase">pase a</p>
             <div class="tv-llamado-ventanilla" th:text="${ultimo.ventanilla}">Ventanilla 1</div>
           </th:block>
           <th:block th:if="${ultimo == null}">
             <p class="tv-esperando">Esperando el primer llamado…</p>
-            <p style="margin-top: 0.75rem; color: rgb(255 255 255 / 0.4)">Los turnos aparecerán aquí en tiempo real</p>
+            <p class="tv-esperando-nota">Los turnos aparecerán aquí en tiempo real</p>
           </th:block>
         </div>
-
-        <div class="tv-colas" th:classappend="'cols-' + ${#lists.size(snap.colas) > 3 ? 3 : (#lists.isEmpty(snap.colas) ? 1 : #lists.size(snap.colas))}">
+        <!--/* Resumen por cola: cuántos esperan, cuánto falta y quiénes siguen */-->
+        <div class="tv-colas" th:classappend="'cols-' + ${#lists.size(snap.colas) > 4 ? 4 : (#lists.isEmpty(snap.colas) ? 1 : #lists.size(snap.colas))}">
           <div th:each="c : ${snap.colas}" class="tv-cola">
             <div class="tv-cola-titulo"><span class="prefijo" th:text="${c.prefijo}">A</span><span th:text="${c.nombre}">Caja</span></div>
-            <div class="tv-cola-datos">
-              <div>
-                <p class="tv-cola-numero" th:text="${c.enEspera}">3</p>
-                <p class="tv-rotulo-pequeno">en espera</p>
-              </div>
-              <div style="text-align: right">
-                <p style="font-size: 1.25rem; font-weight: 600" th:text="${c.enEspera > 0} ? '~ ' + ${@fmt.duracion(c.tiempoEstimadoSeg)} : 'Sin espera'">~ 5 min</p>
-                <p class="tv-rotulo-pequeno">próximo</p>
-              </div>
-            </div>
-            <div th:unless="${#lists.isEmpty(c.espera)}" class="tv-cola-siguientes">
-              <span th:each="t, i : ${c.espera}" th:if="${i.index < 5}" th:text="${t.codigo}">A-002</span>
-              <span th:if="${#lists.size(c.espera) > 5}" style="background: none; color: rgb(255 255 255 / 0.5)" th:text="'+' + ${#lists.size(c.espera) - 5}">+2</span>
-            </div>
+            <p class="tv-cola-resumen" th:if="${c.enEspera > 0}">
+              <strong th:text="${c.enEspera}">3</strong> en espera · <th:block th:text="'~ ' + ${@fmt.duracion(c.tiempoEstimadoSeg)}">~ 5 min</th:block>
+            </p>
+            <p class="tv-cola-resumen" th:if="${c.enEspera == 0}">Sin espera</p>
+            <p class="tv-cola-siguientes" th:unless="${#lists.isEmpty(c.espera)}">
+              <span class="tv-rotulo-pequeno">Siguen</span>
+              <span class="mono" th:each="t, i : ${c.espera}" th:if="${i.index < 3}" th:text="${t.codigo}">A-002</span>
+              <span class="tv-rotulo-pequeno" th:if="${#lists.size(c.espera) > 3}" th:text="'+' + ${#lists.size(c.espera) - 3}">+2</span>
+            </p>
           </div>
         </div>
       </section>
 
+      <!--/* Lo secundario: una sola lista de llamados y, pequeño, cómo tomar turno */-->
       <section class="tv-columna">
         <div class="tv-panel">
-          <p class="tv-panel-titulo">En atención</p>
+          <p class="tv-panel-titulo">Últimos llamados</p>
           <div class="tv-atencion">
-            <th:block th:each="c : ${snap.colas}">
-              <div th:each="l : ${c.llamados}" class="tv-atencion-fila">
-                <span class="mono" th:text="${l.codigo}">A-001</span>
-                <span>
-                  <strong th:text="${l.ventanilla}">Ventanilla 1</strong>
-                  <small th:text="${c.nombre} + ' · ' + ${@fmt.hora(l.llamadoAt)}">Caja · 10:00</small>
-                </span>
-              </div>
-            </th:block>
-            <p th:if="${snap.stats.llamados == 0}" style="color: rgb(255 255 255 / 0.4)">Ninguna ventanilla está atendiendo.</p>
+            <div th:each="f : ${filas}" class="tv-atencion-fila" th:classappend="${f.enAtencion} ? '' : 'pasado'">
+              <span class="mono" th:text="${f.codigo}">A-001</span>
+              <span>
+                <strong th:text="${f.ventanilla}">Ventanilla 1</strong>
+                <small th:text="${f.enAtencion} ? 'En atención' : ${@fmt.hora(f.hora)}">En atención</small>
+              </span>
+            </div>
+            <p th:if="${#lists.isEmpty(filas)}" class="tv-esperando-nota">Aquí verás los turnos anteriores.</p>
           </div>
-
-          <th:block th:if="${#lists.size(snap.ultimosLlamados) > 1}">
-            <p class="tv-panel-titulo" style="margin-top: 2rem">Últimos llamados</p>
-            <ul class="tv-recientes">
-              <li th:each="l, i : ${snap.ultimosLlamados}" th:if="${i.index > 0 and i.index <= 6}">
-                <span class="mono" th:text="${l.codigo}">A-001</span>
-                <span th:text="${l.ventanilla}">V1</span>
-                <span class="numeros" style="font-size: 0.8rem; color: rgb(255 255 255 / 0.5)" th:text="${@fmt.hora(l.llamadoAt)}">10:00</span>
-              </li>
-            </ul>
-          </th:block>
         </div>
-
-        <div class="tv-qr">
-          <div th:utext="${qrSvg}"></div>
-          <div>
-            <strong>Toma tu turno con el QR</strong>
-            <p>Escanéalo con tu celular, elige el servicio y espera donde quieras. Te avisamos por WhatsApp.</p>
-            <small th:text="${#strings.replace(#strings.replace(urlLocal, 'https://', ''), 'http://', '')}">turnoya.pe/l/local</small>
+        <!--/* Entrada a la cola desde el celular: la app móvil (o la web si no la tiene) */-->
+        <div class="tv-qrs uno">
+          <div class="tv-qr">
+            <div th:utext="${qrApp}"></div>
+            <div>
+              <span class="tv-canal canal-app">App</span>
+              <strong>Toma tu turno con el celular</strong>
+              <small th:text="${#strings.replace(#strings.replace(urlApp, 'https://', ''), 'http://', '')}">turnoya.pe/l/local/app</small>
+            </div>
           </div>
         </div>
       </section>
     </main>
-
     <footer class="tv-cinta">
       <p class="cinta-texto"
-         th:text="${snap.local.mensajeTv != null ? snap.local.mensajeTv : 'Bienvenido. Por favor espere su llamado.'} + '   •   Hoy: ' + ${snap.stats.atendidos} + ' atendidos · ' + ${snap.stats.enEspera} + ' en espera · espera promedio ' + ${snap.stats.esperaPromedioMin} + ' min   •   Fila virtual por TurnoYa'">
+         th:text="${snap.local.mensajeTv != null ? snap.local.mensajeTv : 'Bienvenido. Por favor espere su llamado.'} + '   •   Fila virtual por TurnoYa'">
         Bienvenido.
       </p>
     </footer>
   </div>
 </div>
-
 <script defer th:src="@{/js/tv.js}"></script>
 </body>
 </html>

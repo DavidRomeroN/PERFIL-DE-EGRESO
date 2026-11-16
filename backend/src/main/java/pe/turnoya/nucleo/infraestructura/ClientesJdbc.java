@@ -3,14 +3,15 @@ package pe.turnoya.nucleo.infraestructura;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import pe.turnoya.nucleo.dominio.RepositorioClientes;
 
 /** Acceso a la tabla {@code cliente} (datos personales mínimos: nombre y celular cifrado). */
 @Repository
-public class ClientesJdbc {
+class ClientesJdbc implements RepositorioClientes {
 
     private final JdbcClient jdbc;
 
-    public ClientesJdbc(JdbcClient jdbc) {
+    ClientesJdbc(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
 
@@ -18,6 +19,7 @@ public class ClientesJdbc {
      * Un celular = un cliente: el índice único parcial sobre {@code telefono_hash} hace que dos emisiones simultáneas
      * del mismo número terminen en el mismo cliente.
      */
+    @Override
     public int guardarPorTelefono(String hash, String cifrado, String nombre) {
         return jdbc.sql("""
                         INSERT INTO cliente (telefono_hash, telefono_cifrado, nombre, consentimiento_at)
@@ -31,10 +33,12 @@ public class ClientesJdbc {
                 .query(Integer.class).single();
     }
 
+    @Override
     public int crearConNombre(String nombre) {
         return jdbc.sql("INSERT INTO cliente (nombre) VALUES (:nombre) RETURNING id").param("nombre", nombre).query(Integer.class).single();
     }
 
+    @Override
     public Optional<DatosCliente> datos(int clienteId) {
         return jdbc.sql("SELECT nombre, telefono_cifrado FROM cliente WHERE id = :id")
                 .param("id", clienteId)
@@ -42,6 +46,4 @@ public class ClientesJdbc {
                 .optional();
     }
 
-    public record DatosCliente(String nombre, String telefonoCifrado) {
-    }
 }

@@ -36,8 +36,8 @@
         <button type="submit" class="boton boton-grande boton-bloque">Entrar</button>
       </form>
 
-      <!--/* Cuentas del seed de demostración (backend/…/seed: mismas que legacy/) */-->
-      <div class="login-demo">
+      <!--/* Cuentas del seed de demostración: solo en desarrollo (turnoya.mostrar-cuentas-demo) */-->
+      <div class="login-demo" th:if="${cuentasDemo}">
         <p>Cuentas de demostración</p>
         <ul>
           <li>Super admin · <code>superadmin@turnoya.pe</code> / <code>admin123</code></li>

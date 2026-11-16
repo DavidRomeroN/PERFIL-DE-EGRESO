@@ -23,7 +23,7 @@ import pe.turnoya.compartido.ErrorNegocio;
 
 /**
  * Filtro global de errores de la API: traduce cada excepción al sobre {@code {ok:false, error:{codigo, mensaje}}}
- * con los mismos códigos y estados HTTP que legacy/ ({@code backend/src/api.ts}).
+ * con los mismos códigos y estados HTTP que el sistema anterior ({@code backend/src/api.ts}).
  */
 @RestControllerAdvice(annotations = RestController.class)
 @Order(Ordered.HIGHEST_PRECEDENCE)

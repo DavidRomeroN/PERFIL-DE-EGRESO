@@ -1,4 +1,4 @@
-/* Tokens de diseño: mismos valores que el sistema anterior (legacy/frontend/src/app/globals.css). */
+/* Tokens de diseño: mismos valores que el sistema anterior (frontend/src/app/globals.css). */
 :root {
   --fondo: oklch(0.985 0.003 200);
   --texto: oklch(0.18 0.02 220);

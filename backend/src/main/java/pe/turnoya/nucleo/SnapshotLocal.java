@@ -6,7 +6,8 @@ import java.util.List;
 /**
  * Foto del local en este momento: colas, quién espera, quién está siendo atendido y métricas del día.
  * La usan la pantalla TV (sin datos personales) y el panel de ventanilla (con nombres y categoría).
- * Mismo formato que {@code snapshotLocal} de legacy/, salvo que la versión pública ya no incluye los tokens de
+ * Cada turno trae su canal (app, WhatsApp, QR…): la TV lo muestra para que se vea que todos comparten la misma cola.
+ * Mismo formato que {@code snapshotLocal} del sistema anterior, salvo que la versión pública ya no incluye los tokens de
  * seguimiento de cada turno (con ellos cualquiera podía cancelar turnos ajenos).
  */
 public record SnapshotLocal(
@@ -44,10 +45,11 @@ public record SnapshotLocal(
     }
 
     public record Llamado(int id, String codigo, String codigoProvisional, String token, String ventanilla, Integer ventanillaId,
-                          Instant llamadoAt, int rellamadas, String nombre) {
+                          Instant llamadoAt, int rellamadas, String nombre, CanalTurno canal) {
     }
 
-    public record UltimoLlamado(int id, String codigo, String codigoProvisional, String ventanilla, EstadoTurno estado, Instant llamadoAt) {
+    public record UltimoLlamado(int id, String codigo, String codigoProvisional, String ventanilla, EstadoTurno estado, Instant llamadoAt,
+                                CanalTurno canal) {
     }
 
     public record Estadisticas(int total, int atendidos, int noPresentados, int cancelados, int enEspera, int llamados, int porQR,

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Kiosco')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Kiosco offline</h1>
+        <p>Tótem táctil que sigue emitiendo tickets aunque se caiga internet y sincroniza sin duplicados al volver.</p>
+      </div>
+      <div class="acciones-cabecera">
+        <button type="button" class="boton" data-abrir="nuevo-kiosco">+ Nuevo kiosco</button>
+      </div>
+    </div>
+
+    <div th:if="${mensaje}" class="alerta alerta-exito" role="status" th:text="${mensaje}">Listo</div>
+    <div th:if="${error}" class="alerta alerta-error" role="alert" th:text="${error}">Error</div>
+    <div th:if="${codigo}" class="tarjeta codigo-emparejamiento" role="status">
+      <p class="texto-apagado">Código de emparejamiento</p>
+      <p class="codigo-grande numeros" th:text="${codigo.codigo}">123456</p>
+      <p class="ayuda">Ingrésalo en la tablet en <b>/kiosco</b>. Vence a las <span th:text="${@fmt.hora(codigo.expira)}">10:10</span> y sirve una sola vez.</p>
+      <p th:if="${codigo.pin}" class="alerta alerta-aviso">PIN del menú de mantenimiento: <b class="numeros" th:text="${codigo.pin}">1234</b> (se muestra solo ahora)</p>
+    </div>
+
+    <nav class="pestanas" aria-label="Secciones del kiosco">
+      <a th:href="@{/admin/modulos/kiosco}" th:attr="aria-current=${tab != 'eventos'} ? 'page'">Dispositivos</a>
+      <a th:href="@{/admin/modulos/kiosco(tab='eventos')}" th:attr="aria-current=${tab == 'eventos'} ? 'page'">Cola de sincronización</a>
+    </nav>
+
+    <section th:if="${tab != 'eventos'}">
+      <p th:if="${#lists.isEmpty(dispositivos)}" class="vacio">Aún no hay kioscos. Crea uno y empareja la tablet abriendo <b>/kiosco</b>.</p>
+      <div class="rejilla rejilla-2">
+        <article th:each="d : ${dispositivos}" class="tarjeta">
+          <div class="cabecera-tarjeta">
+            <h2 class="tarjeta-titulo" th:text="${d.prefijo} + ' · ' + ${d.nombre}">K1 · Entrada</h2>
+            <span class="insignia" th:classappend="${!d.activo} ? 'cita-CANCELADA' : (${d.enLinea} ? 'cita-ATENDIDA' : 'estado-AVISADO')" th:text="${d.estado()}">En línea</span>
+          </div>
+          <dl class="datos-kiosco">
+            <dt>Último latido</dt><dd th:text="${d.ultimoHeartbeatAt != null} ? ${@fmt.fechaHora(d.ultimoHeartbeatAt)} : '—'">—</dd>
+            <dt>Pendientes</dt><dd class="numeros" th:text="${d.pendientes}">0</dd>
+            <dt>Reloj</dt><dd th:classappend="${d.relojDesfasado} ? 'texto-peligro'" th:text="(${d.relojDesfasado} ? '⚠ ' : '') + ${d.offsetRelojMs / 1000} + ' s'">0 s</dd>
+            <dt>Versión</dt><dd th:text="${d.versionApp ?: '—'}">—</dd>
+          </dl>
+          <div class="acciones-fila">
+            <form method="post" th:action="@{/admin/modulos/kiosco/dispositivos/{id}/rotar(id=${d.id})}">
+              <button type="submit" class="boton boton-contorno boton-pequeno" th:text="${d.emparejado} ? 'Rotar token' : 'Nuevo código'">Nuevo código</button>
+            </form>
+            <form th:if="${d.activo}" method="post" th:action="@{/admin/modulos/kiosco/dispositivos/{id}/revocar(id=${d.id})}"
+                  data-confirmar="El kiosco dejará de emitir tickets. ¿Revocarlo?">
+              <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno">Revocar</button>
+            </form>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section th:if="${tab == 'eventos'}" class="tarjeta">
+      <form method="get" th:action="@{/admin/modulos/kiosco}" class="filtros-agenda">
+        <input type="hidden" name="tab" value="eventos">
+        <label class="etiqueta">Estado
+          <select name="estado" class="entrada" data-autoenviar>
+            <option th:each="e : ${estados}" th:value="${e}" th:text="${e}" th:selected="${e == estado}">REVISION</option>
+          </select>
+        </label>
+      </form>
+      <p th:if="${#lists.isEmpty(eventos)}" class="vacio">Sin eventos en este estado.</p>
+      <div class="tabla-contenedor" th:unless="${#lists.isEmpty(eventos)}">
+        <table class="tabla">
+          <thead><tr><th>Kiosco</th><th>N.°</th><th>Emitido en el kiosco</th><th>Recibido</th><th>Estado</th><th>Motivo</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:each="e : ${eventos}">
+            <td th:text="'K' + ${e.numero} + ' · ' + ${e.dispositivo}">K1</td>
+            <td class="numeros" th:text="${e.seq}">1</td>
+            <td class="numeros" th:text="${@fmt.fechaHora(e.tsDispositivo)}">—</td>
+            <td class="numeros" th:text="${@fmt.fechaHora(e.recibidoAt)}">—</td>
+            <td th:text="${e.estado}">REVISION</td>
+            <td th:text="${e.motivo ?: '—'}">—</td>
+            <td>
+              <form th:if="${e.estado == 'REVISION'}" class="acciones-fila" method="post" th:action="@{/admin/modulos/kiosco/eventos/{id}/resolver(id=${e.id})}">
+                <button type="submit" name="accion" value="EMITIR_AHORA" class="boton boton-pequeno">Emitir ahora</button>
+                <button type="submit" name="accion" value="DESCARTAR" class="boton boton-fantasma boton-pequeno">Descartar</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <dialog class="dialogo" id="nuevo-kiosco">
+      <form class="formulario" method="post" th:action="@{/admin/modulos/kiosco/dispositivos}">
+        <h2>Nuevo kiosco</h2>
+        <div class="campo"><label class="etiqueta">Nombre <input name="nombre" class="entrada" required minlength="2" maxlength="40" value="Entrada principal"></label></div>
+        <div class="dialogo-pie">
+          <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+          <button type="submit" class="boton">Crear y generar código</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+</div>
+</body>
+</html>

@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import pe.turnoya.compartido.tiempo.Fechas;
+import pe.turnoya.plataforma.dominio.Horario;
 
 /** N05: horario de atención en la hora local (Lima = UTC−5), con la próxima apertura. */
 class HorarioAtencionTest {
@@ -14,8 +15,8 @@ class HorarioAtencionTest {
             true, "#0f766e", null, null, null, 2, 180, null);
 
     /** Lunes a viernes 08:00–17:00. */
-    private static final List<HorarioAtencion.Horario> SEMANA = List.of(1, 2, 3, 4, 5).stream()
-            .map(d -> new HorarioAtencion.Horario(d, "08:00", "17:00")).toList();
+    private static final List<Horario> SEMANA = List.of(1, 2, 3, 4, 5).stream()
+            .map(d -> new Horario(d, "08:00", "17:00")).toList();
 
     @Test
     void sinHorariosEstaSiempreAbierto() {

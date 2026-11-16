@@ -21,7 +21,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Planificador de tareas (F1). Cada 5 s revisa las tareas y reclama las que tocan con
- * {@code UPDATE job_estado … WHERE proxima <= ahora RETURNING}: es la misma tabla y la misma regla que usa legacy/,
+ * {@code UPDATE job_estado … WHERE proxima <= ahora RETURNING}: es la misma tabla y la misma regla que usa el sistema anterior,
  * así que mientras convivan, una corrida nunca se ejecuta dos veces (riesgo 2 del plan de migración).
  *
  * <p>Las tareas corren en hilos virtuales; si una sigue en curso, no se vuelve a lanzar.
@@ -72,6 +72,10 @@ public class PlanificadorTareas {
         }
     }
 
+    public boolean existe(String nombre) {
+        return tareas.stream().anyMatch(t -> t.nombre().equals(nombre));
+    }
+
     /** Ejecuta una tarea ya (botón "ejecutar ahora" del panel de jobs). */
     public Object ejecutarAhora(String nombre) {
         TareaProgramada tarea = tareas.stream().filter(t -> t.nombre().equals(nombre)).findFirst()
@@ -84,13 +88,13 @@ public class PlanificadorTareas {
 
     public List<EstadoTarea> estado() {
         return tareas.stream().map(t -> jdbc.sql("""
-                        SELECT ultima_corrida, ultimo_error, fallos, corridas, proxima FROM job_estado WHERE nombre = :nombre""")
+                        SELECT ultima_corrida, ultima_duracion_ms, ultimo_resultado::text AS resultado, ultimo_error, fallos, corridas, proxima FROM job_estado WHERE nombre = :nombre""")
                 .param("nombre", t.nombre())
                 .query((rs, i) -> new EstadoTarea(t.nombre(), t.descripcion(), t.frecuencia(),
-                        Sql.instante(rs, "ultima_corrida"), rs.getString("ultimo_error"), rs.getInt("corridas"),
+                        Sql.instante(rs, "ultima_corrida"), Sql.entero(rs, "ultima_duracion_ms"), rs.getString("resultado"), rs.getString("ultimo_error"), rs.getInt("corridas"),
                         rs.getInt("fallos"), Sql.instante(rs, "proxima"), enCurso.contains(t.nombre())))
                 .optional()
-                .orElse(new EstadoTarea(t.nombre(), t.descripcion(), t.frecuencia(), null, null, 0, 0, null, false)))
+                .orElse(new EstadoTarea(t.nombre(), t.descripcion(), t.frecuencia(), null, null, null, null, 0, 0, null, false)))
                 .toList();
     }
 
@@ -157,7 +161,8 @@ public class PlanificadorTareas {
         ejecutor.shutdown();
     }
 
-    public record EstadoTarea(String nombre, String descripcion, String frecuencia, Instant ultimaCorrida, String ultimoError,
+    public record EstadoTarea(String nombre, String descripcion, String frecuencia, Instant ultimaCorrida, Integer duracionMs, String resultado,
+                              String ultimoError,
                               int corridas, int fallos, Instant proxima, boolean enCurso) {
     }
 }

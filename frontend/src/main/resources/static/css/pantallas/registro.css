@@ -1,0 +1,33 @@
+/* Alta de un local (/registro) */
+.registro { max-width: 48rem; margin: 0 auto; padding: 1.25rem 1.25rem 4rem; }
+.registro-barra { display: flex; align-items: center; justify-content: space-between; }
+.enlace-apagado { font-size: .9rem; font-weight: 500; color: var(--apagado-texto); background: none; border: 0; padding: 0; cursor: pointer; text-underline-offset: 4px; }
+.enlace-apagado:hover { color: var(--texto); text-decoration: underline; }
+.registro-cabecera { margin: 2rem 0 1.5rem; }
+.registro-cabecera h1 { font-size: clamp(1.75rem, 5vw, 2.25rem); font-weight: 700; letter-spacing: -0.02em; }
+.registro-cabecera p { margin-top: .4rem; color: var(--apagado-texto); }
+#form-registro { display: grid; gap: 1.25rem; }
+#form-registro fieldset.tarjeta legend { padding: 0 .25rem; font-weight: 600; }
+.registro-planes { display: grid; gap: .75rem; border: 0; padding: 0; margin: 0; }
+@media (min-width: 40rem) { .registro-planes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.registro-plan { position: relative; display: grid; gap: .15rem; padding: 1rem; border: 1px solid var(--borde); border-radius: var(--radio-lg); background: var(--tarjeta); box-shadow: var(--sombra-suave); cursor: pointer; transition: border-color 160ms var(--curva-salida), background-color 160ms var(--curva-salida); }
+.registro-plan:hover { border-color: color-mix(in oklch, var(--primario) 50%, transparent); }
+.registro-plan:has(input:checked) { border-color: var(--primario); background: var(--acento); box-shadow: 0 0 0 1px var(--primario); }
+.registro-plan input { position: absolute; opacity: 0; pointer-events: none; }
+.registro-plan:has(input:focus-visible) { outline: 2px solid var(--anillo); outline-offset: 2px; }
+.registro-plan-nombre { font-size: .85rem; color: var(--apagado-texto); }
+.registro-plan-precio { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+.registro-plan-precio small { font-size: .85rem; font-weight: 400; color: var(--apagado-texto); }
+.registro-plan-descripcion { font-size: .8rem; color: var(--apagado-texto); }
+.registro-terminos { align-items: flex-start; }
+.registro-enviar { width: 100%; }
+.registro-pago { display: grid; gap: 1rem; margin-top: 2rem; }
+.registro-pago-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.registro-pago-plan { font-weight: 600; }
+.registro-pago-monto { font-size: 1.5rem; font-weight: 700; }
+.registro-pago .enlace-apagado { justify-self: start; }
+.registro-listo { display: grid; justify-items: center; gap: 1rem; max-width: 28rem; margin: 4rem auto 0; text-align: center; }
+.registro-listo h1 { font-size: 1.6rem; font-weight: 700; }
+.registro-icono { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 50%; background: var(--exito-suave); color: var(--exito); font-size: 1.6rem; font-weight: 700; box-shadow: 0 0 0 8px color-mix(in oklch, var(--exito-suave) 50%, transparent); }
+.registro-icono.en-revision { background: var(--aviso-suave); color: var(--aviso); }
+.registro-listo-acciones { display: grid; gap: 1rem; width: 100%; }

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Prioridades')}"></head>
+<body>
+<div class="pagina-admin">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin" th:with="cfg=${datos.config}">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Prioridades</h1>
+        <p>Decide quién se atiende primero. Las personas con preferencia (adulto mayor, gestante…) pasan adelante, pero nadie se queda esperando para siempre.</p>
+      </div>
+    </div>
+
+    <div class="rejilla rejilla-2">
+      <section class="tarjeta">
+        <div class="cabecera-tarjeta">
+          <div>
+            <h2 class="tarjeta-titulo">Reglas</h2>
+            <p class="texto-apagado">Al guardar, se aplican también a quienes ya están esperando hoy.</p>
+          </div>
+        </div>
+        <form id="form-parametros" class="formulario" method="post" th:action="@{/admin/modulos/prioridades/config}"
+              th:attr="hx-post=@{/admin/modulos/prioridades/config}" hx-swap="none">
+          <label class="casilla casilla-fila">
+            <span>El tiempo de espera también da prioridad<span class="texto-apagado bloque-pequeno">Así, quien lleva mucho rato esperando no se queda atrás.</span></span>
+            <input type="checkbox" name="aging" value="true" th:checked="${cfg.aging}"
+                   th:attr="hx-post=@{/admin/modulos/prioridades/vista-previa}" hx-trigger="change" hx-target="#vista-previa"
+                   hx-swap="outerHTML" hx-include="#form-parametros">
+          </label>
+          <div class="campo">
+            <label class="etiqueta" for="alfa">Cuánto cuenta el tiempo de espera</label>
+            <input id="alfa" name="alfa" type="range" min="0" max="5" step="0.1" th:value="${cfg.alfa}" class="deslizador"
+                   th:attr="hx-post=@{/admin/modulos/prioridades/vista-previa}" hx-trigger="input changed delay:250ms" hx-target="#vista-previa"
+                   hx-swap="outerHTML" hx-include="#form-parametros" aria-describedby="alfa-escala">
+            <p id="alfa-escala" class="escala-deslizador texto-apagado"><span>Poco: la preferencia manda</span><span>Mucho: quien espera alcanza rápido</span></p>
+          </div>
+          <div class="campo">
+            <label class="etiqueta" for="tope">Máximo de personas con preferencia seguidas: <b><output data-valor-de="tope" data-cero="sin límite" th:text="${cfg.tope == 0} ? 'sin límite' : ${cfg.tope}">3</output></b></label>
+            <input id="tope" name="tope" type="range" min="0" max="10" step="1" th:value="${cfg.tope}" class="deslizador"
+                   th:attr="hx-post=@{/admin/modulos/prioridades/vista-previa}" hx-trigger="input changed delay:250ms" hx-target="#vista-previa"
+                   hx-swap="outerHTML" hx-include="#form-parametros">
+            <p class="texto-apagado ayuda">Después de esa cantidad se atiende a alguien sin preferencia, aunque sigan llegando personas con preferencia.</p>
+          </div>
+          <div class="acciones-cabecera" style="justify-content: flex-end"><button type="submit" class="boton">Guardar</button></div>
+        </form>
+      </section>
+
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Así quedaría la fila</h2>
+        <p class="texto-apagado">Ejemplo con cinco personas esperando. Cambia las reglas y mira cómo cambia el orden (no se guarda hasta pulsar «Guardar»).</p>
+        <div id="vista-previa" th:fragment="vista-previa">
+          <p class="alerta alerta-info explicacion-prioridad" th:text="${explicacion}">Alguien sin preferencia que lleva 40 min esperando pasa delante…</p>
+          <div class="vista-previa-prioridades">
+            <div>
+              <p class="vista-previa-titulo">Por orden de llegada</p>
+              <ol>
+                <li th:each="c : ${vista.fifo}" th:with="cat=${ejemplo.get(c)}">
+                  <span class="numeros" th:text="${c}">A-030</span> ·
+                  <span th:text="${cat == 'GENERAL'} ? 'sin preferencia' : ${nombresCategoria.getOrDefault(cat, cat)}">sin preferencia</span>
+                  <span class="texto-apagado" th:text="'· espera ' + ${#numbers.formatInteger(esperas.get(c), 1)} + ' min'">· espera 38 min</span>
+                </li>
+              </ol>
+            </div>
+            <div>
+              <p class="vista-previa-titulo acento">Con tus reglas</p>
+              <ol>
+                <li th:each="c : ${vista.priorizado}" class="resaltado" th:with="cat=${ejemplo.get(c)}">
+                  <span class="numeros" th:text="${c}">A-031</span> ·
+                  <span th:text="${cat == 'GENERAL'} ? 'sin preferencia' : ${nombresCategoria.getOrDefault(cat, cat)}">Gestante</span>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="tarjeta" style="margin-top: 1.25rem">
+      <div class="cabecera-tarjeta">
+        <div>
+          <h2 class="tarjeta-titulo">Categorías</h2>
+          <p class="texto-apagado">Los tipos de atención que puede elegir el cliente. Es un dato privado: nunca se muestra en la TV, el ticket ni WhatsApp.</p>
+        </div>
+        <button type="button" class="boton boton-contorno" data-abrir="nueva-categoria">+ Nueva</button>
+      </div>
+
+      <div id="categorias" th:fragment="categorias" class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Categoría</th><th>Ventaja</th><th>Pide documento</th><th>El cliente la puede elegir</th><th>Activa</th><th><span class="solo-lectores">Acciones</span></th></tr></thead>
+          <tbody>
+          <tr th:each="c : ${datos.categorias}">
+            <td><strong th:text="${c.nombre}">General</strong><span th:if="${c.absoluta}" class="texto-apagado bloque-pequeno">Pasa primero siempre</span></td>
+            <td>
+              <span th:if="${c.codigo == 'GENERAL'}" class="texto-apagado">Ninguna</span>
+              <form th:unless="${c.codigo == 'GENERAL'}" method="post" th:action="@{/admin/modulos/prioridades/categorias/{id}(id=${c.id})}"
+                    th:attr="hx-post=@{/admin/modulos/prioridades/categorias/{id}(id=${c.id})}" hx-target="#categorias" hx-swap="outerHTML" hx-trigger="change">
+                <input type="number" name="pesoBase" min="0" max="1000" class="entrada entrada-corta numeros" th:value="${c.pesoBase}"
+                       th:disabled="${c.absoluta}" th:attr="aria-label='Ventaja de ' + ${c.nombre}">
+              </form>
+              <span th:if="${c.codigo != 'GENERAL' and !c.absoluta and datos.config.aging and datos.config.alfa > 0}" class="texto-apagado bloque-pequeno"
+                    th:text="'≈ ' + ${#numbers.formatInteger(c.pesoBase / datos.config.alfa, 1)} + ' min de adelanto'">≈ 40 min de adelanto</span>
+            </td>
+            <td th:text="${c.documento == 'NINGUNO'} ? 'No' : ${#strings.replace(c.documento, '_', ' ')}">DNI</td>
+            <td>
+              <form method="post" th:action="@{/admin/modulos/prioridades/categorias/{id}(id=${c.id})}"
+                    th:attr="hx-post=@{/admin/modulos/prioridades/categorias/{id}(id=${c.id})}" hx-target="#categorias" hx-swap="outerHTML">
+                <input type="hidden" name="visibleCliente" th:value="${!c.visibleCliente}">
+                <button type="submit" class="interruptor" role="switch" th:disabled="${c.codigo == 'CITA' or c.codigo == 'GENERAL'}"
+                        th:attr="aria-checked=${c.visibleCliente},aria-label='Visible para el cliente: ' + ${c.nombre}"><span></span></button>
+              </form>
+            </td>
+            <td>
+              <form method="post" th:action="@{/admin/modulos/prioridades/categorias/{id}(id=${c.id})}"
+                    th:attr="hx-post=@{/admin/modulos/prioridades/categorias/{id}(id=${c.id})}" hx-target="#categorias" hx-swap="outerHTML">
+                <input type="hidden" name="activa" th:value="${!c.activa}">
+                <button type="submit" class="interruptor" role="switch" th:disabled="${c.codigo == 'GENERAL'}"
+                        th:attr="aria-checked=${c.activa},aria-label='Activa: ' + ${c.nombre}"><span></span></button>
+              </form>
+            </td>
+            <td>
+              <form th:unless="${c.codigo == 'GENERAL' or c.codigo == 'CITA'}" method="post"
+                    th:action="@{/admin/modulos/prioridades/categorias/{id}/eliminar(id=${c.id})}"
+                    th:attr="hx-post=@{/admin/modulos/prioridades/categorias/{id}/eliminar(id=${c.id})},hx-confirm='¿Eliminar la categoría ' + ${c.nombre} + '?'"
+                    hx-target="#categorias" hx-swap="outerHTML">
+                <button type="submit" class="boton boton-fantasma boton-texto-peligro boton-pequeno" th:attr="aria-label='Eliminar ' + ${c.nombre}">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <dialog class="dialogo" id="nueva-categoria">
+      <form class="formulario" method="post" th:action="@{/admin/modulos/prioridades/categorias}" th:attr="hx-post=@{/admin/modulos/prioridades/categorias}"
+            hx-target="#categorias" hx-swap="outerHTML" data-limpiar-al-enviar>
+        <h2>Nueva categoría</h2>
+        <div class="campo"><label class="etiqueta">Nombre <input name="nombre" class="entrada" required minlength="2" maxlength="60" placeholder="p. ej. Niño pequeño"></label></div>
+        <div class="campo"><label class="etiqueta">Ventaja (0–1000) <input name="pesoBase" type="number" class="entrada numeros" min="0" max="1000" value="40" required></label>
+          <p class="texto-apagado ayuda">Más alto = pasa antes. Compárala con las otras categorías de la tabla.</p></div>
+        <div class="campo"><label class="etiqueta">Documento que debe mostrar
+          <select name="documento" class="entrada"><option th:each="d : ${documentos}" th:value="${d}" th:text="${#strings.replace(d, '_', ' ')}">DNI</option></select>
+        </label></div>
+        <label class="casilla"><input type="checkbox" name="visibleCliente" value="true" checked> <span>El cliente la puede elegir al sacar su turno</span></label>
+        <div class="dialogo-pie">
+          <button type="button" class="boton boton-contorno" data-cerrar>Cancelar</button>
+          <button type="submit" class="boton">Crear</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

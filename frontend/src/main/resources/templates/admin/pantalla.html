@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragmentos/base :: cabeza('Pantalla TV y QR')}"></head>
+<body>
+<div class="pagina-admin no-imprimir">
+  <aside th:replace="~{admin/marco :: menu(${seccion})}"></aside>
+
+  <main class="contenido-admin" th:with="l=${cfg.local}">
+    <div class="cabecera-pagina">
+      <div>
+        <h1>Pantalla TV y código QR</h1>
+        <p>Personaliza lo que ven tus clientes (RF12) y descarga el afiche con el QR para la sala de espera.</p>
+      </div>
+      <a class="boton boton-contorno boton-pequeno" th:href="@{/l/{slug}/tv(slug=${l.slug},k=${claveTv})}" target="_blank" rel="noopener">Abrir pantalla TV ↗</a>
+    </div>
+
+    <div class="rejilla rejilla-lateral">
+      <section class="tarjeta">
+        <h2 class="tarjeta-titulo">Personalización</h2>
+        <form class="formulario" method="post" th:action="@{/admin/pantalla}" th:attr="hx-post=@{/admin/pantalla}" hx-swap="none" data-vista-previa-tv>
+          <div class="rejilla-campos">
+            <div class="campo"><label class="etiqueta" for="color">Color principal</label>
+              <div class="acciones-cabecera"><input id="color" name="colorPrimario" type="color" class="selector-color" th:value="${l.colorPrimario}" data-tv-color></div>
+            </div>
+            <div class="campo"><label class="etiqueta" for="logo">URL del logo (opcional)</label><input id="logo" name="logoUrl" type="url" class="entrada" maxlength="300" th:value="${l.logoUrl}" placeholder="https://…/logo.png"></div>
+          </div>
+          <div class="campo"><label class="etiqueta" for="mtv">Mensaje en la cinta de la TV</label>
+            <textarea id="mtv" name="mensajeTv" class="entrada area-texto" rows="2" maxlength="200" placeholder="Bienvenido. Por favor espere su llamado." th:text="${l.mensajeTv}" data-tv-mensaje></textarea></div>
+          <div class="campo"><label class="etiqueta" for="mb">Mensaje de bienvenida al tomar turno</label>
+            <textarea id="mb" name="mensajeBienvenida" class="entrada area-texto" rows="2" maxlength="200" placeholder="Toma tu turno y espera donde quieras." th:text="${l.mensajeBienvenida}"></textarea></div>
+          <div class="campo"><label class="etiqueta" for="av">Avisar por WhatsApp cuando falten</label>
+            <div class="acciones-cabecera"><input id="av" name="avisarFaltando" type="number" min="0" max="10" class="entrada" style="width: 6rem" th:value="${l.avisarFaltando}"> <span class="texto-apagado">personas delante del cliente</span></div>
+          </div>
+          <div class="acciones-cabecera" style="justify-content: flex-end"><button type="submit" class="boton">Guardar cambios</button></div>
+        </form>
+
+        <h3 class="texto-apagado" style="margin-top: 2rem; font-size: .85rem">Vista previa de la TV</h3>
+        <div class="tv-previa" id="tv-previa" th:style="'--local:' + ${l.colorPrimario}">
+          <div class="tv-previa-cabecera"><span class="tv-previa-logo" th:text="${#strings.substring(l.nombreComercial, 0, 1)}">P</span><strong th:text="${l.nombreComercial}">Local</strong><span class="numeros">10:42</span></div>
+          <div class="tv-previa-cuerpo">
+            <div class="tv-previa-llamado"><p>Llamando a</p><strong class="numeros">A-018</strong><span>Consultorio 1</span></div>
+            <div class="tv-previa-lista"><p>En atención</p><p><strong class="numeros">B-009</strong> Laboratorio</p><p><strong class="numeros">C-011</strong> Caja 1</p></div>
+          </div>
+          <div class="tv-previa-cinta" data-tv-cinta th:text="${l.mensajeTv} ?: 'Bienvenido. Por favor espere su llamado.'">Bienvenido.</div>
+        </div>
+      </section>
+
+      <aside class="tarjeta">
+        <h2 class="tarjeta-titulo">Código QR del local</h2>
+        <p class="texto-apagado" style="font-size: .85rem">Imprímelo y colócalo en la entrada, recepción y la sala.</p>
+        <div class="qr-caja" th:utext="${qrLocal}"></div>
+        <p class="numeros texto-apagado" style="font-size: .75rem; text-align: center; word-break: break-all" th:text="${urlLocal}">https://…</p>
+        <button type="button" class="boton boton-bloque" data-imprimir style="margin-top: 1rem">Imprimir afiche</button>
+      </aside>
+    </div>
+
+    <!--/* Enlaces de la TV por sala: los arma el núcleo, que es quien conoce las colas */-->
+    <div id="salas-tv" th:attr="hx-get=@{/admin/pantalla/salas}" hx-trigger="load" hx-swap="outerHTML"></div>
+  </main>
+</div>
+
+<!-- Afiche: solo se ve al imprimir -->
+<div class="afiche solo-imprimir" th:with="l=${cfg.local}">
+  <p class="afiche-local" th:style="'color:' + ${l.colorPrimario}" th:text="${l.nombreComercial}">Local</p>
+  <p class="afiche-titulo">Toma tu turno con el celular</p>
+  <p class="afiche-texto">Escanea el código, elige el servicio y espera donde quieras. Te avisamos por WhatsApp cuando falte poco.</p>
+  <div class="afiche-qr" th:utext="${qrAfiche}"></div>
+  <p class="numeros afiche-url" th:text="${urlLocal}">https://…</p>
+  <p class="afiche-pie">Fila virtual por TurnoYa</p>
+</div>
+<div th:replace="~{fragmentos/base :: avisos}"></div>
+</body>
+</html>

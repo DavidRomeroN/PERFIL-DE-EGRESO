@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-/** Textos de WhatsApp: deben coincidir con las plantillas aprobadas (mismos textos que legacy/). */
+/** Textos de WhatsApp: deben coincidir con las plantillas aprobadas (mismos textos que el sistema anterior). */
 class PlantillasTest {
 
     @Test

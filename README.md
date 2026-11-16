@@ -4,28 +4,29 @@ SaaS multi-local que reemplaza la fila física por una **fila virtual**: el clie
 
 > Proyecto de Perfil de Egreso — Universidad Peruana Unión, Filial Juliaca.
 
-> **Migración en curso a Java (Spring Boot + Thymeleaf + htmx).** El núcleo (colas, ventanillas, turnos, panel, TV, "mi turno", ticket) ya está en `backend/` y `frontend/`. Los módulos M1–M8, pagos y el resto de la administración siguen en `legacy/` (Next.js) hasta migrarse. Ver [`docs/ARQUITECTURA_JAVA.md`](docs/ARQUITECTURA_JAVA.md) y [`docs/MIGRACION_SPRING.md`](docs/MIGRACION_SPRING.md).
+> **Migración en curso a Java (Spring Boot + Thymeleaf + htmx).** El núcleo (colas, ventanillas, turnos, panel, TV, "mi turno", ticket) ya está en `backend/` y `frontend/`. Los módulos M1–M8, pagos y el resto de la administración se migran con la receta de [`docs/ARQUITECTURA_JAVA.md`](docs/ARQUITECTURA_JAVA.md) §6; su código original (Next.js + Prisma) está en el historial de git (commit `bce0774`, carpeta `legacy/`). Plan y estado: [`docs/MIGRACION_SPRING.md`](docs/MIGRACION_SPRING.md).
 
 ---
 
 ## 1. Inicio rápido (desarrollo)
 
-Requisitos: **JDK 21**, **Docker Desktop** (PostgreSQL) y, para sembrar datos de demostración y usar los módulos aún no migrados, **Node.js 22+**.
+Requisitos: **JDK 21** y **Docker Desktop** (PostgreSQL).
 
 ```bash
-# 1) Variables de entorno (las leen el proyecto Java y legacy/)
+# 1) Variables de entorno
 copy .env.example .env        # (Linux/macOS: cp .env.example .env)
 
-# 2) Base de datos + migraciones + datos de demostración (con legacy/, una sola vez)
-cd legacy && npm install && npm run setup && cd ..
+# 2) Base de datos
+docker compose up -d db
 
-# 3) Aplicación Java (Flyway toma la BD existente como base y aplica lo nuevo)
-gradlew :backend:bootRun      # http://localhost:8080   (Linux/macOS: ./gradlew)
+# 3) Aplicación (Flyway crea o actualiza el esquema al arrancar)
+cd backend
+gradlew bootRun               # http://localhost:8080   (Linux/macOS: ./gradlew bootRun)
 ```
 
 `bootRun` usa el perfil `dev`: las plantillas y los estilos se leen directo de `frontend/src/main/resources`, así que los cambios se ven al recargar la página, sin reiniciar.
 
-Para usar los módulos que todavía no están migrados, levanta también legacy/ (`cd legacy && npm run dev`, puerto 3000). Ambos comparten la base de datos y la sesión.
+> **Datos de demostración:** en una base vacía Flyway crea el esquema pero no siembra locales ni usuarios. Las cuentas de abajo existen si la base ya fue sembrada con el sistema anterior (`npm run setup` en la rama `main`).
 
 ### Credenciales de demostración
 
@@ -50,14 +51,14 @@ Todo se actualiza en **tiempo real** (SSE + htmx): abre la TV, el panel y la pá
 
 ## 2. Arquitectura
 
-**Monolito modular** (Spring Modulith) con **arquitectura hexagonal dentro de cada módulo** y **eventos entre módulos** (con registro de publicaciones como outbox). Frontend **dirigido por hipermedia**: HTML generado en el servidor con Thymeleaf y actualizado con htmx; JavaScript mínimo solo donde el navegador es indispensable (sonido, voz, impresión). Detalle y receta para migrar módulos: [`docs/ARQUITECTURA_JAVA.md`](docs/ARQUITECTURA_JAVA.md).
+**Monolito modular** (Spring Modulith) con **arquitectura hexagonal y vertical slicing dentro de cada módulo** y **eventos entre módulos** (con registro de publicaciones como outbox). Frontend **dirigido por hipermedia**: HTML generado en el servidor con Thymeleaf y actualizado con htmx; JavaScript mínimo solo donde el navegador es indispensable (sonido, voz, impresión). Detalle y receta para migrar módulos: [`docs/ARQUITECTURA_JAVA.md`](docs/ARQUITECTURA_JAVA.md).
 
 ```
 Navegador (celular, TV, panel, admin)
-   │  HTML + htmx           SSE /api/v1/realtime/:slug         API REST /api/v1 (mismo contrato que legacy/)
+   │  HTML + htmx           SSE /api/v1/realtime/:slug         API REST /api/v1 (mismo contrato que el sistema anterior)
    ▼
 Spring Boot 4 (Java 21, hilos virtuales)
-   compartido   errores, tiempo, cifrado (compatible con legacy/), web, tareas programadas
+   compartido   errores, tiempo, cifrado (compatible con el sistema anterior), web, tareas programadas
    plataforma   locales, planes, módulos, horario, sesión JWT, auditoría
    nucleo       colas, ventanillas, turnos  ── eventos ──▶ notificaciones (WhatsApp)
                                             ── eventos ──▶ tiemporeal (SSE; bus en memoria o Redis)
@@ -67,9 +68,9 @@ PostgreSQL 16 (Flyway; funciones SQL emitir_turno / siguiente_turno con FOR UPDA
 
 | Capa           | Tecnología |
 | -------------- | ---------- |
-| Back-end       | Java 21, Spring Boot 4.1, Spring Modulith 2.1, Spring Security (JWT HS256 en cookie, compatible con legacy/), Bean Validation |
+| Back-end       | Java 21, Spring Boot 4.1, Spring Modulith 2.1, Spring Security (JWT HS256 en cookie, compatible con el sistema anterior), Bean Validation |
 | Front-end      | Thymeleaf, htmx 2 + extensión SSE (WebJars), CSS propio con tokens de diseño, JavaScript mínimo sin dependencias |
-| Datos          | PostgreSQL 16, Flyway (migraciones de legacy/ + nuevas), JdbcClient con SQL explícito |
+| Datos          | PostgreSQL 16, Flyway (V1–V10 heredadas de Prisma + nuevas), JdbcClient con SQL explícito |
 | Tiempo real    | Server-Sent Events; bus en memoria (1 instancia) o Redis/Valkey pub/sub (varias réplicas) |
 | Mensajería     | Estrategia `mock` / `openwa` / `meta`; avisos después del commit vía eventos (reintentables) |
 | Observabilidad | Logs JSON con `request_id`, Actuator + Prometheus (`/actuator/prometheus`), `/api/health` |
@@ -78,7 +79,7 @@ PostgreSQL 16 (Flyway; funciones SQL emitir_turno / siguiente_turno con FOR UPDA
 ### Estructura de carpetas
 
 ```
-backend/                       aplicación Spring Boot (Gradle)
+backend/                       aplicación Spring Boot (proyecto Gradle: gradlew, settings, build, Dockerfile)
   src/main/java/pe/turnoya/
     compartido/                  shared kernel (módulo abierto)
     plataforma/                  tenants, planes, módulos, sesión, auditoría
@@ -86,32 +87,35 @@ backend/                       aplicación Spring Boot (Gradle)
       (paquete raíz)               API pública: ConsultaTurnos, ContactoTurnos, TurnoPublico…
       eventos/                     eventos que publica (interfaz nombrada)
       puertos/                     extensiones para M1/M2/M3 (interfaz nombrada)
-      dominio/ aplicacion/ infraestructura/ web/{api,vistas}   internos
+      dominio/                     modelo y puertos de salida (RepositorioTurnos…)
+      infraestructura/             adaptadores JDBC que implementan los puertos
+      emision/ seguimiento/ atencion/ historial/ pantalla/ colas/ ventanillas/ avisos/ expiracion/ extensiones/
+                                   un slice por funcionalidad: caso de uso + API + vista
     notificaciones/              avisos por WhatsApp
     tiemporeal/                  canal SSE
   src/main/resources/
     application*.yml             configuración (lee el .env de la raíz)
-    db/migration/                Flyway: V1–V10 (de legacy/) y nuevas
-  src/test/                      unitarias, modularidad, compatibilidad con legacy/ e integración (Testcontainers)
-frontend/                      recursos web (se empaquetan dentro del jar)
+    db/migration/                Flyway: V1–V10 (heredadas de Prisma) y nuevas
+  src/test/                      unitarias, modularidad, compatibilidad con el sistema anterior e integración (Testcontainers)
+movil/                         app Flutter del cliente (escanea el QR de la TV, toma turno con canal APP y lo sigue en vivo)
+frontend/                      recursos web (subproyecto Gradle; se empaquetan dentro del jar)
   src/main/resources/templates/  Thymeleaf: fragmentos/, cliente/, tv/, panel/, admin/, auth/, error/
   src/main/resources/static/     css/ (tokens, base, componentes, pantallas/), js/, img/
-legacy/                        sistema anterior (Next.js + Prisma), hasta terminar la migración
 docs/                          arquitectura, módulos, plan de migración y manual de usuario
-video-promo/                   video promocional (Remotion), proyecto independiente
+docker-compose.yml             PostgreSQL, Redis/Valkey, OpenWA y la aplicación (perfil prod)
 ```
 
 ### Comandos
 
+Los de Gradle se ejecutan dentro de `backend/`; los de Docker, en la raíz.
+
 | Comando | Qué hace |
 | --- | --- |
-| `gradlew :backend:bootRun` | Aplicación en modo desarrollo (http://localhost:8080) |
+| `gradlew bootRun` | Aplicación en modo desarrollo (http://localhost:8080) |
 | `gradlew build` | Compila y ejecuta todas las pruebas (las de integración necesitan Docker) |
-| `gradlew :backend:test` | Solo pruebas |
+| `gradlew test` | Solo pruebas |
 | `docker compose up -d db` | Solo PostgreSQL |
-| `docker compose --profile prod up -d --build` | Aplicación Java + PostgreSQL + Redis + OpenWA |
-| `docker compose --profile legacy up -d --build` | Sistema anterior (Next.js) en el puerto 3000 |
-| `cd legacy && npm run …` | Comandos de legacy/ (ver `legacy/package.json`) |
+| `docker compose --profile prod up -d --build` | Aplicación + PostgreSQL + Redis + OpenWA |
 
 ### Modelo de datos (resumen)
 
@@ -150,7 +154,6 @@ Respuesta uniforme `{ ok: true, data }` / `{ ok: false, error: { codigo, mensaje
 | GET  | `/notificaciones` | admin local+ | Bandeja de avisos WhatsApp |
 | CRUD | `/locales`, `/locales/:id`, POST `/locales/activo` | super admin | Multi-tenant |
 | GET  | `/planes` | público | Planes Gratis / Emprende / Pro |
-| GET / POST | `/webhooks/whatsapp` | OpenWA / Meta | Estados de entrega (`message.ack` de OpenWA o `statuses` de Meta), firma HMAC |
 | GET / POST | `/whatsapp/conexion` | admin local+ | Estado del número en OpenWA, QR de vinculación, iniciar/detener/desvincular, registrar webhook, mensaje de prueba |
 | GET  | `/api/health` | público | Estado de la app y la BD |
 
@@ -183,14 +186,14 @@ Códigos de error: `VALIDACION`, `RATE_LIMIT`, `NO_AUTENTICADO`, `PROHIBIDO`, `C
 
 ---
 
-## 5. Despliegue en producción (Docker, legacy/)
+## 5. Despliegue en producción (Docker)
 
 ```bash
-# Variables (opcional: .env en la raíz con JWT_SECRET, DATA_ENCRYPTION_KEY, NEXT_PUBLIC_APP_URL, WHATSAPP_*)
+# Variables (en .env de la raíz: JWT_SECRET, DATA_ENCRYPTION_KEY, APP_URL, WHATSAPP_*)
 docker compose --profile prod up -d --build
 ```
 
-El contenedor `app` espera a PostgreSQL, ejecuta `prisma migrate deploy`, carga los datos demo si `SEED_ON_START=true` (por defecto) y arranca Next en modo *standalone* en el puerto 3000. Para una instancia limpia usa `SEED_ON_START=false`. El perfil `prod` también levanta el gateway `openwa` (puerto 2785); activa `WHATSAPP_PROVIDER=openwa` para usarlo.
+La imagen se construye con `backend/Dockerfile` (multi-stage: compila con Gradle y deja un jar en capas sobre JRE 21). El contenedor `app` espera a PostgreSQL y Redis, Flyway migra la base al arrancar y la aplicación queda en el puerto 8080 con el perfil `prod` (no arranca con secretos de ejemplo). El perfil `prod` también levanta el gateway `openwa` (puerto 2785); activa `WHATSAPP_PROVIDER=openwa` para usarlo.
 
 ### Variables de entorno
 
@@ -199,11 +202,12 @@ El contenedor `app` espera a PostgreSQL, ejecuta `prisma migrate deploy`, carga 
 | `DATABASE_URL` | Cadena de conexión PostgreSQL |
 | `JWT_SECRET` | Secreto para firmar sesiones (≥ 32 caracteres) |
 | `DATA_ENCRYPTION_KEY` | Clave AES-256 (32 bytes) para cifrar celulares |
-| `NEXT_PUBLIC_APP_URL` | URL pública (QR y enlaces de WhatsApp) |
+| `APP_URL` | URL pública (QR y enlaces de WhatsApp) |
 | `WHATSAPP_PROVIDER` | `mock` (simulador), `openwa` (gateway OpenWA) o `meta` (WhatsApp Cloud API) |
 | `OPENWA_URL`, `OPENWA_API_KEY`, `OPENWA_SESSION`, `OPENWA_WEBHOOK_SECRET`, `OPENWA_WEBHOOK_BASE_URL` | Conexión al gateway OpenWA (solo con `openwa`) |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` | Credenciales Meta (solo con `meta`) |
-| `SEED_ON_START` | `true` para cargar datos demo al arrancar el contenedor |
+| `TURNOYA_BUS`, `REDIS_URL` | Bus de tiempo real: `memoria` (una instancia) o `redis` (varias réplicas) |
+| `COOKIE_SEGURA` | Cookie de sesión solo por HTTPS (por defecto `true` en `prod`) |
 
 ### WhatsApp real con OpenWA (número propio, sin costo)
 
@@ -217,36 +221,20 @@ docker compose --profile whatsapp up -d
 WHATSAPP_PROVIDER="openwa"
 OPENWA_API_KEY="…"              # el mismo valor siembra la clave admin de OpenWA (API_MASTER_KEY)
 OPENWA_WEBHOOK_SECRET="…"        # ≥ 16 caracteres
-OPENWA_WEBHOOK_BASE_URL="http://host.docker.internal:3000"   # en producción Docker: http://app:3000
+OPENWA_WEBHOOK_BASE_URL="http://host.docker.internal:8080"   # en producción Docker: http://app:8080
 
-# 3) Reiniciar `npm run dev` y entrar a Admin → Avisos WhatsApp
+# 3) Reiniciar la aplicación (gradlew bootRun)
 ```
 
-En **Admin → Avisos WhatsApp** aparece la tarjeta *Número de WhatsApp (OpenWA)*: pulsa **Vincular número**, escanea el QR desde WhatsApp (Dispositivos vinculados → Vincular un dispositivo), pulsa **Registrar** webhook y envía un **mensaje de prueba**. A partir de ahí los avisos `turno_proximo` y `turno_llamado` salen por ese número y los estados enviado → entregado → leído llegan en tiempo real.
+Cuando se migre la pantalla de avisos, en **Admin → Avisos WhatsApp** aparecerá la tarjeta *Número de WhatsApp (OpenWA)*: pulsa **Vincular número**, escanea el QR desde WhatsApp (Dispositivos vinculados → Vincular un dispositivo), pulsa **Registrar** webhook y envía un **mensaje de prueba**. A partir de ahí los avisos `turno_proximo` y `turno_llamado` salen por ese número y los estados enviado → entregado → leído llegan en tiempo real.
 
 Recomendaciones de OpenWA (es un cliente no oficial): usa un **número dedicado** (no el personal), "caliéntalo" unos días antes de la demo y envía solo a personas que dieron su consentimiento (exactamente el flujo de TurnoYa). Para entornos regulados usa la Cloud API oficial.
 
 ### WhatsApp real (Meta Cloud API)
 
 1. Crear app en Meta for Developers con el producto WhatsApp y aprobar las plantillas `turno_proximo` y `turno_llamado` (idioma `es`).
-2. Configurar `WHATSAPP_PROVIDER=meta`, token, `PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET` y el webhook `https://<dominio>/api/v1/webhooks/whatsapp` con `WHATSAPP_VERIFY_TOKEN`.
-3. Los estados de entrega (enviado / entregado / leído) se reflejan en `/admin/notificaciones` y en la página del cliente.
-
----
-
-## 6. Scripts de legacy/ (ejecutar dentro de `legacy/`)
-
-| Script | Acción |
-| --- | --- |
-| `npm run dev` | Servidor de desarrollo |
-| `npm run build` / `npm start` | Build y arranque de producción |
-| `npm run typecheck` / `npm run lint` | Verificación TypeScript / ESLint |
-| `npm run setup` | Levanta BD, migra y siembra |
-| `npm run db:migrate` · `db:seed` · `db:reset` · `db:studio` | Utilidades Prisma |
-| `npm run docker:prod` | Build y despliegue completo con Docker |
-| `npm test` · `npm run test:int` | Pruebas unitarias e integración (`backend/tests`) |
-
-Todos los scripts se lanzan desde la raíz y delegan en el workspace que corresponde (`-w backend` o `-w frontend`). Para agregar una dependencia, indica el workspace: `npm install <paquete> -w frontend`.
+2. Configurar `WHATSAPP_PROVIDER=meta`, `WHATSAPP_TOKEN` y `WHATSAPP_PHONE_NUMBER_ID`.
+3. WhatsApp solo se usa para **enviar avisos**: el chatbot que recibía mensajes se retiró. Los acuses de entrega reales (entregado / leído) aún no se reciben; con el simulador (`mock`) se emulan.
 
 ---
 

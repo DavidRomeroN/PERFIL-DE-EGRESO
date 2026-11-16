@@ -396,3 +396,54 @@
   text-decoration: none;
   box-shadow: var(--sombra-suave);
 }
+
+/* M2 · aviso por tiempo y mejores horas */
+.extra-espera { display: grid; gap: .75rem; margin-top: 1.25rem; text-align: left; }
+.extra-espera-caja { padding: .75rem; border: 1px solid var(--borde); border-radius: var(--radio-lg); }
+.extra-espera-titulo { margin: 0; font-size: .875rem; font-weight: 500; }
+.segmentos { display: flex; gap: .25rem; margin-top: .5rem; padding: .25rem; border-radius: var(--radio); background: var(--apagado); }
+.segmento { flex: 1; min-height: 2.5rem; border: 0; border-radius: var(--radio-sm); background: transparent; color: var(--apagado-texto); font: inherit; font-size: .875rem; font-weight: 500; cursor: pointer; transition: background 200ms, color 200ms; }
+.segmento[aria-pressed="true"] { background: var(--texto); color: var(--fondo); box-shadow: 0 1px 2px rgb(0 0 0 / .15); }
+.franjas-espera { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 0; padding: 0; list-style: none; font-size: .75rem; }
+.franja-espera { padding: .25rem .5rem; border-radius: var(--radio-sm); background: var(--apagado); }
+.franja-espera.nivel-baja { background: #d1fae5; color: #065f46; }
+.franja-espera.nivel-alta { background: #ffe4e6; color: #9f1239; }
+
+/* M3 · Citas: pasos de la reserva y detalle de la cita */
+.paso-cita { display: grid; gap: .75rem; margin-top: 1.25rem; }
+.paso-cita:first-of-type { margin-top: 0; }
+.paso-cita .titulo-paso { display: flex; align-items: center; gap: .5rem; margin: 0; }
+.paso-cita .paso-numero { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 999px; background: var(--apagado); color: var(--apagado-texto); font-size: .75rem; }
+.paso-cita .paso-numero.hecho { background: var(--local, var(--primario)); color: #fff; }
+.opcion-cola.elegida { border-color: var(--local, var(--primario)); box-shadow: 0 0 0 1px var(--local, var(--primario)); }
+.dias-cita { display: flex; gap: .5rem; overflow-x: auto; padding-bottom: .25rem; scrollbar-width: none; }
+.dia-cita { display: grid; flex-shrink: 0; min-width: 5rem; min-height: 4rem; place-content: center; padding: .5rem; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--fondo); color: inherit; font-size: .875rem; text-align: center; text-decoration: none; text-transform: capitalize; }
+.dia-cita small { color: var(--apagado-texto); font-size: .75rem; text-transform: none; }
+.dia-cita.elegido { border-color: var(--local, var(--primario)); background: var(--local, var(--primario)); color: #fff; font-weight: 600; }
+.dia-cita.elegido small { color: rgb(255 255 255 / .8); }
+.dia-cita.deshabilitado, .horario-cita.deshabilitado { opacity: .4; }
+.horarios-cita { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+.horario-cita { display: grid; min-height: 2.75rem; place-items: center; border: 1px solid var(--borde); border-radius: var(--radio-sm); background: var(--fondo); color: inherit; font: inherit; font-size: .875rem; text-decoration: none; cursor: pointer; }
+.horario-cita.deshabilitado { text-decoration: line-through; cursor: default; }
+.horario-cita.elegido { border-color: var(--local, var(--primario)); background: var(--local, var(--primario)); color: #fff; font-weight: 600; }
+.cita-detalle { display: grid; gap: 1rem; text-align: center; }
+.cita-servicio { margin: 0; font-size: 1.125rem; }
+.cita-fecha { margin: 0; font-size: 1.25rem; font-weight: 600; }
+.cita-fecha::first-letter { text-transform: uppercase; }
+.cita-qr { justify-self: center; padding: .75rem; border-radius: var(--radio-lg); background: #fff; box-shadow: 0 0 0 1px var(--borde); }
+.cita-qr svg { display: block; width: 180px; height: 180px; }
+.cita-codigo { font-size: 1.25rem; letter-spacing: .1em; }
+.cita-checkin { padding: 1rem; border: 1px solid var(--borde); border-radius: var(--radio-lg); text-align: left; }
+.cita-pin { font-size: 1.75rem; letter-spacing: .5em; text-align: center; }
+.cita-acciones { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+.cita-reprogramar { display: grid; gap: .75rem; text-align: left; }
+.cita-reprogramar summary { cursor: pointer; font-weight: 500; }
+.insignia.cita-CONFIRMADA, .insignia.cita-CHECKIN, .insignia.cita-ATENDIDA { background: #d1fae5; color: #065f46; }
+.insignia.cita-NO_SHOW { background: #ffe4e6; color: #9f1239; }
+.insignia.cita-CANCELADA { background: var(--apagado); color: var(--apagado-texto); }
+
+/* M5 · Ticket provisional */
+.provisional { display: grid; justify-items: center; gap: 1rem; text-align: center; }
+.provisional-espera { width: 3.5rem; height: 3.5rem; border: 4px solid var(--apagado); border-top-color: var(--primario); border-radius: 999px; animation: girar 900ms linear infinite; }
+.provisional.en-revision .provisional-espera { border-color: #fde68a; animation: none; }
+@keyframes girar { to { transform: rotate(360deg); } }

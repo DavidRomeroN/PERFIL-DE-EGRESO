@@ -1,41 +1,203 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head th:replace="~{fragmentos/base :: cabeza('Fila virtual y turnos')}"></head>
-<body>
-<div class="inicio">
-  <header class="inicio-barra">
-    <a th:replace="~{fragmentos/base :: logo('/', false)}"></a>
-    <a class="boton boton-contorno" th:href="${sesion != null} ? (${sesion.esAdmin()} ? @{/admin/colas} : @{/panel}) : @{/login}"
-       th:text="${sesion != null} ? 'Ir a mi panel' : 'Ingresar'">Ingresar</a>
-  </header>
+<body class="pagina-inicio" th:with="nombreDemo=${demo != null} ? ${demo.nombreComercial} : 'Policlínico San Román'">
 
-  <section class="inicio-heroe entrar">
-    <h1>Tu cliente espera <span>donde quiera</span>, no en la sala.</h1>
-    <p>Escanea un QR, toma un turno en segundos y recibe un aviso por WhatsApp cuando falte poco. Sin app ni registro.</p>
-    <div class="inicio-acciones">
-      <a class="boton boton-grande" th:href="@{/login}">Entrar al panel</a>
-      <a th:unless="${#lists.isEmpty(locales)}" class="boton boton-grande boton-contorno" th:href="@{/l/{s}(s=${locales[0].slug})}">Probar como cliente</a>
+<header class="inicio-nav">
+  <div class="inicio-nav-contenido">
+    <a th:replace="~{fragmentos/base :: logo('/', false)}"></a>
+    <nav aria-label="Secciones" class="inicio-nav-enlaces">
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#demo">Demo</a>
+      <a href="#precios">Precios</a>
+    </nav>
+    <div class="inicio-nav-acciones">
+      <a class="boton boton-fantasma boton-pequeno solo-escritorio"
+         th:href="${sesion != null} ? (${sesion.esAdmin()} ? @{/admin} : @{/panel}) : @{/login}"
+         th:text="${sesion != null} ? 'Ir a mi panel' : 'Ingresar'">Ingresar</a>
+      <a th:if="${demo != null}" class="boton boton-pequeno" th:href="@{/l/{s}(s=${demo.slug})}">Probar demo →</a>
+    </div>
+  </div>
+</header>
+
+<main id="contenido">
+  <!-- Hero: el titular y el ticket debajo -->
+  <section class="inicio-hero">
+    <h1>
+      <span class="linea"><span style="--i:0">Espera donde</span></span>
+      <span class="linea"><span style="--i:1" class="acento">quieras.</span></span>
+    </h1>
+    <div class="ticket-vivo" aria-hidden="true">
+      <p class="ticket-vivo-local" th:text="${nombreDemo}">Policlínico San Román</p>
+      <p class="ticket-vivo-etiqueta">Tu turno</p>
+      <p class="ticket-vivo-codigo">B-011</p>
+      <div class="ticket-vivo-filas">
+        <div><span>Delante de ti</span><strong>2</strong></div>
+        <div><span>Espera estimada</span><strong>~6 min</strong></div>
+      </div>
+      <div class="ticket-vivo-barra"><span></span></div>
+      <p class="ticket-vivo-pie">Te avisaremos por WhatsApp</p>
+    </div>
+    <div class="inicio-flancos">
+      <div>
+        <p>El cliente escanea un QR, sigue su turno en el celular y recibe un WhatsApp cuando faltan dos personas.</p>
+        <a th:if="${demo != null}" class="boton" th:href="@{/l/{s}(s=${demo.slug})}">Tomar un turno de prueba</a>
+      </div>
+      <div class="inicio-flanco-derecho">
+        <p class="fuerte" th:text="${gratis != null} ? 'Gratis hasta ' + ${#numbers.formatInteger(gratis.maxTurnosMes, 1, 'COMMA')} + ' turnos al mes' : 'Empieza gratis'">Empieza gratis</p>
+        <p class="texto-apagado">Sin instalar apps · Ley N.° 29733</p>
+      </div>
     </div>
   </section>
 
-  <section class="inicio-pasos">
-    <div class="tarjeta inicio-paso"><span class="inicio-numero">01</span><h3>Escanea</h3><p>El QR en la puerta o en la pantalla abre la página del local.</p></div>
-    <div class="tarjeta inicio-paso"><span class="inicio-numero">02</span><h3>Espera donde quieras</h3><p>Ves tu posición y la espera estimada en vivo.</p></div>
-    <div class="tarjeta inicio-paso"><span class="inicio-numero">03</span><h3>Te avisamos</h3><p>Por WhatsApp cuando falten pocos y en la TV cuando te llamen.</p></div>
+  <!-- El problema, dicho de una vez -->
+  <section class="inicio-banda">
+    <p>En una sala de espera nadie sabe cuánto falta, se hace fila dos veces <span>(para anotarse y para ser atendido)</span> y nadie mide cuánta gente se va sin que la atiendan. TurnoYa resuelve las tres cosas con un QR.</p>
   </section>
 
-  <section th:unless="${#lists.isEmpty(locales)}" class="inicio-locales">
-    <h2>Locales de demostración</h2>
-    <ul>
-      <li th:each="l : ${locales}" class="tarjeta">
-        <strong th:text="${l.nombreComercial}">Local</strong>
-        <div>
-          <a class="boton boton-contorno boton-pequeno" th:href="@{/l/{s}(s=${l.slug})}">Tomar turno</a>
-          <a class="boton boton-contorno boton-pequeno" target="_blank" th:href="@{/l/{s}/tv(s=${l.slug})}">Pantalla TV</a>
+  <!-- Cómo funciona -->
+  <section id="como-funciona" class="inicio-seccion">
+    <div class="inicio-titulo">
+      <h2>Así funciona</h2>
+      <p>Del QR al llamado en la TV, todo en tiempo real. Son cuatro pasos y ninguno le pide al cliente instalar una app ni crear una cuenta.</p>
+    </div>
+    <div class="pasos-acordeon">
+      <details name="paso" open class="paso paso-1">
+        <summary>Escanea el QR</summary>
+        <div class="paso-cuerpo">
+          <p>El cliente abre la web del local desde el QR de la sala, elige el servicio y toma su turno en tres toques. Sin instalar nada.</p>
+          <div class="paso-pieza"><span class="pieza-qr" aria-hidden="true"></span></div>
         </div>
-      </li>
-    </ul>
+      </details>
+      <details name="paso" class="paso paso-2">
+        <summary>Sigue su turno</summary>
+        <div class="paso-cuerpo">
+          <p>Ve su posición y el tiempo estimado desde el celular, en vivo. Puede salir a hacer otra cosa mientras la fila avanza.</p>
+          <div class="paso-pieza"><span class="pieza-posicion">Faltan <strong>3</strong></span></div>
+        </div>
+      </details>
+      <details name="paso" class="paso paso-3">
+        <summary>Recibe el aviso</summary>
+        <div class="paso-cuerpo">
+          <p>Cuando faltan dos personas le llega un WhatsApp automático con su número y el enlace para seguirlo.</p>
+          <div class="paso-pieza"><p class="pieza-whatsapp">Hola Lucía, tu turno <b>B-011</b> en <b th:text="${nombreDemo}">Policlínico</b> está por llegar: faltan 2 personas. <small>11:06 ✓✓</small></p></div>
+        </div>
+      </details>
+      <details name="paso" class="paso paso-4">
+        <summary>Lo llaman en la TV</summary>
+        <div class="paso-cuerpo">
+          <p>La ventanilla pulsa «Llamar siguiente»: la TV muestra el número, suena el timbre y el celular vibra.</p>
+          <div class="paso-pieza"><span class="pieza-tv">B-011 <small>Ventanilla 2</small></span></div>
+        </div>
+      </details>
+    </div>
   </section>
-</div>
+
+  <!-- Qué incluye -->
+  <section class="inicio-seccion inicio-incluye">
+    <h2 class="solo-lectores">Qué incluye</h2>
+    <p class="parrafo-grande">
+      Cada turno se numera en la base de datos, sin duplicados <span class="ranura ranura-codigo">A-001</span>. El aviso sale por WhatsApp con su estado de entrega
+      <span class="ranura ranura-wa">✓✓</span>, la TV llama en menos de un segundo <span class="ranura ranura-tv">A-018</span> y el panel te dice cuánto espera tu gente
+      <span class="ranura ranura-barras"><i style="height:40%"></i><i style="height:65%"></i><i style="height:50%"></i><i style="height:85%"></i><i style="height:60%"></i></span>.
+      Con roles, teléfonos cifrados y borrado a los 90 días, como pide la Ley 29733.
+    </p>
+    <div class="inicio-incluye-pie">
+      <p>Un solo sistema web para clientes, ventanillas y administradores, con reportes exportables a CSV y PDF.</p>
+      <a class="boton boton-contorno" href="#precios">Ver planes →</a>
+    </div>
+  </section>
+
+  <!-- Demo: tablero de salidas -->
+  <section id="demo" class="inicio-demo">
+    <div class="inicio-seccion">
+      <div class="inicio-titulo">
+        <h2>Pruébalo ahora</h2>
+        <p>Abre la pantalla TV en una pestaña, toma un turno desde el celular y llámalo desde el panel. Son datos de prueba, todo se actualiza en vivo.</p>
+      </div>
+      <div class="tablero-salidas">
+        <div class="tablero-cabecera"><span>Local</span><span>Rubro</span><span>Dirección</span><span>Acceso</span></div>
+        <ul>
+          <li th:each="l : ${locales}">
+            <span class="tablero-local"><i th:style="'background:' + ${l.colorPrimario} + ';box-shadow:0 0 12px ' + ${l.colorPrimario}"></i><span th:text="${l.nombreComercial}">Local</span></span>
+            <span class="tablero-dato" th:text="${l.rubro}">Salud</span>
+            <span class="tablero-dato" th:text="${l.direccion} ?: '—'">Dirección</span>
+            <span class="tablero-acciones">
+              <a class="boton boton-pequeno boton-claro" th:href="@{/l/{s}(s=${l.slug})}">Tomar turno</a>
+              <a class="boton boton-pequeno boton-contorno-claro" target="_blank" rel="noopener" th:href="@{/l/{s}/tv(s=${l.slug})}">TV</a>
+            </span>
+          </li>
+        </ul>
+        <p class="tablero-pie"><span class="punto-vivo"></span><span th:text="${#numbers.formatInteger(totalTurnos, 1, 'COMMA')} + ' turnos registrados en la demo'">0 turnos</span></p>
+      </div>
+
+      <h3 class="cuentas-titulo">Cuentas de demostración</h3>
+      <p class="cuentas-subtitulo">Entra al panel o a la administración con un clic.</p>
+      <div class="cuentas-demo">
+        <a th:each="c : ${cuentas}" class="cuenta-demo" th:href="@{/login(next=${c[3]},email=${c[1]})}">
+          <span class="cuenta-rol"><span th:text="${c[0]}">Rol</span><span aria-hidden="true">↗</span></span>
+          <span class="cuenta-dato" th:text="${c[1]}">correo</span>
+          <span class="cuenta-dato" th:text="${c[2]}">clave</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Precios: cada plan impreso como boleto -->
+  <section id="precios" class="inicio-precios">
+    <div class="inicio-seccion">
+      <div class="inicio-titulo">
+        <h2>Un boleto por local</h2>
+        <p>Suscripción mensual en soles, con IGV. Empieza gratis y cambia de plan cuando lo necesites.</p>
+      </div>
+      <div class="boletos">
+        <article th:each="p : ${planes}" class="boleto" th:classappend="${p.codigo == 'EMPRENDE'} ? 'destacado'">
+          <div class="boleto-cuerpo">
+            <div class="boleto-titulo">
+              <h3 th:text="${p.nombre}">Plan</h3>
+              <span th:if="${p.codigo == 'EMPRENDE'}">El que más eligen</span>
+            </div>
+            <ul>
+              <li th:text="${p.maxColas >= 99} ? 'Colas ilimitadas' : ${p.maxColas} + (${p.maxColas > 1} ? ' colas' : ' cola')">1 cola</li>
+              <li th:text="${p.maxVentanillas} + (${p.maxVentanillas > 1} ? ' ventanillas' : ' ventanilla')">1 ventanilla</li>
+              <li th:text="${p.maxTurnosMes >= 100000} ? 'Turnos ilimitados' : 'Hasta ' + ${#numbers.formatInteger(p.maxTurnosMes, 1, 'COMMA')} + ' turnos/mes'">Hasta 300 turnos/mes</li>
+              <li th:text="${p.whatsappHabilitado} ? ${#numbers.formatInteger(p.maxAvisosWhatsapp, 1, 'COMMA')} + ' avisos WhatsApp' : 'Aviso por web'">Aviso por web</li>
+              <li>Pantalla TV en tiempo real</li>
+              <li th:if="${p.reportes}">Reportes y soporte prioritario</li>
+            </ul>
+          </div>
+          <div class="boleto-talon">
+            <p>
+              <span class="boleto-precio" th:text="${p.precioMensual.signum() == 0} ? 'S/ 0' : 'S/ ' + ${#numbers.formatDecimal(p.precioMensual, 1, 'COMMA', 0, 'POINT')}">S/ 0</span>
+              <span class="boleto-mes">al mes</span>
+            </p>
+            <a class="boton boton-grande" th:href="@{/registro(plan=${p.codigo})}">Comenzar</a>
+          </div>
+        </article>
+      </div>
+      <p class="texto-apagado inicio-nota">Instalación opcional: S/ 150 pago único (QR impreso, configuración y capacitación).</p>
+    </div>
+  </section>
+</main>
+
+<footer class="inicio-pie">
+  <div class="inicio-pie-contenido">
+    <div>
+      <p class="inicio-pie-lema">Tu sala de espera,<br>sin fila.</p>
+      <a class="boton boton-grande boton-claro" th:href="@{/registro}">Crear mi local →</a>
+    </div>
+    <nav aria-label="Enlaces" class="inicio-pie-enlaces">
+      <a th:href="@{/login}">Ingresar</a>
+      <a th:if="${demo != null}" th:href="@{/l/{s}(s=${demo.slug})}">Tomar un turno</a>
+      <a th:if="${demo != null}" target="_blank" rel="noopener" th:href="@{/l/{s}/tv(s=${demo.slug})}">Pantalla TV</a>
+      <a href="#precios">Precios</a>
+    </nav>
+    <div class="inicio-pie-creditos">
+      <p>Proyecto de perfil de egreso · EP Ingeniería de Sistemas, Universidad Peruana Unión, sede Juliaca · Emprendedorismo 2026-2</p>
+      <p>Nick Mayta · Jhan Ramos · David Romero · Henyelrey Garcia · Datos personales eliminados a los 90 días (Ley N.° 29733)</p>
+    </div>
+  </div>
+  <p class="inicio-pie-marca" aria-hidden="true">TurnoYa</p>
+</footer>
 </body>
 </html>

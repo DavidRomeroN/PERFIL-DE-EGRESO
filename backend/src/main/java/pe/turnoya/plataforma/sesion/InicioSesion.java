@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import pe.turnoya.compartido.ErrorNegocio;
 import pe.turnoya.compartido.web.LimitadorPeticiones;
 import pe.turnoya.plataforma.Sesion;
-import pe.turnoya.plataforma.infraestructura.UsuariosJdbc;
+import pe.turnoya.plataforma.dominio.RepositorioUsuarios;
 
 /**
  * Caso de uso "iniciar sesión" (lo usan el formulario y la API).
@@ -21,13 +21,13 @@ public class InicioSesion {
     private static final Duration VENTANA_BLOQUEO = Duration.ofMinutes(15);
     private static final int MAX_FALLOS = 5;
 
-    private final UsuariosJdbc usuarios;
+    private final RepositorioUsuarios usuarios;
     private final PasswordEncoder claves;
     private final LimitadorPeticiones limitador;
     private final FirmaSesion firma;
     private final Clock reloj;
 
-    InicioSesion(UsuariosJdbc usuarios, PasswordEncoder claves, LimitadorPeticiones limitador, FirmaSesion firma, Clock reloj) {
+    InicioSesion(RepositorioUsuarios usuarios, PasswordEncoder claves, LimitadorPeticiones limitador, FirmaSesion firma, Clock reloj) {
         this.usuarios = usuarios;
         this.claves = claves;
         this.limitador = limitador;
@@ -45,7 +45,7 @@ public class InicioSesion {
             throw new ErrorNegocio("CUENTA_BLOQUEADA", "Demasiados intentos fallidos. Vuelve a intentarlo en 15 minutos.", 429);
         }
         var usuario = usuarios.porEmail(correo)
-                .filter(UsuariosJdbc.UsuarioConLocal::activo)
+                .filter(RepositorioUsuarios.UsuarioConLocal::activo)
                 .filter(u -> u.localId() == null || Boolean.TRUE.equals(u.localActivo()))
                 .filter(u -> clave != null && claves.matches(clave, u.hashPassword()));
         if (usuario.isEmpty()) {
